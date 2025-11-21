@@ -1,28 +1,51 @@
-// screen/ItemsListScreen.js
-import { useState, useContext } from 'react';
-import { View, FlatList, TextInput, StyleSheet, Text } from 'react-native';
-import { ItemsContext } from '../data/ItemsContext';
+import { useState, useEffect, useCallback } from 'react';
+import { View, FlatList, TextInput, StyleSheet, Text, RefreshControl, Alert } from 'react-native';
 import ItemCard from '../components/items/ItemCard';
 import ButtonPrimary from '../components/ui/ButtonPrimary';
+// API: 목록 조회 함수 가져오기
+import { getItems } from "../api/items";
 
 export default function ItemsListScreen({ navigation }) {
-  // 1. Context가 깨져도 빈 객체 {} 반환
-  const context = useContext(ItemsContext) || {};
-  // 2. items가 없으면 빈 배열 [] 반환 (여기가 제일 중요)
-  const items = context.items || [];
-
+  const [items, setItems] = useState([]);
   const [query, setQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
-  // 3. items가 배열인지 확인하고 필터 돌림
-  const filtered = Array.isArray(items) ? items.filter(i => {
+  // 데이터 불러오기
+  const load = useCallback(async () => {
+    try {
+      const data = await getItems();
+      console.log(data);
+      // items가 배열인지 확인 후 설정
+      setItems(Array.isArray(data) ? data : []);
+    } catch (e) {
+      Alert.alert("오류", e.message);
+    }
+  }, []);
+
+  // 화면이 포커스될 때마다(탭 이동, 뒤로가기 등) 데이터 갱신
+  useEffect(() => {
+    const unsub = navigation.addListener("focus", load);
+    return unsub;
+  }, [navigation, load]);
+
+  // 당겨서 새로고침
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
+
+  // 검색 필터링
+  const filtered = items.filter(i => {
     const name = i?.name || ''; 
     const desc = i?.description || ''; 
     const text = [name, desc].join(' ').toLowerCase();
     return text.includes(query.toLowerCase());
-  }) : [];
+  });
 
   return (
     <View style={styles.page}>
+      {/* 상단: 검색바 + 추가 버튼 */}
       <View style={styles.row}>
         <TextInput
           placeholder="검색…"
@@ -38,19 +61,22 @@ export default function ItemsListScreen({ navigation }) {
         />
       </View>
 
+      {/* 목록 리스트 */}
       <FlatList
         data={filtered}
         keyExtractor={(it) => String(it.id)}
+        refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         renderItem={({ item }) => (
           <ItemCard
             item={item}
             onPress={() => navigation.navigate('ItemDetail', { id: item.id })}
           />
         )}
-        // 데이터 없을 때 보여줄 화면
         ListEmptyComponent={
             <View style={{ marginTop: 50, alignItems: 'center' }}>
-                <Text style={{ color: '#999' }}>상품이 없습니다.</Text>
+                <Text style={{ color: '#999' }}>등록된 상품이 없습니다.</Text>
             </View>
         }
       />
