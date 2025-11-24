@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, ActivityIndicat
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import Constants from 'expo-constants';
 import { saveToken, getToken, removeToken } from '../utils/storage';
 
 // 웹 브라우저 인증 세션 처리를 위해 필요
@@ -12,7 +13,7 @@ WebBrowser.maybeCompleteAuthSession();
 export default function SettingsScreen() {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const appVersion = Constants.expoConfig?.version || Constants.manifest2?.extra?.expoClient?.version || "0.0.0";
   // 1. 구글 로그인 설정 (Scopes 추가 필수)
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: "94128920654-8evjj075bdbue1oblstrohqkvab3cma6.apps.googleusercontent.com",
@@ -198,7 +199,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.item}>
             <Text style={styles.itemText}>버전 정보</Text>
-            <Text style={styles.versionText}>0.1.0</Text>
+            <Text style={styles.versionText}>{appVersion}</Text>
         </TouchableOpacity>
       </View>
     </View>
