@@ -18,7 +18,8 @@ export default function SettingsScreen() {
     androidClientId: "94128920654-8evjj075bdbue1oblstrohqkvab3cma6.apps.googleusercontent.com",
     iosClientId: "94128920654-8evjj075bdbue1oblstrohqkvab3cma6.apps.googleusercontent.com",
     webClientId: "94128920654-8evjj075bdbue1oblstrohqkvab3cma6.apps.googleusercontent.com",
-    scopes: ['email', 'profile'], // [중요] 이 부분이 있어야 유저 정보를 가져올 수 있습니다.
+    redirectUri: 'https://univ-allinfo.netlify.app', // 웹 리디렉션 URI
+    scopes: ['email', 'profile'],
   });
 
   // 2. 앱 실행 시 로그인 상태 확인
