@@ -6,9 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 // 화면들 import
 import HomeScreen from './HomeScreen';
-import Calculator from './Calculator';
 import DetailScreen from './DetailScreen';
-import RandomStack from './randomstack';
 import { AlramProvider } from './data/Alram';
 import BookmarkScreen from './screen/BookmarkScreen';
 
@@ -18,8 +16,7 @@ import ItemDetailScreen from './screen/ItemDetailScreen';
 import ItemCreateScreen from './screen/ItemCreateScreen';
 import ItemEditScreen from './screen/ItemEditScreen';
 
-// [삭제됨] 더 이상 Context를 사용하지 않으므로 ItemsProvider import 제거
-// import { ItemsProvider } from './data/ItemsContext'; 
+import SettingsScreen from './screen/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator(); 
@@ -80,22 +77,12 @@ function MainTab() {
         }} 
       />
 
-      {/* 4. 증권 */}
-      <Tab.Screen 
-        name="Stocks"
-        component={RandomStack} 
-        options={{ 
-          title: '증권',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="trending-up" size={size} color={color} />
-          ),
-        }} 
-      />
+      
 
-      {/* 5. 설정 */}
+      {/* 4. 설정 */}
       <Tab.Screen 
         name="All"
-        component={Calculator} 
+        component={SettingsScreen} 
         options={{ 
           title: '설정',
           tabBarIcon: ({ color, size }) => (

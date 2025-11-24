@@ -1,6 +1,7 @@
 // src/api/client.js
 import axios from "axios";
-//sdafsd
+import { getToken } from "../utils/storage";
+
 const BASE_URL = "http://172.20.57.102:3000"; 
 
 export const api = axios.create({
@@ -9,7 +10,17 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// (선택) 공통 에러 처리
+api.interceptors.request.use(
+  async (config) => {
+    const token = await getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
