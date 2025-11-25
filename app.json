@@ -3,7 +3,7 @@
     "scheme": "univ-allinfo",
     "name": "UNIV-AllInfo",
     "slug": "UNIV-AllInfo",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "plugins": [
       "expo-web-browser",
       "expo-secure-store"
