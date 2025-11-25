@@ -14,13 +14,16 @@ export default function SettingsScreen() {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const appVersion = Constants.expoConfig?.version || Constants.manifest2?.extra?.expoClient?.version || "0.0.0";
+  const currentRedirectUri = Platform.OS === 'web' 
+    ? window.location.origin  // 웹이면 현재 주소 (localhost 또는 netlify)
+    : 'https://univ-allinfo.netlify.app';
   // 1. 구글 로그인 설정 (Scopes 추가 필수)
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: "94128920654-8evjj075bdbue1oblstrohqkvab3cma6.apps.googleusercontent.com",
     iosClientId: "94128920654-8evjj075bdbue1oblstrohqkvab3cma6.apps.googleusercontent.com",
     webClientId: "94128920654-8evjj075bdbue1oblstrohqkvab3cma6.apps.googleusercontent.com",
-    redirectUri: 'https://univ-allinfo.netlify.app', // 웹 리디렉션 URI
-    scopes: ['email', 'profile'],
+    redirectUri: currentRedirectUri, // 웹 리디렉션 URI
+    scopes: ['email', 'profile','https://www.googleapis.com/auth/calendar.events.readonly'],
   });
 
   // 2. 앱 실행 시 로그인 상태 확인

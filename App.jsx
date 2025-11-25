@@ -9,7 +9,7 @@ import HomeScreen from './HomeScreen';
 import DetailScreen from './DetailScreen';
 import { AlramProvider } from './data/Alram';
 import BookmarkScreen from './screen/BookmarkScreen';
-
+import CalendarScreen from './screen/CalendarScreen';
 import SettingsScreen from './screen/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
@@ -71,7 +71,16 @@ function MainTab() {
         }} 
       />
 
-      
+      <Tab.Screen 
+        name="Calendar"
+        component={CalendarScreen} 
+        options={{ 
+          title: '캘린더',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }} 
+      />
 
       {/* 4. 설정 */}
       <Tab.Screen 
