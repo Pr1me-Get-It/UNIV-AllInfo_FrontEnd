@@ -10,12 +10,6 @@ import DetailScreen from './DetailScreen';
 import { AlramProvider } from './data/Alram';
 import BookmarkScreen from './screen/BookmarkScreen';
 
-// 아이템(쇼핑) 관련 화면 import
-import ItemsListScreen from './screen/ItemsListScreen';
-import ItemDetailScreen from './screen/ItemDetailScreen';
-import ItemCreateScreen from './screen/ItemCreateScreen';
-import ItemEditScreen from './screen/ItemEditScreen';
-
 import SettingsScreen from './screen/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
@@ -68,7 +62,7 @@ function MainTab() {
       {/* 3. 필터 (쇼핑 리스트) */}
       <Tab.Screen 
         name="Shopping"
-        component={ItemsListScreen} 
+        component={BookmarkScreen} 
         options={{ 
           title: '필터',
           tabBarIcon: ({ color, size }) => (
@@ -116,26 +110,7 @@ export default function App() {
             options={{ title: '상세 정보' }} 
           />
 
-          {/* 3. 아이템 CRUD 관련 스택 화면 */}
-          {/* 이전 단계 파일들에서 navigation.navigate('ItemDetail') 등으로 호출하므로 이름을 맞춤 */}
           
-          <Stack.Screen 
-            name="ItemDetail" 
-            component={ItemDetailScreen} 
-            options={{ title: '상품 상세' }}
-          />
-
-          <Stack.Screen 
-            name="Create" 
-            component={ItemCreateScreen} 
-            options={{ title: '상품 등록' }}
-          />
-
-          <Stack.Screen 
-            name="Edit" 
-            component={ItemEditScreen} 
-            options={{ title: '상품 수정' }}
-          />
 
         </Stack.Navigator>
       </NavigationContainer>
