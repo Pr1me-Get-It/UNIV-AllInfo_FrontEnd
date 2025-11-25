@@ -1,8 +1,8 @@
 import React, { useContext, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AlramContext } from './data/Alram'; 
-import { ALRAM_DATA } from './data/mockAlrams';
+import { AlramContext } from '../data/Alram'; 
+import { ALRAM_DATA } from '../data/mockAlrams';
 
 export default function HomeScreen({ navigation }) {
     const { readStatus } = useContext(AlramContext) || { readStatus: {} };

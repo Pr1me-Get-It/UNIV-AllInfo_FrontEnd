@@ -1,7 +1,7 @@
 // screens/DetailScreen.jsx
 import React, { useContext, useEffect } from 'react';
 import { View, Text, StyleSheet, Button,TouchableOpacity } from 'react-native';
-import { AlramContext } from './data/Alram';
+import { AlramContext } from '../data/Alram';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function DetailScreen({ route, navigation }) {

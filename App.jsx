@@ -5,8 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 // 화면들 import
-import HomeScreen from './HomeScreen';
-import DetailScreen from './DetailScreen';
+import HomeScreen from './screen/HomeScreen';
+import DetailScreen from './screen/DetailScreen';
 import { AlramProvider } from './data/Alram';
 import BookmarkScreen from './screen/BookmarkScreen';
 import CalendarScreen from './screen/CalendarScreen';

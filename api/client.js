@@ -2,7 +2,7 @@
 import axios from "axios";
 import { getToken } from "../utils/storage";
 
-const BASE_URL = "http://172.20.57.102:3000"; 
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 export const api = axios.create({
   baseURL: BASE_URL,
