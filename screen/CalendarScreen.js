@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity }
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars'; // 라이브러리 임포트
 import { getToken } from '../utils/storage';
+import { Ionicons } from '@expo/vector-icons';
 
 // [설정] 달력 한글화
 LocaleConfig.locales['kr'] = {
@@ -137,8 +138,17 @@ export default function CalendarScreen({ navigation }) {
         
         // 데이터 표시 (점, 선택 배경색 등)
         markedDates={markedDates}
-        
-        // 스타일 커스텀
+        // 월 표시 포맷
+        monthFormat={'yyyy년 M월'}
+        // 화살표 커스텀
+        renderArrow={(direction) => (
+          <Ionicons 
+            name={direction === 'left' ? "chevron-back" : "chevron-forward"}
+            size={28}  // 원하는 크기로 조절 (기본값보다 큼)
+            color="rgb(219, 31, 38)"
+          />
+        )}
+        // 테마 커스텀
         theme={{
           todayTextColor: 'rgb(219, 31, 38)',
           arrowColor: 'rgb(219, 31, 38)',
