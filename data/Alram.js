@@ -19,11 +19,17 @@ export const AlramProvider = ({ children }) => {
     }));
   };
 
-  const toggleBookmark = (id) => {
-    setBookmarkStatus(prev => ({
-      ...prev,
-      [id]: !prev[id]  
-    }));
+  //item 전체를 받아서 처리
+  const toggleBookmark = (item) => {
+    setBookmarkStatus(prev => {
+      const newStatus = { ...prev };
+      if (newStatus[item.id]) {
+        delete newStatus[item.id];
+      } else {
+        newStatus[item.id] = item;
+      }
+      return newStatus;
+    });
   }
 
   return (

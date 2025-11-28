@@ -9,7 +9,9 @@ export default function DetailScreen({ route, navigation }) {
     const context = useContext(AlramContext);
     const { markAsRead, toggleBookmark, bookmarkStatus } = context || {};
     const itemId = item ? item.id : null;
-    const isBookmarked = (bookmarkStatus && itemId) ? bookmarkStatus[itemId] : false;
+    
+    // bookmarkStatus에 해당 ID가 존재하는지(값 자체가 item 객체이므로 존재 여부만 확인하면 됨)
+    const isBookmarked = (bookmarkStatus && itemId) ? !!bookmarkStatus[itemId] : false;
 
     useEffect(() => {
         if (!item || !itemId || !markAsRead) return;
@@ -23,7 +25,6 @@ export default function DetailScreen({ route, navigation }) {
         }
     };
 
-    // 원본 공지사항 링크 열기
     const openLink = () => {
         if (item?.link) {
             Linking.openURL(item.link).catch(err => console.error("링크 열기 실패", err));
@@ -49,7 +50,6 @@ export default function DetailScreen({ route, navigation }) {
                 <Text style={styles.dateText}>게시일: {item.date || '날짜 정보 없음'}</Text>
 
                 <View style={styles.container}>
-                    {/* 내용 표시 영역 */}
                     <View style={styles.contentBox}>
                         <Text style={styles.contentText}>
                             이 공지사항의 상세 내용은 학교 홈페이지에서 확인할 수 있습니다.
@@ -65,7 +65,8 @@ export default function DetailScreen({ route, navigation }) {
 
                     <TouchableOpacity 
                         style={[styles.bookmarkBtn, isBookmarked && styles.bookmarkBtnActive]}
-                        onPress={() => toggleBookmark && toggleBookmark(item.id)}
+                        // [수정] ID가 아닌 item 객체 전체를 전달
+                        onPress={() => toggleBookmark && toggleBookmark(item)}
                     >
                         <Ionicons 
                             name={isBookmarked ? "star" : "star-outline"} 
@@ -93,60 +94,16 @@ export default function DetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
     scrollContainer: { flexGrow: 1, backgroundColor: 'white' },
     wrapper: { flex: 1, paddingTop: 40, alignItems: 'center', backgroundColor: 'white' },
-    
     badge: { backgroundColor: 'rgb(219, 31, 38)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginBottom: 15 },
     badgeText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-
     headerTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, color: '#333', textAlign: 'center', paddingHorizontal: 20 },
     dateText: { fontSize: 14, color: '#888', marginBottom: 30 },
-
     container: { width: '100%', alignItems: 'center', paddingHorizontal: 30 },
-    
-    contentBox: {
-        width: '100%',
-        padding: 20,
-        backgroundColor: '#f9f9f9',
-        borderRadius: 10,
-        marginBottom: 20,
-        alignItems: 'center',
-    },
-    contentText: {
-        fontSize: 16,
-        color: '#555',
-        lineHeight: 24,
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    linkButton: {
-        flexDirection: 'row',
-        backgroundColor: '#333',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-        alignItems: 'center',
-        gap: 8,
-    },
+    contentBox: { width: '100%', padding: 20, backgroundColor: '#f9f9f9', borderRadius: 10, marginBottom: 20, alignItems: 'center' },
+    contentText: { fontSize: 16, color: '#555', lineHeight: 24, textAlign: 'center', marginBottom: 20 },
+    linkButton: { flexDirection: 'row', backgroundColor: '#333', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center', gap: 8 },
     linkButtonText: { color: '#fff', fontWeight: '600' },
-
-    bookmarkBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 30,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        backgroundColor: '#fff',
-        gap: 8,
-        marginBottom: 10,
-    },
-    bookmarkBtnActive: {
-        backgroundColor: '#FFD700', 
-        borderColor: '#FFD700',
-    },
-    btnText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#333',
-    }
+    bookmarkBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff', gap: 8, marginBottom: 10 },
+    bookmarkBtnActive: { backgroundColor: '#FFD700', borderColor: '#FFD700' },
+    btnText: { fontSize: 16, fontWeight: '600', color: '#333' }
 });

@@ -1,18 +1,15 @@
-// screens/BookmarkScreen.jsx
+// screen/BookmarkScreen.jsx
 import React, { useContext } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AlramContext } from '../data/Alram';
-import { ALRAM_DATA } from '../data/mockAlrams'; // 1단계에서 만든 데이터 가져오기
 
 export default function BookmarkScreen({ navigation }) {
     const context = useContext(AlramContext);
     const { bookmarkStatus } = context || { bookmarkStatus: {} };
-    const safeStatus = bookmarkStatus || {};
-    const safeData = ALRAM_DATA || [];
-    const bookmarkedItems = Array.isArray(safeData) 
-        ? safeData.filter(item => item && safeStatus[item.id]) 
-        : [];
+    
+    // [수정] 가짜 데이터(ALRAM_DATA)가 아닌, 저장된 북마크 상태 객체(bookmarkStatus)의 값들만 추출하여 배열로 만듦
+    const bookmarkedItems = bookmarkStatus ? Object.values(bookmarkStatus) : [];
 
     return (
         <View style={styles.container}>
@@ -26,7 +23,7 @@ export default function BookmarkScreen({ navigation }) {
             <View style={styles.listContainer}>
                 <FlatList
                     data={bookmarkedItems}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => String(item.id)} // ID를 문자열로 변환하여 안전하게 사용
                     contentContainerStyle={{ paddingBottom: 20 }}
                     // 북마크가 없을 때 보여줄 화면
                     ListEmptyComponent={
@@ -43,7 +40,9 @@ export default function BookmarkScreen({ navigation }) {
                                 <Image source={item.image} style={styles.customIcon} />
                             </View>
                             <View style={styles.textWrapper}>
-                                <Text style={styles.itemText}>{item.title}</Text>
+                                <Text style={styles.itemText} numberOfLines={1}>
+                                    {item.title}
+                                </Text>
                                 <Ionicons name="star" size={20} color="#FFD700" />
                             </View>
                         </TouchableOpacity>
@@ -72,7 +71,7 @@ const styles = StyleSheet.create({
     iconBackground: { backgroundColor: 'transparent', width: 50, height: 50, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
     customIcon: { width: 40, height: 40, resizeMode: 'contain' },
     textWrapper: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    itemText: { fontSize: 16, color: '#333', fontWeight: '500' },
+    itemText: { fontSize: 16, color: '#333', fontWeight: '500', flex: 1, marginRight: 10 },
     
     emptyBox: { padding: 40, alignItems: 'center' },
     emptyText: { color: '#999', fontSize: 16 },

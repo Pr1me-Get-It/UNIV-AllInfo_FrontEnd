@@ -1,38 +1,55 @@
-// screen/SettingsScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, ActivityIndicator,Platform } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Alert, 
+  Image, 
+  ActivityIndicator, 
+  Platform,
+  Switch,
+  ScrollView
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import Constants from 'expo-constants';
 import { saveToken, getToken, removeToken } from '../utils/storage';
+import { registerForPushNotificationsAsync } from '../utils/notifications';
+import { api } from '../api/client'; 
 
-// 웹 브라우저 인증 세션 처리를 위해 필요
 WebBrowser.maybeCompleteAuthSession();
+
+const PRIMARY = 'rgb(219, 31, 38)';
 
 export default function SettingsScreen() {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const appVersion = Constants.expoConfig?.version || Constants.manifest2?.extra?.expoClient?.version || "0.0.0";
+  
+  const appVersion = Constants.expoConfig?.version || Constants.manifest2?.extra?.expoClient?.version || "1.0.0";
+  
   const currentRedirectUri = Platform.OS === 'web' 
-    ? window.location.origin  // 웹이면 현재 주소 (localhost 또는 netlify)
+    ? window.location.origin 
     : process.env.EXPO_PUBLIC_REDIRECT_URI_PROD;
 
-  // 1. 구글 로그인 설정 
+  const [pushEnabled, setPushEnabled] = useState(false); // 초기값 false로 변경 (권한 확인 전이므로)
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [nightPushOnly, setNightPushOnly] = useState(false);
+  const [marketingEnabled, setMarketingEnabled] = useState(false);
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    redirectUri: currentRedirectUri, // 웹 리디렉션 URI
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    redirectUri: currentRedirectUri,
     scopes: ['email', 'profile','https://www.googleapis.com/auth/calendar.events.readonly'],
   });
 
-  // 2. 앱 실행 시 로그인 상태 확인
   useEffect(() => {
     checkLoginStatus();
   }, []);
 
-  // 3. 구글 로그인 응답 처리
   useEffect(() => {
     if (response?.type === 'success') {
       const { authentication } = response;
@@ -44,7 +61,6 @@ export default function SettingsScreen() {
     }
   }, [response]);
 
-  // 저장된 토큰 확인
   const checkLoginStatus = async () => {
     setLoading(true);
     try {
@@ -62,21 +78,17 @@ export default function SettingsScreen() {
     }
   };
 
-  // [핵심] 구글 유저 정보 가져오기
   const fetchUserInfo = async (token) => {
     try {
-      // 더 안정적인 API 엔드포인트로 변경
       const res = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         const user = await res.json();
-        console.log("유저 정보 가져오기 성공:", user);
-        setUserInfo(user);      // 여기서 상태가 바뀌면 화면이 갱신됩니다.
-        await saveToken(token); // 토큰 저장
+        setUserInfo(user);
+        await saveToken(token);
       } else {
-        console.log("유저 정보 가져오기 실패 (Status):", res.status);
         setUserInfo(null);
         await removeToken();
       }
@@ -86,227 +98,375 @@ export default function SettingsScreen() {
     }
   };
 
-  // 로그인 성공 핸들러
   const handleLoginSuccess = async (token) => {
-    setLoading(true); // 로딩 시작 (새로고침 효과)
+    setLoading(true);
     await fetchUserInfo(token);
-    setLoading(false); // 로딩 종료 (화면 갱신)
+    setLoading(false);
   };
 
-  // 로그아웃 핸들러
   const executeLogout = async () => {
     setLoading(true);
     try {
       const token = await getToken();
       if (token) {
-        // 구글 토큰 만료 요청
         await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         });
-        console.log("구글 토큰 만료 성공");
       }
     } catch (e) {
       console.error("토큰 만료 요청 중 에러 (무시하고 진행):", e);
     } finally {
-      // 기기 데이터 삭제 및 상태 초기화
       await removeToken();
       setUserInfo(null);
       setLoading(false);
     }
   };
 
-  // 로그아웃 버튼 핸들러
   const handleLogout = () => {
     if (Platform.OS === 'web') {
-      // [웹 환경] 브라우저 기본 confirm 창 사용
       if (window.confirm("로그아웃 하시겠습니까?")) {
         executeLogout();
       }
     } else {
-      // [앱 환경] React Native Alert 사용
       Alert.alert("로그아웃", "로그아웃 하시겠습니까?", [
         { text: "취소", style: "cancel" },
-        {
-          text: "확인",
-          onPress: executeLogout, // 위에서 만든 함수 실행
-        }
+        { text: "확인", onPress: executeLogout }
       ]);
+    }
+  };
+
+  const handleFeedback = () => {
+    Alert.alert(
+      '피드백',
+      '불편한 점이나 개선 아이디어가 있다면\n팀 Notion 또는 GitHub 이슈에 남겨주세요!'
+    );
+  };
+
+ 
+  const handlePushToggle = async (value) => {
+    setPushEnabled(value); 
+    
+    if (value) {
+      try {
+        const token = await registerForPushNotificationsAsync();
+        if (token) {
+          console.log("발급된 토큰:", token);
+          await api.post('/users/push-token', { pushToken: token }); 
+          
+          console.log("서버에 토큰 저장 성공!");
+        } else {
+          setPushEnabled(false);
+        }
+      } catch (e) {
+        console.error("푸시 등록 및 전송 실패:", e);
+        setPushEnabled(false);
+        Alert.alert("알림 설정 실패", "푸시 알림 서버 등록 중 오류가 발생했습니다.");
+      }
+    } else {
+      // 3. 스위치를 끌 때 -> (선택사항) 서버에 토큰 삭제 요청
+      try {
+        // 예: await api.delete('/users/push-token');
+        console.log("푸시 알림 해제 (서버 전송 필요시 구현)");
+      } catch (e) {
+        console.error("푸시 해제 실패:", e);
+      }
     }
   };
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#333" />
+      <View style={[styles.page, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={PRIMARY} />
         <Text style={{ marginTop: 10, color: '#666' }}>잠시만 기다려주세요...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      
-      {/* --- 프로필 섹션 --- */}
-      <View style={styles.profileSection}>
+    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 40 }}>
+      {/* 1. 로그인/프로필 섹션 */}
+      <View style={styles.section}>
         {userInfo ? (
-          // 로그인 상태
-          <View style={styles.userInfoContainer}>
-            <Image 
-              source={{ uri: userInfo.picture }} 
-              style={styles.profileImage} 
-            />
-            <View>
-              <Text style={styles.userName}>{userInfo.name}</Text>
-              <Text style={styles.userEmail}>{userInfo.email}</Text>
+          <View style={styles.loginCardLoggedIn}>
+            <View style={styles.profileInfo}>
+              <Image 
+                source={{ uri: userInfo.picture }} 
+                style={styles.profileImage} 
+              />
+              <View>
+                <Text style={styles.welcomeText}>로그인됨</Text>
+                <Text style={styles.userNameText}>{userInfo.name} 님</Text>
+                <Text style={styles.emailText}>{userInfo.email}</Text>
+              </View>
             </View>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Text style={styles.logoutButtonText}>로그아웃</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          // 로그아웃 상태
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>로그인이 필요합니다.</Text>
+          <View style={styles.loginCard}>
+            <Text style={styles.sectionTitle}>로그인</Text>
+            <Text style={styles.sectionDescription}>
+              학교 공지를 개인화해서 받고 캘린더를 연동하려면 Google 계정으로 로그인하세요.
+            </Text>
+
             <TouchableOpacity 
-              style={styles.googleButton} 
+              style={styles.googleLoginButton} 
               disabled={!request}
               onPress={() => promptAsync()}
             >
               <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.googleButtonText}>Google로 로그인</Text>
+              <Text style={styles.googleLoginButtonText}>Google로 로그인</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* --- 계정 설정 (로그인 시에만 보임) --- */}
-      {userInfo && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>계정 설정</Text>
-          <TouchableOpacity style={styles.item}>
-              <Text style={styles.itemText}>프로필 수정</Text>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.item} onPress={handleLogout}>
-              <Text style={[styles.itemText, { color: 'rgb(219, 31, 38)' }]}>로그아웃</Text>
-              <Ionicons name="log-out-outline" size={20} color="rgb(219, 31, 38)" />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* --- 앱 설정 --- */}
+      {/* 2. 알림 설정 섹션 */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>앱 설정</Text>
-        <TouchableOpacity style={styles.item}>
-            <Text style={styles.itemText}>알림 설정</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        <Text style={styles.sectionTitle}>알림 설정</Text>
+        <SettingRow
+          label="푸시 알림 받기"
+          description="중요 공지, 마감 알림 등을 푸시로 받아요."
+          value={pushEnabled}
+          onValueChange={handlePushToggle} // [수정] 핸들러 연결
+        />
+        <SettingRow
+          label="알림 소리"
+          description="알림이 도착했을 때 소리를 재생합니다."
+          value={soundEnabled}
+          onValueChange={setSoundEnabled}
+        />
+        <SettingRow
+          label="야간에는 중요한 공지만"
+          description="밤 11시 ~ 아침 7시에는 마감 임박/긴급 공지만 보내요."
+          value={nightPushOnly}
+          onValueChange={setNightPushOnly}
+        />
+      </View>
+
+      {/* 3. 공지/마케팅 섹션 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>공지 · 홍보</Text>
+        <SettingRow
+          label="행사/대외활동 홍보 허용"
+          description="학교/동아리 행사, 대외활동 홍보 알림을 받습니다."
+          value={marketingEnabled}
+          onValueChange={setMarketingEnabled}
+        />
+      </View>
+
+      {/* 4. 계정 섹션 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>계정</Text>
+
+        <TouchableOpacity 
+          style={styles.menuRow} 
+          onPress={() => Alert.alert('안내', 'Google 계정 관리는 Google 설정에서 가능합니다.')}
+        >
+          <View>
+            <Text style={styles.menuLabel}>계정 정보 수정</Text>
+            <Text style={styles.menuDescription}>Google 계정 설정을 확인합니다.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.item}>
-            <Text style={styles.itemText}>버전 정보</Text>
-            <Text style={styles.versionText}>{appVersion}</Text>
+
+        {userInfo && (
+          <TouchableOpacity style={styles.menuRowDanger} onPress={handleLogout}>
+            <Text style={styles.menuLabelDanger}>로그아웃</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* 5. 앱 정보 섹션 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>앱 정보</Text>
+        <View style={styles.menuRowStatic}>
+          <Text style={styles.menuLabel}>버전</Text>
+          <Text style={styles.menuDescription}>v{appVersion}</Text>
+        </View>
+
+        <TouchableOpacity style={styles.menuRow} onPress={handleFeedback}>
+          <View>
+            <Text style={styles.menuLabel}>피드백 보내기</Text>
+            <Text style={styles.menuDescription}>
+              버그 제보, 기능 요청, UI 의견 등을 개발 팀에게 전달합니다.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
       </View>
+    </ScrollView>
+  );
+}
+
+function SettingRow({ label, description, value, onValueChange }) {
+  return (
+    <View style={styles.settingRow}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.settingLabel}>{label}</Text>
+        {!!description && <Text style={styles.settingDescription}>{description}</Text>}
+      </View>
+      <Switch 
+        value={value} 
+        onValueChange={onValueChange} 
+        trackColor={{ false: "#E5E7EB", true: PRIMARY }}
+        thumbColor={"#fff"} 
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  page: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F3F4F6',
     paddingTop: 60,
     paddingHorizontal: 20,
   },
-  profileSection: {
-    marginBottom: 30,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    minHeight: 100,
-    justifyContent: 'center',
-  },
-  userInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
-    backgroundColor: '#eee',
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: 2,
-  },
-  loginContainer: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  loginText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 15,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    backgroundColor: '#4285F4',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-    alignItems: 'center',
-  },
-  googleButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   section: {
-    marginBottom: 30,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginBottom: 18,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 10,
-    marginLeft: 10,
-    marginTop: 10,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
   },
-  item: {
+  sectionDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  loginCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  loginCardLoggedIn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  profileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    flex: 1,
   },
-  itemText: {
+  profileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+    backgroundColor: '#eee',
+  },
+  welcomeText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  userNameText: {
     fontSize: 16,
-    color: '#333',
+    fontWeight: '700',
+    color: '#111827',
   },
-  versionText: {
-    fontSize: 14,
-    color: '#888',
+  emailText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  logoutButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    marginLeft: 10,
+  },
+  logoutButtonText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  googleLoginButton: {
+    marginTop: 8,
+    backgroundColor: '#4285F4',
+    paddingVertical: 12,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleLoginButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
+    gap: 12,
+  },
+  settingLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  settingDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  menuRow: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  menuRowStatic: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  menuRowDanger: {
+    paddingVertical: 14,
+    marginTop: 10,
+  },
+  menuLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  menuDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  menuLabelDanger: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#DC2626',
   },
 });
