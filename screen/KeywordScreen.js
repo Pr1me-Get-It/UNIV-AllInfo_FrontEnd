@@ -12,6 +12,7 @@ import {
   Platform,
   RefreshControl
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { getToken } from '../utils/storage';
@@ -43,11 +44,54 @@ export default function KeywordScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [email, setEmail] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    getUserEmailAndFetchKeywords();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      checkLoginAndFetch();
+    }, [])
+  );
 
+  const checkLoginAndFetch = async () => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      
+      // 1. 토큰 없으면 로그인 화면으로 전환
+      if (!token) {
+        setIsLoggedIn(false);
+        setLoading(false);
+        return;
+      }
+
+      setIsLoggedIn(true);
+
+      // 2. 이메일 정보 가져오기
+      let userEmail = null;
+      if (token === DEV_TOKEN) {
+        userEmail = DEV_EMAIL;
+      } else {
+        const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (userInfoRes.ok) {
+          const userInfo = await userInfoRes.json();
+          userEmail = userInfo.email;
+        }
+      }
+
+      // 3. 키워드 목록 가져오기
+      if (userEmail) {
+        setEmail(userEmail);
+        await fetchKeywords(userEmail);
+      }
+    } catch (e) {
+      console.error("데이터 로딩 실패:", e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
   const getUserEmailAndFetchKeywords = async () => {
     if (!refreshing) setLoading(true);
     try {
@@ -184,6 +228,18 @@ export default function KeywordScreen() {
     </View>
   );
 
+  if (!loading && !isLoggedIn) {
+    return (
+      <View style={[styles.mainContainer, styles.center]}>
+        <Ionicons name="key-outline" size={60} color="#ccc" style={{ marginBottom: 20 }} />
+        <Text style={styles.msg}>로그인이 필요한 기능입니다.</Text>
+        <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('All')}>
+          <Text style={styles.btnText}>로그인 하러 가기</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.mainContainer}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
@@ -232,6 +288,10 @@ export default function KeywordScreen() {
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#fff', paddingBottom: 90 },
   keyboardView: { flex: 1 },
+  center: { justifyContent: 'center', alignItems: 'center', paddingBottom: 0 },
+  msg: { fontSize: 16, color: '#888', marginBottom: 15 },
+  btn: { backgroundColor: '#333', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
+  btnText: { color: '#fff', fontWeight: '600' },
   header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   description: { fontSize: 14, color: '#666', lineHeight: 20 },
