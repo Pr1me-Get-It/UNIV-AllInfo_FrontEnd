@@ -17,7 +17,8 @@ import * as Google from 'expo-auth-session/providers/google';
 import Constants from 'expo-constants';
 import { saveToken, getToken, removeToken } from '../utils/storage';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
-import { api } from '../api/client'; 
+import { makeRedirectUri } from 'expo-auth-session';
+import { api } from '../api/client';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -33,7 +34,7 @@ export default function SettingsScreen() {
     ? window.location.origin 
     : process.env.EXPO_PUBLIC_REDIRECT_URI_PROD;
 
-  const [pushEnabled, setPushEnabled] = useState(false); // 초기값 false로 변경 (권한 확인 전이므로)
+  const [pushEnabled, setPushEnabled] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [nightPushOnly, setNightPushOnly] = useState(false);
   const [marketingEnabled, setMarketingEnabled] = useState(false);
@@ -44,6 +45,8 @@ export default function SettingsScreen() {
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     redirectUri: currentRedirectUri,
     scopes: ['email', 'profile','https://www.googleapis.com/auth/calendar.events.readonly'],
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    redirectUri: currentRedirectUri,
   });
 
   useEffect(() => {
@@ -104,6 +107,7 @@ export default function SettingsScreen() {
     setLoading(false);
   };
 
+
   const executeLogout = async () => {
     setLoading(true);
     try {
@@ -143,34 +147,56 @@ export default function SettingsScreen() {
     );
   };
 
- 
+  // [수정됨] 백엔드 API 연동한 푸시 토글 핸들러
   const handlePushToggle = async (value) => {
-    setPushEnabled(value); 
+    // 1. 로그인 여부 확인
+    if (!userInfo) {
+      Alert.alert("알림", "로그인이 필요한 기능입니다.");
+      return;
+    }
+  const currentRedirectUri = Platform.OS === 'web' 
+    ? window.location.origin 
+    : makeRedirectUri({
+        scheme: 'univ-allinfo', // app.json에 설정된 scheme과 일치해야 함
+        path: 'auth' // 선택사항: 구글 콘솔에 등록할 경로
+      });
+
+    setPushEnabled(value); // UI 먼저 반영
     
     if (value) {
+      // 스위치를 켤 때
       try {
+        // 1. Expo 푸시 토큰 발급
         const token = await registerForPushNotificationsAsync();
+        
         if (token) {
-          console.log("발급된 토큰:", token);
-          await api.post('/users/push-token', { pushToken: token }); 
+          console.log("발급된 Expo 토큰:", token);
+
+          // 2. 백엔드에 토큰 전송 (유저 등록/토큰 저장)
+          // 백엔드 API: POST /user/register
+          // Body: { email, expoPushToken }
+          const response = await api.post('/user/register', { 
+            email: userInfo.email, 
+            expoPushToken: token 
+          });
           
-          console.log("서버에 토큰 저장 성공!");
+          if (response.status === 200 || response.status === 201) {
+            console.log("서버 응답:", response.data.message);
+            Alert.alert("설정 완료", "푸시 알림이 설정되었습니다.");
+          }
         } else {
+          // 토큰 발급 실패 시 UI 원복
           setPushEnabled(false);
         }
       } catch (e) {
-        console.error("푸시 등록 및 전송 실패:", e);
+        console.error("푸시 등록 실패:", e);
         setPushEnabled(false);
-        Alert.alert("알림 설정 실패", "푸시 알림 서버 등록 중 오류가 발생했습니다.");
+        Alert.alert("오류", "푸시 알림 등록 중 문제가 발생했습니다.");
       }
     } else {
-      // 3. 스위치를 끌 때 -> (선택사항) 서버에 토큰 삭제 요청
-      try {
-        // 예: await api.delete('/users/push-token');
-        console.log("푸시 알림 해제 (서버 전송 필요시 구현)");
-      } catch (e) {
-        console.error("푸시 해제 실패:", e);
-      }
+      // 스위치를 끌 때
+      // (현재 백엔드에는 토큰 삭제 API가 없어 로그만 출력합니다.)
+      console.log("푸시 알림 OFF (서버 로직 필요 시 추가 구현)");
     }
   };
 
@@ -230,7 +256,7 @@ export default function SettingsScreen() {
           label="푸시 알림 받기"
           description="중요 공지, 마감 알림 등을 푸시로 받아요."
           value={pushEnabled}
-          onValueChange={handlePushToggle} // [수정] 핸들러 연결
+          onValueChange={handlePushToggle}
         />
         <SettingRow
           label="알림 소리"
