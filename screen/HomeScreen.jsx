@@ -17,6 +17,7 @@ export default function HomeScreen({ navigation }) {
     const [page, setPage] = useState(1);    
     const [hasMore, setHasMore] = useState(true); 
     const [refreshing, setRefreshing] = useState(false); 
+    const [filterMode, setFilterMode] = useState('all');  // 지금 어떤 탭이 선택되어 있는가?
 
     const fetchNotices = useCallback(async (pageNum, keyword = '', shouldRefresh = false) => {
         if (!shouldRefresh && loading) return; 
@@ -92,6 +93,10 @@ export default function HomeScreen({ navigation }) {
 
     const unreadCount = data.filter(item => !safeStatus[item.id]).length;
 
+    const displayedData = filterMode === 'all'
+        ? data
+        : data.filter(item => !safeStatus[item.id]);
+
     return (
         <View style={styles.container}>
             <View style={styles.headerContainer}>
@@ -123,9 +128,46 @@ export default function HomeScreen({ navigation }) {
                 )}
             </View>
 
+            <View style={styles.tabsContainer}>  {/* 전체 보기 / 안 읽은 것만 보기  선택 탭 */}
+                <TouchableOpacity
+                    style={[
+                    styles.tabButton,
+                    filterMode === 'all' && styles.tabButtonActive,
+                    ]}
+                    onPress={() => setFilterMode('all')}
+                >
+                    <Text
+                    style={[
+                        styles.tabText,
+                        filterMode === 'all' && styles.tabTextActive,
+                    ]}
+                    >
+                    전체 알림
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[
+                    styles.tabButton,
+                    filterMode === 'unread' && styles.tabButtonActive,
+                    ]}
+                    onPress={() => setFilterMode('unread')}
+                >
+                    <Text
+                    style={[
+                        styles.tabText,
+                        filterMode === 'unread' && styles.tabTextActive,
+                    ]}
+                    >
+                    미확인 알림
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+
             <View style={styles.listContainer}>
                 <FlatList
-                    data={data}
+                    data={displayedData}
                     keyExtractor={(item) => String(item.id)}
                     showsVerticalScrollIndicator={true}
                     contentContainerStyle={{ paddingBottom: 20 }}
@@ -226,4 +268,34 @@ const styles = StyleSheet.create({
     
     unreadLabel: { fontSize: 12, color: 'rgb(219, 31, 38)', fontWeight: 'bold' }, 
     readLabel: { fontSize: 12, color: '#bbb', fontWeight: 'normal' }, 
+
+    tabsContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    },
+    tabButton: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 6,
+        borderRadius: 999,
+    },
+    tabButtonActive: {
+        backgroundColor: 'rgba(219, 31, 38, 0.08)',
+    },
+    tabText: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    tabTextActive: {
+        color: 'rgb(219, 31, 38)',
+        fontWeight: '700',
+    },
 });
