@@ -180,7 +180,7 @@ export default function CalendarScreen({ navigation }) {
         <FlatList
           data={filteredEvents}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           ListEmptyComponent={
             <Text style={styles.emptyText}>일정이 없습니다.</Text>
           }

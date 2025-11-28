@@ -38,19 +38,34 @@ export const AlramProvider = ({ children }) => {
   const [userEmail, setUserEmail] = useState(null);
   const [mockEvents, setMockEvents] = useState(INITIAL_MOCK_EVENTS);
 
-  // 👇 [추가] 이메일을 SecureStore 키로 쓸 수 있게 변환하는 도우미 함수
-  // 예: test@knu.ac.kr -> bookmark_test_knu.ac.kr
-  const getSafeKey = (email) => {
-    const safeEmail = email.replace(/[^a-zA-Z0-9.\-_]/g, '_'); 
-    return `bookmark_${safeEmail}`;
+  // 👇 [수정] 이메일을 안전한 문자열로 변환 (공통 함수)
+  const getSafeEmail = (email) => {
+    return email.replace(/[^a-zA-Z0-9.\-_]/g, '_');
   };
 
-  // 👇 [수정] 키 생성 부분에 getSafeKey 적용
+  // 👇 [추가] 읽음 상태 불러오기
+  const loadReadStatus = async (email) => {
+    try {
+      const safeEmail = getSafeEmail(email);
+      const key = `read_${safeEmail}`; // 키 예시: read_test_knu.ac.kr
+      const savedData = await getData(key);
+      
+      if (savedData) {
+        console.log(`📖 읽음 목록 로드: ${Object.keys(savedData).length}개`);
+        setReadStatus(savedData);
+      }
+    } catch (e) {
+      console.error("읽음 상태 로드 실패:", e);
+    }
+  };
+
+  // 👇 [기존] 북마크 불러오기 (키 생성 로직 변경 반영)
   const loadLocalBookmarks = async (email) => {
     try {
-      const key = getSafeKey(email); // 👈 수정됨
+      const safeEmail = getSafeEmail(email);
+      const key = `bookmark_${safeEmail}`;
       const savedData = await getData(key);
-      console.log(`📂 [Alram] 북마크 로드 (${email}):`, savedData ? Object.keys(savedData).length : 0, "개");
+      console.log(`📂 북마크 로드: ${savedData ? Object.keys(savedData).length : 0}개`);
       
       if (savedData) {
         setBookmarkStatus(savedData);
@@ -62,18 +77,22 @@ export const AlramProvider = ({ children }) => {
     }
   };
 
+  // 1. 초기 로딩
   useEffect(() => {
     const init = async () => {
       const token = await getToken();
       
       if (token) {
+        // 개발자 모드
         if (token === DEV_TOKEN) {
             console.log("⚡ [Alram] 개발자 모드");
             setUserEmail(DEV_EMAIL);
             await loadLocalBookmarks(DEV_EMAIL);
+            await loadReadStatus(DEV_EMAIL); // 👈 읽음 상태도 로드
             return;
         }
 
+        // 일반 사용자
         try {
           const res = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
             headers: { Authorization: `Bearer ${token}` },
@@ -84,6 +103,7 @@ export const AlramProvider = ({ children }) => {
             if (userInfo.email) {
               setUserEmail(userInfo.email);
               await loadLocalBookmarks(userInfo.email);
+              await loadReadStatus(userInfo.email); // 👈 읽음 상태도 로드
             }
           }
         } catch (e) {
@@ -94,10 +114,23 @@ export const AlramProvider = ({ children }) => {
     init();
   }, []);
 
+  // 👇 [수정] 읽음 처리 시 저장소에도 반영
   const markAsRead = useCallback((id, isRead = true) => {
-    setReadStatus(prev => ({ ...prev, [id]: isRead }));
-  }, []);
+    setReadStatus(prev => {
+      const newStatus = { ...prev, [id]: isRead };
+      
+      // 이메일이 있을 때만 저장
+      if (userEmail) {
+        const safeEmail = getSafeEmail(userEmail);
+        const key = `read_${safeEmail}`;
+        saveData(key, newStatus); // 비동기 저장 (await 안 해도 됨)
+      }
+      
+      return newStatus;
+    });
+  }, [userEmail]); // userEmail 의존성 추가
 
+  // 👇 [기존] 북마크 토글 (키 생성 로직 변경 반영)
   const toggleBookmark = useCallback(async (item) => {
     if (!userEmail) {
         alert("로그인이 필요합니다.");
@@ -112,9 +145,9 @@ export const AlramProvider = ({ children }) => {
         newStatus[item.id] = item;
       }
       
-      // 👇 [수정] 저장할 때도 getSafeKey 사용
-      const key = getSafeKey(userEmail); 
-      saveData(key, newStatus).then(() => console.log("💾 북마크 저장 완료"));
+      const safeEmail = getSafeEmail(userEmail);
+      const key = `bookmark_${safeEmail}`;
+      saveData(key, newStatus);
 
       return newStatus;
     });

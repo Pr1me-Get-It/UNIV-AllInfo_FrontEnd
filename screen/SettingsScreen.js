@@ -9,8 +9,11 @@ import {
   ActivityIndicator,
   Platform,
   Switch,
-  ScrollView
+  ScrollView,
+  Modal,
+  TextInput // 👈 TextInput, Modal 추가
 } from 'react-native';
+// ... 기존 import 유지 ...
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
@@ -25,26 +28,24 @@ WebBrowser.maybeCompleteAuthSession();
 const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_USER = {
   email: "test@knu.ac.kr",
-  name: "개발자(테스트)",
-  picture: "https://cdn-icons-png.flaticon.com/512/25/25231.png", // 깃허브 아이콘 등 아무거나
+  name: "개발자",
+  picture: "https://cdn-icons-png.flaticon.com/512/25/25231.png",
 };
 const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
+const DEV_PASSWORD = "1557"; // 👈 비밀번호 설정
 
 export default function SettingsScreen() {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 비밀번호 입력 모달 관련 State
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+
+ 
   const appVersion = Constants.expoConfig?.version || Constants.manifest2?.extra?.expoClient?.version || "1.0.0";
 
-  const currentRedirectUri = Platform.OS === 'web'
-    ? window.location.origin
-    : process.env.EXPO_PUBLIC_REDIRECT_URI_PROD;
-
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [nightPushOnly, setNightPushOnly] = useState(false);
-  const [marketingEnabled, setMarketingEnabled] = useState(false);
-
+  // ...  google login setup ...
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -55,6 +56,7 @@ export default function SettingsScreen() {
     scopes: ['email', 'profile', 'https://www.googleapis.com/auth/calendar.events'],
   });
 
+  // ... 기존 useEffect 및 checkLoginStatus, fetchUserInfo ...
   useEffect(() => {
     checkLoginStatus();
   }, []);
@@ -74,13 +76,11 @@ export default function SettingsScreen() {
     setLoading(true);
     try {
       const token = await getToken();
-
       if (token) {
         await fetchUserInfo(token);
       } else {
         setUserInfo(null);
       }
-
     } catch (e) {
       console.log("로그인 체크 실패", e);
       setUserInfo(null);
@@ -90,14 +90,11 @@ export default function SettingsScreen() {
   };
 
   const fetchUserInfo = async (token) => {
-    // 1. 개발자 토큰인지 확인
     if (token === DEV_TOKEN) {
       console.log("⚡ 개발자 모드로 로그인되었습니다.");
       setUserInfo(DEV_USER);
       return;
     }
-
-    // 2. 아니면 원래대로 구글 API 호출
     try {
       const res = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
         headers: { Authorization: `Bearer ${token}` },
@@ -116,14 +113,13 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleDevLogin = async () => {
+  // 👇 [수정] 실제 로그인을 수행하는 함수 (비밀번호 확인 후 호출됨)
+  const performDevLogin = async () => {
     setLoading(true);
     try {
-      // 1. 가짜 토큰 저장
       await saveToken(DEV_TOKEN);
       setUserInfo(DEV_USER);
 
-      // 2. 백엔드에 가짜 이메일 등록 (토큰은 null로)
       console.log(`📡 개발자 계정 등록 시도: ${DEV_USER.email}`);
       await api.post('/user/register', { 
         email: DEV_USER.email, 
@@ -139,14 +135,24 @@ export default function SettingsScreen() {
     }
   };
 
+  // 👇 [추가] 비밀번호 확인 로직
+  const handlePasswordSubmit = () => {
+    if (passwordInput === DEV_PASSWORD) {
+      setIsPasswordModalVisible(false);
+      setPasswordInput(''); // 입력 초기화
+      performDevLogin();    // 로그인 진행
+    } else {
+      Alert.alert("오류", "비밀번호가 틀렸습니다.");
+    }
+  };
+
   const handleLoginSuccess = async (token) => {
     setLoading(true);
     await fetchUserInfo(token);
     setLoading(false);
   };
 
-
-  const executeLogout = async () => {
+  const executeLogout = async () => { /* ... 기존 로직 유지 ... */ 
     setLoading(true);
     try {
       const token = await getToken();
@@ -165,8 +171,8 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLogout = () => {
-    if (Platform.OS === 'web') {
+  const handleLogout = () => { /* ... 기존 로직 유지 ... */
+     if (Platform.OS === 'web') {
       if (window.confirm("로그아웃 하시겠습니까?")) {
         executeLogout();
       }
@@ -178,27 +184,22 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleFeedback = () => {
+  const handleFeedback = () => { /* ... 기존 로직 유지 ... */
     Alert.alert(
       '피드백',
       '불편한 점이나 개선 아이디어가 있다면\n팀 Notion 또는 GitHub 이슈에 남겨주세요!'
     );
   };
 
-  // 백엔드 API 연동한 푸시 토글 핸들러
-  const handlePushToggle = async (value) => {
-    /*
-    if (!userInfo) {
-      Alert.alert("알림", "로그인이 필요한 기능입니다.");
-      return;
-    }*/
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [nightPushOnly, setNightPushOnly] = useState(false);
+  const [marketingEnabled, setMarketingEnabled] = useState(false);
 
-
-    setPushEnabled(value); // UI 먼저 반영
-
+  const handlePushToggle = async (value) => { /* ... 기존 로직 유지 ... */
+    setPushEnabled(value); 
     if (value) {
       let tokenData = null;
-
       try {
         tokenData = await registerForPushNotificationsAsync();
       } catch (err) {
@@ -206,29 +207,21 @@ export default function SettingsScreen() {
         setPushEnabled(false);
         return;
       }
-
       const token = typeof tokenData === "string" ? tokenData : tokenData?.data;
-
       if (!token) {
         console.log("푸시 토큰 없음 → 알림 OFF");
         setPushEnabled(false);
         return;
       }
-
       console.log("발급된 Expo 토큰:", token);
-
       try {
         const emailToSend = userInfo ? userInfo.email : "pastoboy@knu.com";
-
         const response = await api.post('/user/register', {
           email: emailToSend,
           expoPushToken: token
         });
-
         console.log("서버 응답:", response.data);
-
         Alert.alert("설정 완료", "푸시 알림이 설정되었습니다.");
-
       } catch (e) {
         console.error("서버 등록 실패:", e);
         setPushEnabled(false);
@@ -247,11 +240,56 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* 1. 로그인/프로필 섹션 */}
+    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 160 }}>
+      
+      {/* 👇 [추가] 비밀번호 입력 모달 */}
+      <Modal
+        visible={isPasswordModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsPasswordModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>개발자 모드 인증</Text>
+            <Text style={styles.modalDesc}>비밀번호를 입력하세요.</Text>
+            
+            <TextInput 
+              style={styles.passwordInput}
+              secureTextEntry
+              placeholder="비밀번호"
+              keyboardType="number-pad"
+              value={passwordInput}
+              onChangeText={setPasswordInput}
+              maxLength={4}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalBtn, styles.modalCancelBtn]} 
+                onPress={() => {
+                  setIsPasswordModalVisible(false);
+                  setPasswordInput('');
+                }}
+              >
+                <Text style={styles.modalCancelText}>취소</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.modalBtn, styles.modalConfirmBtn]} 
+                onPress={handlePasswordSubmit}
+              >
+                <Text style={styles.modalConfirmText}>확인</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.section}>
         {userInfo ? (
           <View style={styles.loginCardLoggedIn}>
+             {/* ... 기존 로그인된 화면 UI 유지 ... */}
             <View style={styles.profileInfo}>
               <Image
                 source={{ uri: userInfo.picture }}
@@ -282,9 +320,11 @@ export default function SettingsScreen() {
               <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.googleLoginButtonText}>Google로 로그인</Text>
             </TouchableOpacity>
+            
+            {/* 👇 [수정] 버튼 누르면 모달 열기 */}
             <TouchableOpacity 
               style={[styles.googleLoginButton, { backgroundColor: '#333', marginTop: 10 }]} 
-              onPress={handleDevLogin}
+              onPress={() => setIsPasswordModalVisible(true)}
             >
               <Ionicons name="code-slash" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.googleLoginButtonText}>개발자 로그인 (Test)</Text>
@@ -293,7 +333,7 @@ export default function SettingsScreen() {
         )}
       </View>
 
-      {/* 2. 알림 설정 섹션 */}
+      {/* ... 나머지 섹션들 (알림 설정, 앱 정보 등) 기존 코드 유지 ... */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>알림 설정</Text>
         <SettingRow
@@ -315,9 +355,7 @@ export default function SettingsScreen() {
           onValueChange={setNightPushOnly}
         />
       </View>
-
-      {/* 3. 공지/마케팅 섹션 */}
-      <View style={styles.section}>
+       <View style={styles.section}>
         <Text style={styles.sectionTitle}>공지 · 홍보</Text>
         <SettingRow
           label="행사/대외활동 홍보 허용"
@@ -326,11 +364,8 @@ export default function SettingsScreen() {
           onValueChange={setMarketingEnabled}
         />
       </View>
-
-      {/* 4. 계정 섹션 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>계정</Text>
-
         <TouchableOpacity
           style={styles.menuRow}
           onPress={() => Alert.alert('안내', 'Google 계정 관리는 Google 설정에서 가능합니다.')}
@@ -341,22 +376,18 @@ export default function SettingsScreen() {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
-
         {userInfo && (
           <TouchableOpacity style={styles.menuRowDanger} onPress={handleLogout}>
             <Text style={styles.menuLabelDanger}>로그아웃</Text>
           </TouchableOpacity>
         )}
       </View>
-
-      {/* 5. 앱 정보 섹션 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>앱 정보</Text>
         <View style={styles.menuRowStatic}>
           <Text style={styles.menuLabel}>버전</Text>
           <Text style={styles.menuDescription}>v{appVersion}</Text>
         </View>
-
         <TouchableOpacity style={styles.menuRow} onPress={handleFeedback}>
           <View>
             <Text style={styles.menuLabel}>피드백 보내기</Text>
@@ -389,154 +420,97 @@ function SettingRow({ label, description, value, onValueChange }) {
 }
 
 const styles = StyleSheet.create({
+  // ... 기존 스타일 ...
   page: {
     flex: 1,
     backgroundColor: '#F3F4F6',
     paddingTop: 60,
     paddingHorizontal: 20,
   },
-  section: {
-    marginBottom: 18,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  sectionDescription: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
-  loginCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  loginCardLoggedIn: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  profileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  section: { marginBottom: 18 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 },
+  sectionDescription: { fontSize: 13, color: '#6B7280', marginBottom: 12 },
+  loginCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  loginCardLoggedIn: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  profileInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  profileImage: { width: 50, height: 50, borderRadius: 25, marginRight: 12, backgroundColor: '#eee' },
+  welcomeText: { fontSize: 12, color: '#6B7280', marginBottom: 2 },
+  userNameText: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  emailText: { fontSize: 12, color: '#6B7280' },
+  logoutButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB', marginLeft: 10 },
+  logoutButtonText: { fontSize: 12, color: '#374151', fontWeight: '600' },
+  googleLoginButton: { marginTop: 8, backgroundColor: '#4285F4', paddingVertical: 12, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  googleLoginButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(229, 231, 235, 0.5)', gap: 12 },
+  settingLabel: { fontSize: 15, fontWeight: '500', color: '#111827' },
+  settingDescription: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  menuRow: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(229, 231, 235, 0.5)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  menuRowStatic: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(229, 231, 235, 0.5)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  menuRowDanger: { paddingVertical: 14, marginTop: 10 },
+  menuLabel: { fontSize: 15, fontWeight: '500', color: '#111827' },
+  menuDescription: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  menuLabelDanger: { fontSize: 15, fontWeight: '600', color: '#DC2626' },
+
+  // 👇 [추가] 모달 스타일
+  modalOverlay: {
     flex: 1,
-  },
-  profileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-    backgroundColor: '#eee',
-  },
-  welcomeText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  userNameText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  emailText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  logoutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-    marginLeft: 10,
-  },
-  logoutButtonText: {
-    fontSize: 12,
-    color: '#374151',
-    fontWeight: '600',
-  },
-  googleLoginButton: {
-    marginTop: 8,
-    backgroundColor: '#4285F4',
-    paddingVertical: 12,
-    borderRadius: 999,
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
-  },
-  googleLoginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  settingRow: {
-    flexDirection: 'row',
     alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    padding: 24,
+    borderRadius: 16,
+    elevation: 5,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  modalDesc: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+  },
+  passwordInput: {
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 30,
+    paddingVertical: 10,
+    letterSpacing: 5,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  modalBtn: {
+    flex: 1,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
-    gap: 12,
-  },
-  settingLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  settingDescription: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  menuRow: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderRadius: 8,
     alignItems: 'center',
   },
-  menuRowStatic: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  modalCancelBtn: {
+    backgroundColor: '#f0f0f0',
   },
-  menuRowDanger: {
-    paddingVertical: 14,
-    marginTop: 10,
+  modalConfirmBtn: {
+    backgroundColor: PRIMARY,
   },
-  menuLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  menuDescription: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  menuLabelDanger: {
-    fontSize: 15,
+  modalCancelText: {
+    color: '#333',
     fontWeight: '600',
-    color: '#DC2626',
+  },
+  modalConfirmText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
