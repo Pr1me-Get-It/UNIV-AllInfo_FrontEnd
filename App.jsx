@@ -1,8 +1,10 @@
-import React from 'react';
+/* pr1me-get-it/univ-allinfo_frontend/UNIV-AllInfo_FrontEnd-dev/App.jsx */
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
 
 // 화면들 import
 import HomeScreen from './screen/HomeScreen';
@@ -11,6 +13,11 @@ import { AlramProvider } from './data/Alram';
 import BookmarkScreen from './screen/BookmarkScreen';
 import CalendarScreen from './screen/CalendarScreen';
 import SettingsScreen from './screen/SettingsScreen';
+
+// 유틸리티 및 API import [추가됨]
+import { getToken } from './utils/storage';
+import { registerForPushNotificationsAsync } from './utils/notifications';
+import { api } from './api/client';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator(); 
@@ -37,7 +44,6 @@ function MainTab() {
         }
       }}
     >
-      {/* 1. 홈 */}
       <Tab.Screen 
         name="Home" 
         component={HomeScreen} 
@@ -48,8 +54,6 @@ function MainTab() {
           ),
         }} 
       />
-
-      {/* 2. 북마크 */}
       <Tab.Screen 
         name="Bookmark"
         component={BookmarkScreen} 
@@ -58,19 +62,6 @@ function MainTab() {
           tabBarIcon: ({ color, size }) => ( <Ionicons name="star" size={size} color={color} /> ),
         }} 
       />
-
-      {/* 3. 필터 (쇼핑 리스트) */}
-      <Tab.Screen 
-        name="Shopping"
-        component={BookmarkScreen} 
-        options={{ 
-          title: '필터',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="filter-outline" size={size} color={color} />
-          ),
-        }} 
-      />
-
       <Tab.Screen 
         name="Calendar"
         component={CalendarScreen} 
@@ -81,8 +72,6 @@ function MainTab() {
           ),
         }} 
       />
-
-      {/* 4. 설정 */}
       <Tab.Screen 
         name="All"
         component={SettingsScreen} 
@@ -99,28 +88,62 @@ function MainTab() {
 
 // 실제 App 컴포넌트
 export default function App() {
+
+  // [추가됨] 앱 실행 시 토큰 동기화 로직
+  useEffect(() => {
+    const syncPushToken = async () => {
+      try {
+        // 1. 저장된 구글 로그인 토큰 가져오기
+        const token = await getToken();
+        if (!token) {
+          console.log("비로그인 상태: 푸시 토큰 등록 스킵");
+          return;
+        }
+
+        // 2. 구글 토큰으로 사용자 이메일 가져오기
+        const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (!userInfoRes.ok) return; // 토큰 만료 등 이슈 시 중단
+        const userInfo = await userInfoRes.json();
+        const userEmail = userInfo.email;
+
+        // 3. Expo Push Token 발급 (기기 토큰)
+        const pushToken = await registerForPushNotificationsAsync();
+        if (!pushToken) return;
+
+        // 4. 백엔드에 사용자 등록 (이메일 + 푸시토큰)
+        // 백엔드 API: POST /user/register
+        console.log(`푸시 토큰 동기화 시도: ${userEmail}`);
+        await api.post('/user/register', {
+          email: userEmail,
+          expoPushToken: pushToken
+        });
+        console.log("✔ 푸시 토큰 서버 동기화 완료");
+
+      } catch (e) {
+        console.error("푸시 토큰 동기화 실패:", e);
+      }
+    };
+
+    syncPushToken();
+  }, []);
+
   return (
     <AlramProvider>
-      {/* ItemsProvider 제거: 이제 api/items.js를 통해 직접 서버와 통신합니다. */}
       <NavigationContainer>
         <Stack.Navigator>
-          
-          {/* 1. 메인 탭 화면 (기본 화면) */}
           <Stack.Screen 
             name="MainTab" 
             component={MainTab} 
             options={{ headerShown: false }} 
           />
-
-          {/* 2. 일반 상세 화면 (기존 기능) */}
           <Stack.Screen 
             name="Detail" 
             component={DetailScreen}
             options={{ title: '상세 정보' }} 
           />
-
-          
-
         </Stack.Navigator>
       </NavigationContainer>
     </AlramProvider>

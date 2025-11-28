@@ -41,12 +41,12 @@ export default function SettingsScreen() {
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    redirectUri: currentRedirectUri,
+    redirectUri: Platform.OS === 'web' ? window.location.origin : makeRedirectUri({
+      scheme: 'univ-allinfo' 
+    }),
     scopes: ['email', 'profile','https://www.googleapis.com/auth/calendar.events.readonly'],
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    redirectUri: currentRedirectUri,
   });
 
   useEffect(() => {
@@ -147,14 +147,12 @@ export default function SettingsScreen() {
     );
   };
 
-  // [수정됨] 백엔드 API 연동한 푸시 토글 핸들러
+  // 백엔드 API 연동한 푸시 토글 핸들러
   const handlePushToggle = async (value) => {
-    // 1. 로그인 여부 확인
-    /*
     if (!userInfo) {
       Alert.alert("알림", "로그인이 필요한 기능입니다.");
       return;
-    }*/
+    }
  
 
     setPushEnabled(value); // UI 먼저 반영
@@ -171,7 +169,7 @@ export default function SettingsScreen() {
           // Body: { email, expoPushToken }
           const emailToSend = userInfo ? userInfo.email : "test_device@test.com";
           const response = await api.post('/user/register', { 
-            email: userInfo.email, 
+            email: emailToSend, 
             expoPushToken: token 
           });
           
