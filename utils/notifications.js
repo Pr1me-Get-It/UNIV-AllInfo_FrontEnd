@@ -26,9 +26,10 @@ export async function registerForPushNotificationsAsync() {
         return;
       }
 
-      // 2. VAPID 키를 여기에 직접 입력 (app.json 대신)
+      // 2. [수정] getExpoPushTokenAsync 호출 시 applicationId와 projectId를 명시적으로 전달
       token = (await Notifications.getExpoPushTokenAsync({
-        vapidPublicKey: 'BLjaLPks1SonFgFvuymHX1pg6E6XFVlnWbPnilgeN0rfjGx60dN4bxaIJblybm08BROpzg0-IqQxwulQ7Z7tRF0' // <--- 아까 복사한 키를 따옴표 안에 넣으세요
+        projectId: Constants.expoConfig?.extra?.eas?.projectId, // app.config.js의 extra.eas.projectId 값
+        applicationId: 'com.univallinfo.app' // app.config.js의 package/bundleIdentifier와 일치하는 값
       })).data;
 
       console.log('Web Push Token:', token);

@@ -150,23 +150,17 @@ export default function SettingsScreen() {
   // [수정됨] 백엔드 API 연동한 푸시 토글 핸들러
   const handlePushToggle = async (value) => {
     // 1. 로그인 여부 확인
+    /*
     if (!userInfo) {
       Alert.alert("알림", "로그인이 필요한 기능입니다.");
       return;
-    }
-  const currentRedirectUri = Platform.OS === 'web' 
-    ? window.location.origin 
-    : makeRedirectUri({
-        scheme: 'univ-allinfo', // app.json에 설정된 scheme과 일치해야 함
-        path: 'auth' // 선택사항: 구글 콘솔에 등록할 경로
-      });
+    }*/
+ 
 
     setPushEnabled(value); // UI 먼저 반영
     
     if (value) {
-      // 스위치를 켤 때
       try {
-        // 1. Expo 푸시 토큰 발급
         const token = await registerForPushNotificationsAsync();
         
         if (token) {
@@ -175,6 +169,7 @@ export default function SettingsScreen() {
           // 2. 백엔드에 토큰 전송 (유저 등록/토큰 저장)
           // 백엔드 API: POST /user/register
           // Body: { email, expoPushToken }
+          const emailToSend = userInfo ? userInfo.email : "test_device@test.com";
           const response = await api.post('/user/register', { 
             email: userInfo.email, 
             expoPushToken: token 
