@@ -52,7 +52,7 @@ export default function SettingsScreen() {
     redirectUri: Platform.OS === 'web' ? window.location.origin : makeRedirectUri({
       scheme: 'univ-allinfo'
     }),
-    scopes: ['email', 'profile', 'https://www.googleapis.com/auth/calendar.events.readonly'],
+    scopes: ['email', 'profile', 'https://www.googleapis.com/auth/calendar.events'],
   });
 
   useEffect(() => {

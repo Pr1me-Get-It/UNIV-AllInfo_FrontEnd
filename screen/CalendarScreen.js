@@ -1,10 +1,10 @@
-// screen/CalendarScreen.js
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Calendar, LocaleConfig } from 'react-native-calendars'; // 라이브러리 임포트
+import { Calendar, LocaleConfig } from 'react-native-calendars'; 
 import { getToken } from '../utils/storage';
 import { Ionicons } from '@expo/vector-icons';
+import { AlramContext } from '../data/Alram';
 
 // [설정] 달력 한글화
 LocaleConfig.locales['kr'] = {
@@ -16,18 +16,45 @@ LocaleConfig.locales['kr'] = {
 };
 LocaleConfig.defaultLocale = 'kr';
 
+// 개발자 모드용 상수 및 가짜 데이터
+const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
+const TODAY_STR = new Date().toISOString().split('T')[0]; // 오늘 날짜
+
+const MOCK_EVENTS = [
+  {
+    id: 'dev-1',
+    summary: '[개발] 캡스톤 디자인 미팅',
+    location: 'IT-4호관',
+    start: { dateTime: `${TODAY_STR}T10:00:00` }, // 오늘 시간 지정 일정
+  },
+  {
+    id: 'dev-2',
+    summary: '[개발] 백엔드 API 연동 테스트',
+    start: { date: TODAY_STR }, // 오늘 종일 일정
+  },
+  {
+    id: 'dev-3',
+    summary: '[개발] 중간고사 기간',
+    start: { date: '2025-04-20' },
+  },
+  {
+    id: 'dev-4',
+    summary: '[개발] 여름방학 시작',
+    start: { date: '2025-06-21' },
+  }
+];
+
 export default function CalendarScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  
-  // 선택된 날짜 (초기값: 오늘)
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const { mockEvents } = useContext(AlramContext);
+  const [selectedDate, setSelectedDate] = useState(TODAY_STR);
 
   useFocusEffect(
     useCallback(() => {
       fetchCalendarEvents();
-    }, [])
+    }, [mockEvents])
   );
 
   const fetchCalendarEvents = async () => {
@@ -42,7 +69,15 @@ export default function CalendarScreen({ navigation }) {
 
       setIsLoggedIn(true);
 
-      // 2025년 전체 데이터 가져오기 (필요에 따라 범위 조정 가능)
+      //개발자 토큰이면 가짜 데이터 사용
+      if (token === DEV_TOKEN) {
+        console.log("⚡ [Calendar] 개발자 모드: 가짜 일정 로드 (Context)");
+        setEvents(mockEvents); // Context에 있는 데이터를 그대로 사용
+        setLoading(false);
+        return;
+      }
+
+      // (일반 사용자) 구글 캘린더 API 호출
       const timeMin = new Date('2025-01-01T00:00:00Z').toISOString();
       const timeMax = new Date('2025-12-31T23:59:59Z').toISOString();
 
@@ -66,22 +101,18 @@ export default function CalendarScreen({ navigation }) {
     }
   };
 
-  // [핵심] API 데이터를 달력에 표시할 형태(markedDates)로 변환
   const markedDates = useMemo(() => {
     const marks = {};
     
-    // 1. 일정이 있는 날짜에 점 찍기
     events.forEach(event => {
-      // date(종일) 또는 dateTime(시간지정)에서 날짜 추출
       const start = event.start.date || event.start.dateTime?.split('T')[0];
       if (start) {
         marks[start] = { marked: true, dotColor: 'rgb(219, 31, 38)' };
       }
     });
 
-    // 2. 현재 선택된 날짜 스타일 덮어쓰기
     marks[selectedDate] = {
-      ...(marks[selectedDate] || {}), // 기존 점 정보 유지
+      ...(marks[selectedDate] || {}),
       selected: true,
       selectedColor: 'rgb(219, 31, 38)',
       disableTouchEvent: true
@@ -90,15 +121,13 @@ export default function CalendarScreen({ navigation }) {
     return marks;
   }, [events, selectedDate]);
 
-  // 하단 리스트에 보여줄 '선택된 날짜의 일정' 필터링
   const filteredEvents = events.filter(event => {
     const start = event.start.date || event.start.dateTime?.split('T')[0];
     return start === selectedDate;
   });
 
-  // 시간 포맷팅
   const formatTime = (dateTime) => {
-    if (!dateTime) return '종일'; // 시간이 없으면 종일 일정
+    if (!dateTime) return '종일';
     return new Date(dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -106,7 +135,7 @@ export default function CalendarScreen({ navigation }) {
     return (
       <View style={styles.center}>
         <Text style={styles.msg}>로그인이 필요합니다.</Text>
-        <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('Settings')}>
+        <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('All')}>
           <Text style={styles.btnText}>로그인 하러 가기</Text>
         </TouchableOpacity>
       </View>
@@ -125,30 +154,18 @@ export default function CalendarScreen({ navigation }) {
     <View style={styles.container}>
       {/* 1. 달력 UI */}
       <Calendar
-        // 기본적으로 오늘 날짜가 속한 달을 보여줌
         current={selectedDate}
-        
-        // 날짜 클릭 시 실행
-        onDayPress={day => {
-          setSelectedDate(day.dateString);
-        }}
-        
-        // 월 이동 화살표 보이기 (기본값 true지만 명시)
+        onDayPress={day => setSelectedDate(day.dateString)}
         hideArrows={false}
-        
-        // 데이터 표시 (점, 선택 배경색 등)
         markedDates={markedDates}
-        // 월 표시 포맷
         monthFormat={'yyyy년 M월'}
-        // 화살표 커스텀
         renderArrow={(direction) => (
           <Ionicons 
             name={direction === 'left' ? "chevron-back" : "chevron-forward"}
-            size={28}  // 원하는 크기로 조절 (기본값보다 큼)
+            size={28}
             color="rgb(219, 31, 38)"
           />
         )}
-        // 테마 커스텀
         theme={{
           todayTextColor: 'rgb(219, 31, 38)',
           arrowColor: 'rgb(219, 31, 38)',
@@ -157,7 +174,7 @@ export default function CalendarScreen({ navigation }) {
         }}
       />
 
-      {/* 2. 선택된 날짜의 일정 리스트 */}
+      {/* 2. 일정 리스트 */}
       <View style={styles.listContainer}>
         <Text style={styles.listHeader}>{selectedDate} 일정</Text>
         <FlatList

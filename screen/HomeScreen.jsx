@@ -1,3 +1,5 @@
+/* screen/HomeScreen.jsx */
+
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,14 +19,13 @@ export default function HomeScreen({ navigation }) {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [filterMode, setFilterMode] = useState('all');  // 지금 어떤 탭이 선택되어 있는가?
+    const [filterMode, setFilterMode] = useState('all');
 
     const fetchNotices = useCallback(async (pageNum, keyword = '', shouldRefresh = false) => {
         if (!shouldRefresh && loading) return;
 
         setLoading(true);
         try {
-            // 백엔드 API 호출
             const params = { p: pageNum };
             if (keyword) params.keyword = keyword;
 
@@ -47,15 +48,14 @@ export default function HomeScreen({ navigation }) {
 
         } catch (error) {
             console.error('공지사항 조회 실패 (목업 데이터 사용):', error);
-            // API 실패 시 목업 데이터 10배 뻥튀기해서 보여주기
             if (pageNum === 1) {
                 const mockList = Array.from({ length: 1 }).flatMap((_, i) =>
                     ALRAM_DATA.map(item => ({
                         ...item,
-                        id: `mock-${i}-${item.id}`, // 고유 키를 위해 ID 변형
+                        id: `mock-${i}-${item.id}`,
                         title: `[Test] ${item.title}`,
-                        source: '공지사항',         // 화면에 표시될 source 가짜 데이터
-                        date: '2024-01-01',         // 화면에 표시될 날짜 가짜 데이터
+                        source: '공지사항',
+                        date: '2024-01-01',
                         image: item.image || DEFAULT_IMAGE
                     }))
                 );
@@ -128,7 +128,7 @@ export default function HomeScreen({ navigation }) {
                 )}
             </View>
 
-            <View style={styles.tabsContainer}>  {/* 전체 보기 / 안 읽은 것만 보기  선택 탭 */}
+            <View style={styles.tabsContainer}>
                 <TouchableOpacity
                     style={[
                         styles.tabButton,
@@ -163,7 +163,6 @@ export default function HomeScreen({ navigation }) {
                     </Text>
                 </TouchableOpacity>
             </View>
-
 
             <View style={styles.listContainer}>
                 <FlatList
@@ -233,7 +232,7 @@ const styles = StyleSheet.create({
     headerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, marginLeft: 20 },
     headerText: { fontSize: 24, fontWeight: 'bold', marginLeft: 10, color: 'rgba(50, 50, 50, 0.7)' },
 
-    balanceContainer: { backgroundColor: 'rgb(219, 31, 38)', marginHorizontal: 20, marginBottom: 15, padding: 20, borderRadius: 15, alignItems: 'center' },
+    balanceContainer: { backgroundColor: 'rgb(219, 31, 38)', marginHorizontal: 20, marginBottom: 15, padding: 10, borderRadius: 15, alignItems: 'center' },
     balanceLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 5 },
     balanceText: { color: 'white', fontSize: 28, fontWeight: 'bold' },
 
@@ -244,14 +243,14 @@ const styles = StyleSheet.create({
         marginHorizontal: 20,
         marginBottom: 10,
         paddingHorizontal: 15,
-        paddingVertical: 10,
+        paddingVertical: 3,
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#e0e0e0',
     },
     searchInput: { flex: 1, fontSize: 16, color: '#333' },
 
-    listContainer: { flex: 1, backgroundColor: 'white', borderRadius: 20, marginHorizontal: 20, marginBottom: 100, paddingVertical: 10 },
+    listContainer: { flex: 1, backgroundColor: 'white', borderRadius: 20, marginHorizontal: 20, marginBottom: 110, paddingVertical: 10 },
     itemRow: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(238, 238, 238, 1)' },
 
     iconBackground: { backgroundColor: 'transparent', width: 50, height: 50, justifyContent: 'center', alignItems: 'center', marginRight: 15 },

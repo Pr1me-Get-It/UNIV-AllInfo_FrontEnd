@@ -39,7 +39,7 @@ function MainTab() {
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
-          height: 80,
+          height: 100,
           position: 'absolute',
           bottom: 0,
         }

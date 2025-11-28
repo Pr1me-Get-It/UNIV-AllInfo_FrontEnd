@@ -44,3 +44,23 @@ export const removeToken = async () => {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
   }
 };
+
+export const saveData = async (key, value) => {
+  const jsonValue = JSON.stringify(value);
+  if (Platform.OS === 'web') {
+    try { localStorage.setItem(key, jsonValue); } catch (e) {}
+  } else {
+    // SecureStore는 용량 제한이 있지만, 텍스트 위주의 북마크 리스트는 충분히 저장 가능합니다.
+    await SecureStore.setItemAsync(key, jsonValue);
+  }
+};
+
+export const getData = async (key) => {
+  let jsonValue = null;
+  if (Platform.OS === 'web') {
+    try { jsonValue = localStorage.getItem(key); } catch (e) {}
+  } else {
+    jsonValue = await SecureStore.getItemAsync(key);
+  }
+  return jsonValue != null ? JSON.parse(jsonValue) : null;
+};

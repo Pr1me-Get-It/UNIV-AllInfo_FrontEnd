@@ -3,9 +3,9 @@ export default {
     scheme: "univ-allinfo",
     name: "UNIV-AllInfo",
     slug: "univ-allinfo",
-    version: "0.4.2",
+    version: "0.4.3",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/knu.png",
     userInterfaceStyle: "light",
     splash: {
       image: "./assets/splash.png",
