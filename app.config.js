@@ -3,7 +3,7 @@ export default {
     scheme: "univ-allinfo",
     name: "UNIV-AllInfo",
     slug: "univ-allinfo",
-    version: "0.4.1",
+    version: "0.4.2",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",

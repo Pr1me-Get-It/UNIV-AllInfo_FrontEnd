@@ -1,5 +1,5 @@
-// data/Alram.js
-import React, { createContext, useState } from 'react';
+/* data/Alram.js */
+import React, { createContext, useState, useCallback } from 'react'; // 👈 useCallback 추가
 
 export const AlramContext = createContext({
     readStatus: {},
@@ -12,15 +12,16 @@ export const AlramProvider = ({ children }) => {
   const [readStatus, setReadStatus] = useState({});
   const [bookmarkStatus, setBookmarkStatus] = useState({});
 
-  const markAsRead = (id, isRead = true) => {
+  // 👇 useCallback으로 감싸서 함수가 재생성되는 것을 막습니다.
+  const markAsRead = useCallback((id, isRead = true) => {
     setReadStatus(prev => ({
       ...prev,          
       [id]: isRead      
     }));
-  };
+  }, []); // 의존성 배열 [] (처음 한 번만 생성)
 
-  //item 전체를 받아서 처리
-  const toggleBookmark = (item) => {
+  // 👇 여기도 마찬가지로 적용해 주는 것이 좋습니다.
+  const toggleBookmark = useCallback((item) => {
     setBookmarkStatus(prev => {
       const newStatus = { ...prev };
       if (newStatus[item.id]) {
@@ -30,7 +31,7 @@ export const AlramProvider = ({ children }) => {
       }
       return newStatus;
     });
-  }
+  }, []);
 
   return (
     <AlramContext.Provider value={{ 
