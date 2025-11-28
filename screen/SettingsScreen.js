@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Alert, 
-  Image, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Image,
+  ActivityIndicator,
   Platform,
   Switch,
   ScrollView
@@ -27,11 +27,11 @@ const PRIMARY = 'rgb(219, 31, 38)';
 export default function SettingsScreen() {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   const appVersion = Constants.expoConfig?.version || Constants.manifest2?.extra?.expoClient?.version || "1.0.0";
-  
-  const currentRedirectUri = Platform.OS === 'web' 
-    ? window.location.origin 
+
+  const currentRedirectUri = Platform.OS === 'web'
+    ? window.location.origin
     : process.env.EXPO_PUBLIC_REDIRECT_URI_PROD;
 
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -44,9 +44,9 @@ export default function SettingsScreen() {
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     redirectUri: Platform.OS === 'web' ? window.location.origin : makeRedirectUri({
-      scheme: 'univ-allinfo' 
+      scheme: 'univ-allinfo'
     }),
-    scopes: ['email', 'profile','https://www.googleapis.com/auth/calendar.events.readonly'],
+    scopes: ['email', 'profile', 'https://www.googleapis.com/auth/calendar.events.readonly'],
   });
 
   useEffect(() => {
@@ -68,11 +68,13 @@ export default function SettingsScreen() {
     setLoading(true);
     try {
       const token = await getToken();
+
       if (token) {
         await fetchUserInfo(token);
       } else {
         setUserInfo(null);
       }
+
     } catch (e) {
       console.log("로그인 체크 실패", e);
       setUserInfo(null);
@@ -149,47 +151,53 @@ export default function SettingsScreen() {
 
   // 백엔드 API 연동한 푸시 토글 핸들러
   const handlePushToggle = async (value) => {
+    /*
     if (!userInfo) {
       Alert.alert("알림", "로그인이 필요한 기능입니다.");
       return;
-    }
- 
+    }*/
+
 
     setPushEnabled(value); // UI 먼저 반영
-    
-    if (value) {
-      try {
-        const token = await registerForPushNotificationsAsync();
-        
-        if (token) {
-          console.log("발급된 Expo 토큰:", token);
 
-          // 2. 백엔드에 토큰 전송 (유저 등록/토큰 저장)
-          // 백엔드 API: POST /user/register
-          // Body: { email, expoPushToken }
-          const emailToSend = userInfo ? userInfo.email : "test_device@test.com";
-          const response = await api.post('/user/register', { 
-            email: emailToSend, 
-            expoPushToken: token 
-          });
-          
-          if (response.status === 200 || response.status === 201) {
-            console.log("서버 응답:", response.data.message);
-            Alert.alert("설정 완료", "푸시 알림이 설정되었습니다.");
-          }
-        } else {
-          // 토큰 발급 실패 시 UI 원복
-          setPushEnabled(false);
-        }
-      } catch (e) {
-        console.error("푸시 등록 실패:", e);
+    if (value) {
+      let tokenData = null;
+
+      try {
+        tokenData = await registerForPushNotificationsAsync();
+      } catch (err) {
+        console.log("푸시 토큰 요청 중 에러:", err);
         setPushEnabled(false);
-        Alert.alert("오류", "푸시 알림 등록 중 문제가 발생했습니다.");
+        return;
       }
-    } else {
-      // 스위치를 끌 때
-      // (현재 백엔드에는 토큰 삭제 API가 없어 로그만 출력합니다.)
-      console.log("푸시 알림 OFF (서버 로직 필요 시 추가 구현)");
+
+      const token = typeof tokenData === "string" ? tokenData : tokenData?.data;
+
+      if (!token) {
+        console.log("푸시 토큰 없음 → 알림 OFF");
+        setPushEnabled(false);
+        return;
+      }
+
+      console.log("발급된 Expo 토큰:", token);
+
+      try {
+        const emailToSend = userInfo ? userInfo.email : "pastoboy@knu.com";
+
+        const response = await api.post('/user/register', {
+          email: emailToSend,
+          expoPushToken: token
+        });
+
+        console.log("서버 응답:", response.data);
+
+        Alert.alert("설정 완료", "푸시 알림이 설정되었습니다.");
+
+      } catch (e) {
+        console.error("서버 등록 실패:", e);
+        setPushEnabled(false);
+        Alert.alert("오류", "서버 등록 중 문제가 발생했습니다.");
+      }
     }
   };
 
@@ -209,9 +217,9 @@ export default function SettingsScreen() {
         {userInfo ? (
           <View style={styles.loginCardLoggedIn}>
             <View style={styles.profileInfo}>
-              <Image 
-                source={{ uri: userInfo.picture }} 
-                style={styles.profileImage} 
+              <Image
+                source={{ uri: userInfo.picture }}
+                style={styles.profileImage}
               />
               <View>
                 <Text style={styles.welcomeText}>로그인됨</Text>
@@ -230,8 +238,8 @@ export default function SettingsScreen() {
               학교 공지를 개인화해서 받고 캘린더를 연동하려면 Google 계정으로 로그인하세요.
             </Text>
 
-            <TouchableOpacity 
-              style={styles.googleLoginButton} 
+            <TouchableOpacity
+              style={styles.googleLoginButton}
               disabled={!request}
               onPress={() => promptAsync()}
             >
@@ -280,8 +288,8 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>계정</Text>
 
-        <TouchableOpacity 
-          style={styles.menuRow} 
+        <TouchableOpacity
+          style={styles.menuRow}
           onPress={() => Alert.alert('안내', 'Google 계정 관리는 Google 설정에서 가능합니다.')}
         >
           <View>
@@ -327,11 +335,11 @@ function SettingRow({ label, description, value, onValueChange }) {
         <Text style={styles.settingLabel}>{label}</Text>
         {!!description && <Text style={styles.settingDescription}>{description}</Text>}
       </View>
-      <Switch 
-        value={value} 
-        onValueChange={onValueChange} 
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
         trackColor={{ false: "#E5E7EB", true: PRIMARY }}
-        thumbColor={"#fff"} 
+        thumbColor={"#fff"}
       />
     </View>
   );

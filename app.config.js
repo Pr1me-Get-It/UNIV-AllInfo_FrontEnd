@@ -2,7 +2,7 @@ export default {
   expo: {
     scheme: "univ-allinfo",
     name: "UNIV-AllInfo",
-    slug: "UNIV-AllInfo",
+    slug: "univ-allinfo",
     version: "0.2.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
