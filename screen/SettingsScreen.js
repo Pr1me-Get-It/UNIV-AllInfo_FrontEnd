@@ -23,6 +23,12 @@ import { api } from '../api/client';
 WebBrowser.maybeCompleteAuthSession();
 
 const PRIMARY = 'rgb(219, 31, 38)';
+const DEV_USER = {
+  email: "test@knu.ac.kr",
+  name: "개발자(테스트)",
+  picture: "https://cdn-icons-png.flaticon.com/512/25/25231.png", // 깃허브 아이콘 등 아무거나
+};
+const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
 
 export default function SettingsScreen() {
   const [userInfo, setUserInfo] = useState(null);
@@ -84,11 +90,18 @@ export default function SettingsScreen() {
   };
 
   const fetchUserInfo = async (token) => {
+    // 1. 개발자 토큰인지 확인
+    if (token === DEV_TOKEN) {
+      console.log("⚡ 개발자 모드로 로그인되었습니다.");
+      setUserInfo(DEV_USER);
+      return;
+    }
+
+    // 2. 아니면 원래대로 구글 API 호출
     try {
       const res = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (res.ok) {
         const user = await res.json();
         setUserInfo(user);
@@ -100,6 +113,29 @@ export default function SettingsScreen() {
     } catch (error) {
       console.log("유저 정보 조회 중 에러 발생:", error);
       setUserInfo(null);
+    }
+  };
+
+  const handleDevLogin = async () => {
+    setLoading(true);
+    try {
+      // 1. 가짜 토큰 저장
+      await saveToken(DEV_TOKEN);
+      setUserInfo(DEV_USER);
+
+      // 2. 백엔드에 가짜 이메일 등록 (토큰은 null로)
+      console.log(`📡 개발자 계정 등록 시도: ${DEV_USER.email}`);
+      await api.post('/user/register', { 
+        email: DEV_USER.email, 
+        expoPushToken: null 
+      });
+      
+      Alert.alert("성공", "개발자 계정(test@knu.ac.kr)으로 로그인 및 등록되었습니다.");
+    } catch (e) {
+      console.error("개발자 로그인 실패:", e);
+      Alert.alert("에러", "개발자 등록 중 문제가 발생했습니다.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -245,6 +281,13 @@ export default function SettingsScreen() {
             >
               <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.googleLoginButtonText}>Google로 로그인</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.googleLoginButton, { backgroundColor: '#333', marginTop: 10 }]} 
+              onPress={handleDevLogin}
+            >
+              <Ionicons name="code-slash" size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.googleLoginButtonText}>개발자 로그인 (Test)</Text>
             </TouchableOpacity>
           </View>
         )}

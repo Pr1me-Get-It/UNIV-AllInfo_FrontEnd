@@ -2,6 +2,8 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 const TOKEN_KEY = 'user_access_token';
+const USER_INFO_KEY = 'user_info'; // 사용자 정보 키 추가
+const LIKED_NOTICES_KEY = 'user_liked_notices'; // 좋아요 목록 키 추가
 
 // 토큰 저장
 export const saveToken = async (token) => {

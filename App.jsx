@@ -4,7 +4,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
 
 // 화면들 import
 import HomeScreen from './screen/HomeScreen';
@@ -13,6 +12,7 @@ import { AlramProvider } from './data/Alram';
 import BookmarkScreen from './screen/BookmarkScreen';
 import CalendarScreen from './screen/CalendarScreen';
 import SettingsScreen from './screen/SettingsScreen';
+import KeywordScreen from './screen/KeywordScreen';
 
 // 유틸리티 및 API import [추가됨]
 import { getToken } from './utils/storage';
@@ -20,7 +20,8 @@ import { registerForPushNotificationsAsync } from './utils/notifications';
 import { api } from './api/client';
 
 const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator(); 
+const Stack = createNativeStackNavigator();
+const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
 
 // 메인 탭 (하단 네비게이션) 설정
 function MainTab() {
@@ -63,6 +64,16 @@ function MainTab() {
         }} 
       />
       <Tab.Screen 
+        name="Keyword"
+        component={KeywordScreen} 
+        options={{ 
+          title: '키워드',
+          tabBarIcon: ({ color, size }) => ( 
+            <Ionicons name="pricetags" size={size} color={color} /> 
+          ),
+        }} 
+      />
+      <Tab.Screen 
         name="Calendar"
         component={CalendarScreen} 
         options={{ 
@@ -89,45 +100,49 @@ function MainTab() {
 // 실제 App 컴포넌트
 export default function App() {
 
-  // [추가됨] 앱 실행 시 토큰 동기화 로직
   useEffect(() => {
-    const syncPushToken = async () => {
+    const syncUserWithBackend = async () => {
       try {
-        // 1. 저장된 구글 로그인 토큰 가져오기
         const token = await getToken();
-        if (!token) {
-          console.log("비로그인 상태: 푸시 토큰 등록 스킵");
-          return;
+        if (!token) return;
+
+        let userEmail = null;
+
+        // ✅ 토큰 확인: 개발자용 vs 구글용
+        if (token === DEV_TOKEN) {
+          console.log("⚡ [App.jsx] 개발자 모드 감지");
+          userEmail = "test@knu.ac.kr"; // 개발자 이메일 하드코딩
+        } else {
+          // 구글 토큰이면 정보 가져오기
+          const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!userInfoRes.ok) return;
+          const userInfo = await userInfoRes.json();
+          userEmail = userInfo.email;
         }
 
-        // 2. 구글 토큰으로 사용자 이메일 가져오기
-        const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        
-        if (!userInfoRes.ok) return; // 토큰 만료 등 이슈 시 중단
-        const userInfo = await userInfoRes.json();
-        const userEmail = userInfo.email;
+        // 푸시 토큰 가져오기 (실패시 null)
+        let pushToken = null;
+        try {
+           pushToken = await registerForPushNotificationsAsync();
+        } catch (e) {}
 
-        // 3. Expo Push Token 발급 (기기 토큰)
-        const pushToken = await registerForPushNotificationsAsync();
-        if (!pushToken) return;
-
-        // 4. 백엔드에 사용자 등록 (이메일 + 푸시토큰)
-        // 백엔드 API: POST /user/register
-        console.log(`푸시 토큰 동기화 시도: ${userEmail}`);
-        await api.post('/user/register', {
-          email: userEmail,
-          expoPushToken: pushToken
-        });
-        console.log("✔ 푸시 토큰 서버 동기화 완료");
+        // 백엔드 등록
+        if (userEmail) {
+          console.log(`📡 유저 자동 동기화: ${userEmail}`);
+          await api.post('/user/register', {
+            email: userEmail,
+            expoPushToken: pushToken || null
+          });
+        }
 
       } catch (e) {
-        console.error("푸시 토큰 동기화 실패:", e);
+        console.error("유저 동기화 에러:", e);
       }
     };
 
-    syncPushToken();
+    syncUserWithBackend();
   }, []);
 
   return (
@@ -144,6 +159,7 @@ export default function App() {
             component={DetailScreen}
             options={{ title: '상세 정보' }} 
           />
+          
         </Stack.Navigator>
       </NavigationContainer>
     </AlramProvider>
