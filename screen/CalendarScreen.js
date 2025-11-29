@@ -133,8 +133,9 @@ export default function CalendarScreen({ navigation }) {
 
   if (!loading && !isLoggedIn) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.msg}>로그인이 필요합니다.</Text>
+      <View style={styles.loginContainer}>
+        <Ionicons name="lock-closed-outline" size={60} color="#ccc" style={{ marginBottom: 20 }} />
+        <Text style={styles.msg}>로그인이 필요한 기능입니다.</Text>
         <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('All')}>
           <Text style={styles.btnText}>로그인 하러 가기</Text>
         </TouchableOpacity>
@@ -204,7 +205,12 @@ export default function CalendarScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', paddingTop: 60 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  
+  loginContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5' // 배경색 명시
+  },
   listContainer: { 
     flex: 1, 
     backgroundColor: '#f9f9f9', 

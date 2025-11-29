@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { 
   View, 
   Text, 
@@ -15,9 +15,9 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
-import { getToken } from '../utils/storage';
+import { AlramContext } from '../data/Alram'; // Context 사용
 
-// 👇 [수정] 데이터를 두 그룹으로 분리
+// 데이터 그룹 분리
 const DEPARTMENTS = [
   { label: "컴퓨터", value: "CSE" },
   { label: "전자", value: "SEE" },
@@ -35,130 +35,72 @@ const POPULAR_KEYWORDS = [
   { label: "교환학생", value: "교환학생" },
 ];
 
-const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
-const DEV_EMAIL = "test@knu.ac.kr";
-
-export default function KeywordScreen() {
+export default function KeywordScreen({ navigation }) {
   const [keywords, setKeywords] = useState([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [email, setEmail] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  // Context에서 현재 로그인된 이메일 가져오기
+  const { userEmail } = useContext(AlramContext);
 
+  // 이메일이 변경되거나 화면이 포커스될 때 데이터 로드
   useFocusEffect(
     useCallback(() => {
-      checkLoginAndFetch();
-    }, [])
+      if (userEmail) {
+        fetchKeywords(userEmail);
+      } else {
+        setKeywords([]);
+        setLoading(false);
+      }
+    }, [userEmail])
   );
 
-  const checkLoginAndFetch = async () => {
-    setLoading(true);
+  const fetchKeywords = async (email) => {
     try {
-      const token = await getToken();
-      
-      // 1. 토큰 없으면 로그인 화면으로 전환
-      if (!token) {
-        setIsLoggedIn(false);
-        setLoading(false);
-        return;
-      }
-
-      setIsLoggedIn(true);
-
-      // 2. 이메일 정보 가져오기
-      let userEmail = null;
-      if (token === DEV_TOKEN) {
-        userEmail = DEV_EMAIL;
-      } else {
-        const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (userInfoRes.ok) {
-          const userInfo = await userInfoRes.json();
-          userEmail = userInfo.email;
-        }
-      }
-
-      // 3. 키워드 목록 가져오기
-      if (userEmail) {
-        setEmail(userEmail);
-        await fetchKeywords(userEmail);
-      }
-    } catch (e) {
-      console.error("데이터 로딩 실패:", e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-  const getUserEmailAndFetchKeywords = async () => {
-    if (!refreshing) setLoading(true);
-    try {
-      const token = await getToken();
-      if (!token) {
-        Alert.alert("로그인 필요", "로그인이 필요한 기능입니다.");
-        setLoading(false);
-        return;
-      }
-
-      let userEmail = null;
-      if (token === DEV_TOKEN) {
-        userEmail = DEV_EMAIL;
-      } else {
-        const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (userInfoRes.ok) {
-          const userInfo = await userInfoRes.json();
-          userEmail = userInfo.email;
-        }
-      }
-
-      if (userEmail) {
-        setEmail(userEmail);
-        await fetchKeywords(userEmail);
-      }
-    } catch (e) {
-      console.error("데이터 로딩 실패:", e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const fetchKeywords = async (userEmail) => {
-    try {
+      // GET 대신 POST 사용 (Body 전송 문제 해결용 꼼수)
       const response = await api.post('/user/keyword', {
-        email: userEmail,
+        email: email,
         keywords: [] 
       });
       if (response.data.success) {
         setKeywords(response.data.keywords || []);
       }
     } catch (e) {
-      if (e.message.includes('404')) {
-        await api.post('/user/register', { email: userEmail, expoPushToken: null });
-        const retry = await api.post('/user/keyword', { email: userEmail, keywords: [] });
-        if (retry.data.success) setKeywords(retry.data.keywords);
+      // 유저가 없는 경우(404) 자동 등록 시도 후 재조회
+      if (e.message && e.message.includes('404')) {
+        try {
+          await api.post('/user/register', { email: email, expoPushToken: null });
+          const retry = await api.post('/user/keyword', { email: email, keywords: [] });
+          if (retry.data.success) setKeywords(retry.data.keywords);
+        } catch (err) {
+          console.error("유저 자동 등록 실패:", err);
+        }
+      } else {
+        console.error("키워드 로딩 실패:", e);
       }
     }
   };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    getUserEmailAndFetchKeywords();
-  }, []);
+    if (userEmail) {
+      fetchKeywords(userEmail).finally(() => setRefreshing(false));
+    } else {
+      setRefreshing(false);
+    }
+  }, [userEmail]);
 
   const addKeyword = async (keywordToAdd) => {
     const targetKeyword = typeof keywordToAdd === 'object' ? keywordToAdd.value : (keywordToAdd || inputText).trim();
 
     if (!targetKeyword) return;
     
-    if (!email) {
-      Alert.alert("오류", "사용자 정보가 없습니다. 새로고침 해주세요.");
+    if (!userEmail) {
+      Alert.alert("오류", "로그인이 필요한 기능입니다.");
       return;
     }
+
     if (keywords.includes(targetKeyword)) {
       Alert.alert("알림", `이미 등록된 키워드입니다: ${targetKeyword}`);
       return;
@@ -166,7 +108,7 @@ export default function KeywordScreen() {
 
     try {
       const response = await api.post('/user/keyword', {
-        email: email,
+        email: userEmail,
         keywords: [targetKeyword]
       });
       if (response.data.success) {
@@ -175,20 +117,22 @@ export default function KeywordScreen() {
       }
     } catch (e) {
       Alert.alert("오류", "키워드 추가 실패");
+      console.error(e);
     }
   };
 
   const deleteKeyword = async (keywordToDelete) => {
-    if (!email) return;
+    if (!userEmail) return;
     try {
       const response = await api.delete('/user/keyword', {
-        data: { email: email, keywords: [keywordToDelete] }
+        data: { email: userEmail, keywords: [keywordToDelete] }
       });
       if (response.data.success) {
         setKeywords(response.data.keywords);
       }
     } catch (e) {
       Alert.alert("오류", "키워드 삭제 실패");
+      console.error(e);
     }
   };
 
@@ -201,11 +145,9 @@ export default function KeywordScreen() {
     </View>
   );
 
-  // 👇 [수정] 추천 키워드 영역 (학부 / 인기 키워드 분리)
   const renderRecommendations = () => (
     <View style={styles.recommendContainer}>
       
-      {/* 1. 학부 섹션 */}
       <Text style={styles.recommendLabel}>학부</Text>
       <View style={styles.chipWrapper}>
         {DEPARTMENTS.map((k, i) => (
@@ -215,7 +157,6 @@ export default function KeywordScreen() {
         ))}
       </View>
 
-      {/* 2. 인기 키워드 섹션 (위쪽에 여백 추가) */}
       <Text style={[styles.recommendLabel, { marginTop: 24 }]}>인기 키워드</Text>
       <View style={styles.chipWrapper}>
         {POPULAR_KEYWORDS.map((k, i) => (
@@ -228,9 +169,10 @@ export default function KeywordScreen() {
     </View>
   );
 
-  if (!loading && !isLoggedIn) {
+  // 비로그인 상태일 때 화면
+  if (!userEmail) {
     return (
-      <View style={[styles.mainContainer, styles.center]}>
+      <View style={styles.loginContainer}>
         <Ionicons name="key-outline" size={60} color="#ccc" style={{ marginBottom: 20 }} />
         <Text style={styles.msg}>로그인이 필요한 기능입니다.</Text>
         <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('All')}>
@@ -286,34 +228,62 @@ export default function KeywordScreen() {
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#fff', paddingBottom: 90 },
+  mainContainer: { flex: 1, backgroundColor: '#f5f5f5', paddingBottom: 90 },
   keyboardView: { flex: 1 },
-  center: { justifyContent: 'center', alignItems: 'center', paddingBottom: 0 },
-  msg: { fontSize: 16, color: '#888', marginBottom: 15 },
-  btn: { backgroundColor: '#333', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
-  btnText: { color: '#fff', fontWeight: '600' },
-  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  
+  header: { 
+    paddingTop: 60, 
+    paddingHorizontal: 20, 
+    paddingBottom: 20, 
+    backgroundColor: '#f5f5f5', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#e0e0e0' 
+  },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   description: { fontSize: 14, color: '#666', lineHeight: 20 },
+  
   listContent: { padding: 20, flexGrow: 1 },
-  registeredKeywordItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgb(219, 31, 38)', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, marginBottom: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 3 },
+  
+  registeredKeywordItem: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    backgroundColor: 'rgb(219, 31, 38)', 
+    paddingVertical: 12, 
+    paddingHorizontal: 16, 
+    borderRadius: 12, 
+    marginBottom: 10, 
+    shadowColor: "#000", 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.1, 
+    shadowRadius: 3, 
+    elevation: 3 
+  },
   registeredKeywordText: { fontSize: 16, color: '#fff', fontWeight: '700' },
   
   emptyContainer: { alignItems: 'center', marginTop: 30, marginBottom: 20 },
   emptyText: { fontSize: 16, color: '#999' },
   
   recommendContainer: { marginTop: 10, marginBottom: 40 },
-  recommendLabel: { fontSize: 14, fontWeight: 'bold', color: '#888', marginBottom: 12, marginLeft: 4 }, // 왼쪽 정렬 느낌으로 변경
+  recommendLabel: { fontSize: 14, fontWeight: 'bold', color: '#888', marginBottom: 12, marginLeft: 4 },
   
   chipWrapper: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  
-  chip: { backgroundColor: '#F3F4F6', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB' },
-  // 학부 칩은 조금 다르게 (선택 사항)
+  chip: { backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB' },
   deptChip: { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }, 
-  
   chipText: { color: '#374151', fontSize: 14, fontWeight: '500' },
   
   inputContainer: { flexDirection: 'row', padding: 15, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff', alignItems: 'center' },
   input: { flex: 1, backgroundColor: '#f5f5f5', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25, fontSize: 16, marginRight: 10 },
-  addButton: { backgroundColor: 'rgb(219, 31, 38)', width: 45, height: 45, borderRadius: 25, justifyContent: 'center', alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 }
+  addButton: { backgroundColor: 'rgb(219, 31, 38)', width: 45, height: 45, borderRadius: 25, justifyContent: 'center', alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 },
+
+  // 비로그인 화면 스타일 (다른 탭과 통일)
+  loginContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5'
+  },
+  msg: { fontSize: 16, color: '#888', marginBottom: 15 },
+  btn: { backgroundColor: '#333', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
+  btnText: { color: '#fff', fontWeight: '600' },
 });

@@ -3,7 +3,7 @@ export default {
     scheme: "univ-allinfo",
     name: "UNIV-AllInfo",
     slug: "univ-allinfo",
-    version: "0.4.3",
+    version: "0.5.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -32,7 +32,8 @@ export default {
     },
     plugins: [
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-google-signin/google-signin"
     ],
     // [중요] 웹 푸시 설정을 여기에 추가합니다.
     notification: {

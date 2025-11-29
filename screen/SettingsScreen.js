@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -11,19 +11,15 @@ import {
   Switch,
   ScrollView,
   Modal,
-  TextInput // 👈 TextInput, Modal 추가
+  TextInput
 } from 'react-native';
-// ... 기존 import 유지 ...
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import Constants from 'expo-constants';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { saveToken, getToken, removeToken } from '../utils/storage';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
-import { makeRedirectUri } from 'expo-auth-session';
 import { api } from '../api/client';
-
-WebBrowser.maybeCompleteAuthSession();
+import { AlramContext } from '../data/Alram'; // Context import
 
 const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_USER = {
@@ -32,146 +28,195 @@ const DEV_USER = {
   picture: "https://cdn-icons-png.flaticon.com/512/25/25231.png",
 };
 const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
-const DEV_PASSWORD = "1557"; // 👈 비밀번호 설정
+const DEV_PASSWORD = "1557"; 
 
 export default function SettingsScreen() {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Context 가져오기
+  const { loginUser, logoutUser } = useContext(AlramContext);
 
-  // 비밀번호 입력 모달 관련 State
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
 
- 
   const appVersion = Constants.expoConfig?.version || Constants.manifest2?.extra?.expoClient?.version || "1.0.0";
 
-  // ...  google login setup ...
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    redirectUri: Platform.OS === 'web' ? window.location.origin : makeRedirectUri({
-      scheme: 'univ-allinfo'
-    }),
-    scopes: ['email', 'profile', 'https://www.googleapis.com/auth/calendar.events'],
-  });
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [nightPushOnly, setNightPushOnly] = useState(false);
+  const [marketingEnabled, setMarketingEnabled] = useState(false);
 
-  // ... 기존 useEffect 및 checkLoginStatus, fetchUserInfo ...
   useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
+      offlineAccess: true,
+      forceCodeForRefreshToken: true,
+      scopes: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'], 
+    });
+
     checkLoginStatus();
   }, []);
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      console.log("구글 로그인 성공, 토큰:", authentication.accessToken);
-      handleLoginSuccess(authentication.accessToken);
-    } else if (response?.type === 'error') {
-      console.error("구글 로그인 에러:", response.error);
-      setLoading(false);
-    }
-  }, [response]);
 
   const checkLoginStatus = async () => {
     setLoading(true);
     try {
       const token = await getToken();
-      if (token) {
-        await fetchUserInfo(token);
-      } else {
+      
+      if (!token) {
         setUserInfo(null);
+        setLoading(false);
+        return;
       }
+
+      // 1. 개발자 모드 확인
+      if (token === DEV_TOKEN) {
+        setUserInfo(DEV_USER);
+        loginUser(DEV_USER.email);
+        setLoading(false);
+        return;
+      }
+
+      // 2. 구글 네이티브 로그인 복구 (조용히 로그인)
+      const response = await GoogleSignin.signInSilently();
+      
+      if (response && response.data && response.data.user) {
+         const user = response.data.user;
+         // 🚨 [수정] userInfo 객체 생성
+         const userObj = {
+            email: user.email,
+            name: user.name,
+            picture: user.photo, 
+         };
+         
+         setUserInfo(userObj);
+         loginUser(user.email); // Context에 알림
+         
+         // 토큰 갱신 및 저장 (null 체크)
+         const { accessToken } = await GoogleSignin.getTokens();
+         if (accessToken) {
+            await saveToken(accessToken);
+         }
+      } else {
+         setUserInfo(null);
+      }
+
     } catch (e) {
-      console.log("로그인 체크 실패", e);
+      console.log("Silent login failed (will try logout):", e.code);
+      // 토큰이 있는데 로그인이 안 되면 만료된 것이므로 로그아웃 처리
       setUserInfo(null);
+      await removeToken();
+      logoutUser();
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchUserInfo = async (token) => {
-    if (token === DEV_TOKEN) {
-      console.log("⚡ 개발자 모드로 로그인되었습니다.");
-      setUserInfo(DEV_USER);
-      return;
-    }
+  const handleGoogleLogin = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const user = await res.json();
-        setUserInfo(user);
-        await saveToken(token);
-      } else {
-        setUserInfo(null);
-        await removeToken();
-      }
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      
+      if (response.data && response.data.user) {
+        const user = response.data.user;
+        const newUserInfo = {
+            email: user.email,
+            name: user.name,
+            picture: user.photo, 
+        };
+
+        setUserInfo(newUserInfo);
+        loginUser(newUserInfo.email); // Context에 알림
+
+        // 토큰 저장
+        const { accessToken } = await GoogleSignin.getTokens();
+        if (accessToken) {
+            await saveToken(accessToken);
+        }
+
+        console.log("구글 로그인 성공:", newUserInfo.email);
+        
+        // 백엔드 유저 등록 (선택)
+        try {
+            await api.post('/user/register', { 
+                email: newUserInfo.email, 
+                expoPushToken: null 
+            });
+        } catch(e) {
+           // 백엔드 등록 실패는 무시 (이미 등록된 유저일 수 있음)
+        }
+      } 
+
     } catch (error) {
-      console.log("유저 정보 조회 중 에러 발생:", error);
-      setUserInfo(null);
+      console.error("Login Error:", error);
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // 취소됨
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert("오류", "Google Play 서비스를 사용할 수 없습니다.");
+      } else {
+        Alert.alert("오류", "로그인 실패: " + error.message);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 👇 [수정] 실제 로그인을 수행하는 함수 (비밀번호 확인 후 호출됨)
+  // 개발자 로그인
   const performDevLogin = async () => {
     setLoading(true);
     try {
       await saveToken(DEV_TOKEN);
       setUserInfo(DEV_USER);
+      loginUser(DEV_USER.email); // Context에 알림
 
-      console.log(`📡 개발자 계정 등록 시도: ${DEV_USER.email}`);
-      await api.post('/user/register', { 
-        email: DEV_USER.email, 
-        expoPushToken: null 
-      });
+      console.log(`📡 개발자 계정 등록: ${DEV_USER.email}`);
       
-      Alert.alert("성공", "개발자 계정(test@knu.ac.kr)으로 로그인 및 등록되었습니다.");
+      // 백엔드 등록 (개발자 계정도 키워드 기능을 위해 필요할 수 있음)
+      try {
+         await api.post('/user/register', { 
+           email: DEV_USER.email, 
+           expoPushToken: null 
+         });
+      } catch (e) {}
+
+      Alert.alert("성공", "개발자 모드(test@knu.ac.kr)로 로그인되었습니다.");
     } catch (e) {
-      console.error("개발자 로그인 실패:", e);
-      Alert.alert("에러", "개발자 등록 중 문제가 발생했습니다.");
+      console.error(e);
+      Alert.alert("에러", "개발자 로그인 실패");
     } finally {
       setLoading(false);
     }
   };
 
-  // 👇 [추가] 비밀번호 확인 로직
   const handlePasswordSubmit = () => {
     if (passwordInput === DEV_PASSWORD) {
       setIsPasswordModalVisible(false);
-      setPasswordInput(''); // 입력 초기화
-      performDevLogin();    // 로그인 진행
+      setPasswordInput('');
+      performDevLogin();
     } else {
       Alert.alert("오류", "비밀번호가 틀렸습니다.");
     }
   };
 
-  const handleLoginSuccess = async (token) => {
-    setLoading(true);
-    await fetchUserInfo(token);
-    setLoading(false);
-  };
-
-  const executeLogout = async () => { /* ... 기존 로직 유지 ... */ 
+  const executeLogout = async () => {
     setLoading(true);
     try {
-      const token = await getToken();
-      if (token) {
-        await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        });
-      }
-    } catch (e) {
-      console.error("토큰 만료 요청 중 에러 (무시하고 진행):", e);
-    } finally {
+      await GoogleSignin.signOut(); 
       await removeToken();
+      
       setUserInfo(null);
+      setPushEnabled(false);
+      logoutUser(); // Context 비우기
+      
+    } catch (e) {
+      console.error("로그아웃 에러:", e);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => { /* ... 기존 로직 유지 ... */
+  const handleLogout = () => {
      if (Platform.OS === 'web') {
       if (window.confirm("로그아웃 하시겠습니까?")) {
         executeLogout();
@@ -184,43 +229,41 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleFeedback = () => { /* ... 기존 로직 유지 ... */
-    Alert.alert(
-      '피드백',
-      '불편한 점이나 개선 아이디어가 있다면\n팀 Notion 또는 GitHub 이슈에 남겨주세요!'
-    );
+  const handleFeedback = () => {
+    Alert.alert('피드백', '팀 Notion 또는 GitHub 이슈에 남겨주세요!');
   };
 
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [nightPushOnly, setNightPushOnly] = useState(false);
-  const [marketingEnabled, setMarketingEnabled] = useState(false);
+  const handlePushToggle = async (value) => {
+    if (!userInfo) {
+      Alert.alert("로그인 필요", "푸시 알림을 받으려면 로그인이 필요합니다.");
+      setPushEnabled(false);
+      return;
+    }
 
-  const handlePushToggle = async (value) => { /* ... 기존 로직 유지 ... */
     setPushEnabled(value); 
+    
     if (value) {
       let tokenData = null;
       try {
         tokenData = await registerForPushNotificationsAsync();
       } catch (err) {
-        console.log("푸시 토큰 요청 중 에러:", err);
+        console.log("푸시 토큰 에러:", err);
         setPushEnabled(false);
         return;
       }
+
       const token = typeof tokenData === "string" ? tokenData : tokenData?.data;
+
       if (!token) {
-        console.log("푸시 토큰 없음 → 알림 OFF");
         setPushEnabled(false);
         return;
       }
-      console.log("발급된 Expo 토큰:", token);
+
       try {
-        const emailToSend = userInfo ? userInfo.email : "pastoboy@knu.com";
         const response = await api.post('/user/register', {
-          email: emailToSend,
+          email: userInfo.email,
           expoPushToken: token
         });
-        console.log("서버 응답:", response.data);
         Alert.alert("설정 완료", "푸시 알림이 설정되었습니다.");
       } catch (e) {
         console.error("서버 등록 실패:", e);
@@ -240,9 +283,8 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 160 }}>
+    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 120 }}>
       
-      {/* 👇 [추가] 비밀번호 입력 모달 */}
       <Modal
         visible={isPasswordModalVisible}
         transparent={true}
@@ -289,7 +331,6 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         {userInfo ? (
           <View style={styles.loginCardLoggedIn}>
-             {/* ... 기존 로그인된 화면 UI 유지 ... */}
             <View style={styles.profileInfo}>
               <Image
                 source={{ uri: userInfo.picture }}
@@ -314,14 +355,12 @@ export default function SettingsScreen() {
 
             <TouchableOpacity
               style={styles.googleLoginButton}
-              disabled={!request}
-              onPress={() => promptAsync()}
+              onPress={handleGoogleLogin}
             >
               <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.googleLoginButtonText}>Google로 로그인</Text>
             </TouchableOpacity>
             
-            {/* 👇 [수정] 버튼 누르면 모달 열기 */}
             <TouchableOpacity 
               style={[styles.googleLoginButton, { backgroundColor: '#333', marginTop: 10 }]} 
               onPress={() => setIsPasswordModalVisible(true)}
@@ -333,7 +372,6 @@ export default function SettingsScreen() {
         )}
       </View>
 
-      {/* ... 나머지 섹션들 (알림 설정, 앱 정보 등) 기존 코드 유지 ... */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>알림 설정</Text>
         <SettingRow
@@ -420,7 +458,6 @@ function SettingRow({ label, description, value, onValueChange }) {
 }
 
 const styles = StyleSheet.create({
-  // ... 기존 스타일 ...
   page: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -451,7 +488,6 @@ const styles = StyleSheet.create({
   menuDescription: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   menuLabelDanger: { fontSize: 15, fontWeight: '600', color: '#DC2626' },
 
-  // 👇 [추가] 모달 스타일
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

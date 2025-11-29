@@ -2,19 +2,25 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 const TOKEN_KEY = 'user_access_token';
-const USER_INFO_KEY = 'user_info'; // 사용자 정보 키 추가
-const LIKED_NOTICES_KEY = 'user_liked_notices'; // 좋아요 목록 키 추가
+const USER_INFO_KEY = 'user_info';
+const LIKED_NOTICES_KEY = 'user_liked_notices';
 
 // 토큰 저장
 export const saveToken = async (token) => {
+  // 🚨 [수정] 토큰이 없으면 저장하지 않음 (에러 방지)
+  if (!token) return;
+
+  // 만약 토큰이 객체라면 문자열로 변환
+  const tokenToSave = typeof token === 'string' ? token : JSON.stringify(token);
+
   if (Platform.OS === 'web') {
     try {
-      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(TOKEN_KEY, tokenToSave);
     } catch (e) {
       console.error("Local storage error:", e);
     }
   } else {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    await SecureStore.setItemAsync(TOKEN_KEY, tokenToSave);
   }
 };
 
@@ -46,11 +52,11 @@ export const removeToken = async () => {
 };
 
 export const saveData = async (key, value) => {
+  if (!value) return; // null 방지
   const jsonValue = JSON.stringify(value);
   if (Platform.OS === 'web') {
     try { localStorage.setItem(key, jsonValue); } catch (e) {}
   } else {
-    // SecureStore는 용량 제한이 있지만, 텍스트 위주의 북마크 리스트는 충분히 저장 가능합니다.
     await SecureStore.setItemAsync(key, jsonValue);
   }
 };

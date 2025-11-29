@@ -159,7 +159,7 @@ export default function DetailScreen({ route, navigation }) {
 
                 {/* ... 마감일 및 본문 ... */}
                  {loadingDeadline ? (
-                    <ActivityIndicator size="small" color="rgb(219, 31, 38)" style={{marginBottom: 20}} />
+                    <ActivityIndicator size="small" color="rgb(219, 31, 38)" style={{marginBottom: 10}} />
                 ) : deadlineInfo ? (
                     <View style={styles.deadlineCard}>
                         <View style={styles.deadlineRow}>
@@ -223,17 +223,18 @@ export default function DetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
     // ... (기존 스타일 유지) ...
     scrollContainer: { flexGrow: 1, backgroundColor: 'white' },
-    wrapper: { flex: 1, paddingTop: 40, alignItems: 'center', backgroundColor: 'white' },
+    wrapper: { flex: 1, paddingTop: 20, alignItems: 'center', backgroundColor: 'white' },
     badge: { backgroundColor: 'rgb(219, 31, 38)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginBottom: 15 },
     badgeText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
     headerTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, color: '#333', textAlign: 'center', paddingHorizontal: 20 },
     dateText: { fontSize: 13, color: '#888' },
     container: { width: '100%', alignItems: 'center', paddingHorizontal: 30 },
-    contentBox: { width: '100%', padding: 20, backgroundColor: '#f9f9f9', borderRadius: 10, marginBottom: 20, alignItems: 'center' },
+    contentBox: { width: '100%', padding: 10, backgroundColor: '#f9f9f9', borderRadius: 10, marginBottom: 20, alignItems: 'center' },
     contentText: { fontSize: 16, color: '#555', lineHeight: 24, textAlign: 'center', marginBottom: 20 },
     linkButton: { flexDirection: 'row', backgroundColor: '#333', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center', gap: 8 },
     linkButtonText: { color: '#fff', fontWeight: '600' },
-    bookmarkBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff', gap: 8, marginBottom: 10 },
+    bookmarkBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5
+        , paddingHorizontal: 20, borderRadius: 30, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff', gap: 8, marginBottom: 5 },
     bookmarkBtnActive: { backgroundColor: '#FFD700', borderColor: '#FFD700' },
     btnText: { fontSize: 16, fontWeight: '600', color: '#333' },
     

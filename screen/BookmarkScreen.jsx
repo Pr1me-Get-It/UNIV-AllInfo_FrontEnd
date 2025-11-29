@@ -42,7 +42,7 @@ export default function BookmarkScreen({ navigation }) {
     // 👇 [추가] 비로그인 시 안내 화면
     if (!isLoggedIn) {
         return (
-            <View style={[styles.container, styles.center]}>
+            <View style={styles.loginContainer}> 
                 <Ionicons name="lock-closed-outline" size={60} color="#ccc" style={{ marginBottom: 20 }} />
                 <Text style={styles.msg}>로그인이 필요한 기능입니다.</Text>
                 <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('All')}>
@@ -115,9 +115,15 @@ const styles = StyleSheet.create({
     
     emptyBox: { padding: 40, alignItems: 'center' },
     emptyText: { color: '#999', fontSize: 16 },
-
+    
+    loginContainer: { 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        backgroundColor: '#f5f5f5' // 배경색만 유지
+    },
     // 👇 [추가] 로그인 안내 스타일 (CalendarScreen과 동일)
-    msg: { fontSize: 16, color: '#888', marginBottom: 15 },
+    msg: { fontSize: 16, color: 'rgba(136, 136, 136, 1)', marginBottom: 15 },
     btn: { backgroundColor: '#333', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
     btnText: { color: '#fff', fontWeight: '600' },
 });
