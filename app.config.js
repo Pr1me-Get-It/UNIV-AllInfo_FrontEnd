@@ -5,7 +5,7 @@ export default {
     slug: "univ-allinfo",
     version: "0.4.3",
     orientation: "portrait",
-    icon: "./assets/knu.png",
+    icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     splash: {
       image: "./assets/splash.png",
@@ -21,6 +21,7 @@ export default {
     },
     android: {
         package: "com.univallinfo.app",
+        googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
