@@ -2,11 +2,11 @@ import React, { useState, useCallback, useMemo, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars'; 
-import { getToken } from '../utils/storage';
 import { Ionicons } from '@expo/vector-icons';
+import { GoogleSignin } from '@react-native-google-signin/google-signin'; 
+import { getToken, saveToken, removeToken } from '../utils/storage';
 import { AlramContext } from '../data/Alram';
 
-// [설정] 달력 한글화
 LocaleConfig.locales['kr'] = {
   monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
   monthNamesShort: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
@@ -16,108 +16,122 @@ LocaleConfig.locales['kr'] = {
 };
 LocaleConfig.defaultLocale = 'kr';
 
-// 개발자 모드용 상수 및 가짜 데이터
 const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
-const TODAY_STR = new Date().toISOString().split('T')[0]; // 오늘 날짜
-
-const MOCK_EVENTS = [
-  {
-    id: 'dev-1',
-    summary: '[개발] 캡스톤 디자인 미팅',
-    location: 'IT-4호관',
-    start: { dateTime: `${TODAY_STR}T10:00:00` }, // 오늘 시간 지정 일정
-  },
-  {
-    id: 'dev-2',
-    summary: '[개발] 백엔드 API 연동 테스트',
-    start: { date: TODAY_STR }, // 오늘 종일 일정
-  },
-  {
-    id: 'dev-3',
-    summary: '[개발] 중간고사 기간',
-    start: { date: '2025-04-20' },
-  },
-  {
-    id: 'dev-4',
-    summary: '[개발] 여름방학 시작',
-    start: { date: '2025-06-21' },
-  }
-];
+const TODAY_STR = new Date().toISOString().split('T')[0];
 
 export default function CalendarScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const { mockEvents } = useContext(AlramContext);
+  const { mockEvents, userEmail } = useContext(AlramContext);
   const [selectedDate, setSelectedDate] = useState(TODAY_STR);
 
   useFocusEffect(
     useCallback(() => {
-      fetchCalendarEvents();
-    }, [mockEvents])
+      if (userEmail) {
+        setIsLoggedIn(true);
+        fetchCalendarEvents();
+      } else {
+        setIsLoggedIn(false);
+        setEvents([]);
+      }
+    }, [userEmail, mockEvents])
   );
 
-  const fetchCalendarEvents = async () => {
-    setLoading(true);
+  const fetchCalendarEvents = async (retryCount = 0) => {
+    if (retryCount === 0) setLoading(true);
+    
     try {
-      const token = await getToken();
-      if (!token) {
+      const storedToken = await getToken();
+      
+      if (!storedToken) {
         setIsLoggedIn(false);
+        setEvents([]);
         setLoading(false);
         return;
       }
 
-      setIsLoggedIn(true);
-
-      //개발자 토큰이면 가짜 데이터 사용
-      if (token === DEV_TOKEN) {
-        console.log("⚡ [Calendar] 개발자 모드: 가짜 일정 로드 (Context)");
-        setEvents(mockEvents); // Context에 있는 데이터를 그대로 사용
+      if (storedToken === DEV_TOKEN) {
+        console.log("⚡ [Calendar] 개발자 모드");
+        setEvents(mockEvents); 
         setLoading(false);
         return;
       }
 
-      // (일반 사용자) 구글 캘린더 API 호출
+      // 1. 현재 사용 가능한 토큰 가져오기
+      let accessToken = storedToken;
+      try {
+          const tokens = await GoogleSignin.getTokens();
+          if (tokens.accessToken) {
+              accessToken = tokens.accessToken;
+          }
+      } catch (e) {}
+
+      console.log(`📅 캘린더 조회 시도 (${retryCount + 1}회차)...`);
+
       const timeMin = new Date('2025-01-01T00:00:00Z').toISOString();
       const timeMax = new Date('2025-12-31T23:59:59Z').toISOString();
 
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&orderBy=startTime&singleEvents=true&maxResults=2500`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
         }
       );
 
       if (response.ok) {
         const data = await response.json();
         setEvents(data.items || []);
+        console.log("✅ 캘린더 로드 성공!");
       } else {
-        console.log('캘린더 조회 실패:', response.status);
+        console.log(`❌ 캘린더 에러: ${response.status}`);
+
+        // 🚨 2. 401 에러(권한 없음) 발생 시 자동 복구 로직
+        if (response.status === 401 && retryCount < 2) {
+            console.log("🔄 토큰 만료/오류 감지. 캐시 삭제 후 재발급 시도...");
+            
+            try {
+                // (1) 기존 캐시된 토큰 제거 (이게 중요합니다!)
+                await GoogleSignin.clearCachedAccessToken(accessToken);
+                
+                // (2) 조용히 재로그인해서 새 토큰 발급
+                const userInfo = await GoogleSignin.signInSilently();
+                const newTokens = await GoogleSignin.getTokens();
+                
+                if (newTokens.accessToken) {
+                    await saveToken(newTokens.accessToken); // 저장소 업데이트
+                    console.log("✨ 새 토큰 발급 완료. 재시도합니다.");
+                    return fetchCalendarEvents(retryCount + 1); // 재귀 호출
+                }
+            } catch (refreshError) {
+                console.log("⚠️ 토큰 갱신 실패:", refreshError);
+            }
+        }
+        
+        // 복구 실패 시 빈 화면 유지 (로그아웃은 안 시킴)
+        setEvents([]);
       }
     } catch (e) {
-      console.error('캘린더 에러:', e);
+      console.error('캘린더 로직 에러:', e);
     } finally {
-      setLoading(false);
+      if (retryCount === 0) setLoading(false);
     }
   };
 
   const markedDates = useMemo(() => {
     const marks = {};
-    
     events.forEach(event => {
       const start = event.start.date || event.start.dateTime?.split('T')[0];
       if (start) {
         marks[start] = { marked: true, dotColor: 'rgb(219, 31, 38)' };
       }
     });
-
     marks[selectedDate] = {
       ...(marks[selectedDate] || {}),
       selected: true,
       selectedColor: 'rgb(219, 31, 38)',
       disableTouchEvent: true
     };
-
     return marks;
   }, [events, selectedDate]);
 
@@ -153,7 +167,6 @@ export default function CalendarScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* 1. 달력 UI */}
       <Calendar
         current={selectedDate}
         onDayPress={day => setSelectedDate(day.dateString)}
@@ -175,13 +188,12 @@ export default function CalendarScreen({ navigation }) {
         }}
       />
 
-      {/* 2. 일정 리스트 */}
       <View style={styles.listContainer}>
         <Text style={styles.listHeader}>{selectedDate} 일정</Text>
         <FlatList
           data={filteredEvents}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           ListEmptyComponent={
             <Text style={styles.emptyText}>일정이 없습니다.</Text>
           }
@@ -209,7 +221,7 @@ const styles = StyleSheet.create({
     flex: 1, 
     justifyContent: 'center', 
     alignItems: 'center',
-    backgroundColor: '#f5f5f5' // 배경색 명시
+    backgroundColor: '#f5f5f5'
   },
   listContainer: { 
     flex: 1, 

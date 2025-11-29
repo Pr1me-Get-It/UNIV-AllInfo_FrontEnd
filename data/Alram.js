@@ -1,7 +1,10 @@
+/* data/Alram.js */
 import React, { createContext, useState, useCallback, useEffect } from 'react';
-import { getToken, saveData, getData } from '../utils/storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { api } from '../api/client';
+import { getToken, saveToken, removeToken, saveData, getData } from '../utils/storage';
+import { registerForPushNotificationsAsync } from '../utils/notifications';
 
-// 초기 가짜 데이터
 const TODAY_STR = new Date().toISOString().split('T')[0];
 const INITIAL_MOCK_EVENTS = [
     {
@@ -28,8 +31,8 @@ export const AlramContext = createContext({
     markAsRead: () => {}, 
     toggleBookmark: () => {},
     addMockEvent: () => {},
-    loginUser: () => {}, // 로그인 시 호출
-    logoutUser: () => {}, // 로그아웃 시 호출
+    loginUser: () => {}, 
+    logoutUser: () => {},
 });
 
 export const AlramProvider = ({ children }) => {
@@ -38,13 +41,12 @@ export const AlramProvider = ({ children }) => {
   const [bookmarkStatus, setBookmarkStatus] = useState({});
   const [mockEvents, setMockEvents] = useState(INITIAL_MOCK_EVENTS);
 
-  // 이메일을 저장소 키로 변환 (특수문자 제거)
   const getSafeKey = (email, type) => {
+    if (!email) return '';
     const safeEmail = email.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     return `${type}_${safeEmail}`;
   };
 
-  // 📂 사용자 데이터 불러오기 (북마크, 읽음 상태)
   const loadUserData = async (email) => {
     if (!email) return;
     try {
@@ -56,62 +58,105 @@ export const AlramProvider = ({ children }) => {
             getData(readKey)
         ]);
 
-        if (savedBookmarks) setBookmarkStatus(savedBookmarks);
-        else setBookmarkStatus({});
-
-        if (savedReads) setReadStatus(savedReads);
-        else setReadStatus({});
-
+        setBookmarkStatus(savedBookmarks || {});
+        setReadStatus(savedReads || {});
         console.log(`📂 [Alram] ${email} 데이터 로드 완료`);
     } catch (e) {
         console.error("데이터 로드 실패:", e);
     }
   };
 
-  // 👤 로그인 액션
-  const loginUser = useCallback(async (email) => {
-    console.log(`👤 [Alram] 로그인 처리: ${email}`);
-    setUserEmail(email);
-    await loadUserData(email);
+  // 👇 앱 켜질 때 실행되는 핵심 로직
+  useEffect(() => {
+    const initializeAuth = async () => {
+      // 1. 구글 설정
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
+        offlineAccess: true,
+        forceCodeForRefreshToken: true,
+        scopes: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'], 
+      });
+
+      const token = await getToken();
+      if (!token) return;
+
+      // 2. 개발자 모드 복구
+      if (token === DEV_TOKEN) {
+        console.log("⚡ [Alram] 개발자 모드 복구");
+        setUserEmail(DEV_EMAIL);
+        await loadUserData(DEV_EMAIL);
+        return;
+      }
+
+      // 3. 일반 구글 로그인 복구 (Silent Sign-In)
+      try {
+        const userInfo = await GoogleSignin.signInSilently();
+        if (userInfo && userInfo.data && userInfo.data.user) {
+           const email = userInfo.data.user.email;
+           setUserEmail(email);
+           await loadUserData(email);
+
+           // 토큰 최신화
+           const { accessToken } = await GoogleSignin.getTokens();
+           if (accessToken) await saveToken(accessToken);
+
+           // 4. 백엔드 동기화 (푸시 토큰 포함)
+           syncUserToBackend(email);
+        }
+      } catch (e) {
+        console.log("❌ 세션 복구 실패 (재로그인 필요):", e.code);
+        // 세션 만료 시 로그아웃 처리
+        await logoutUser(); 
+      }
+    };
+
+    initializeAuth();
   }, []);
 
-  // 👋 로그아웃 액션
-  const logoutUser = useCallback(() => {
-    console.log("👋 [Alram] 로그아웃");
+  const syncUserToBackend = async (email) => {
+      let pushToken = null;
+      try {
+         pushToken = await registerForPushNotificationsAsync();
+      } catch(e) {}
+
+      try {
+        console.log(`📡 백엔드 동기화: ${email}`);
+        await api.post('/user/register', {
+            email: email,
+            expoPushToken: pushToken || null
+        });
+      } catch (e) {
+          console.error("백엔드 동기화 에러:", e);
+      }
+  };
+
+  const loginUser = useCallback(async (email) => {
+    console.log(`👤 [Alram] 로그인 진입: ${email}`);
+    setUserEmail(email);
+    await loadUserData(email);
+    // 로그인 직후에도 백엔드 동기화 시도
+    if (email !== DEV_EMAIL) syncUserToBackend(email);
+  }, []);
+
+  const logoutUser = useCallback(async () => {
+    console.log("👋 [Alram] 로그아웃 처리");
+    try {
+        await removeToken();
+        if (userEmail && userEmail !== DEV_EMAIL) {
+             try {
+                await GoogleSignin.revokeAccess();
+                await GoogleSignin.signOut();
+             } catch(e) {}
+        }
+    } catch (e) {}
+    
     setUserEmail(null);
     setBookmarkStatus({});
     setReadStatus({});
-  }, []);
+  }, [userEmail]);
 
-  // 앱 시작 시 자동 로그인 체크
-  useEffect(() => {
-    const init = async () => {
-      const token = await getToken();
-      if (token) {
-        if (token === DEV_TOKEN) {
-            loginUser(DEV_EMAIL);
-            return;
-        }
-        try {
-          const res = await fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const userInfo = await res.json();
-            loginUser(userInfo.email);
-          }
-        } catch (e) {
-           console.error("자동 로그인 실패:", e);
-        }
-      }
-    };
-    init();
-  }, [loginUser]);
-
-  // 📖 읽음 처리 (로컬 저장)
   const markAsRead = useCallback((id, isRead = true) => {
-    if (!userEmail) return; // 비로그인 시 저장 안 함 (옵션)
-    
+    if (!userEmail) return; 
     setReadStatus(prev => {
       const newStatus = { ...prev, [id]: isRead };
       saveData(getSafeKey(userEmail, 'read'), newStatus);
@@ -119,21 +164,15 @@ export const AlramProvider = ({ children }) => {
     });
   }, [userEmail]);
 
-  // ⭐ 북마크 토글 (로컬 저장)
   const toggleBookmark = useCallback((item) => {
     if (!userEmail) {
         alert("로그인이 필요합니다.");
         return;
     }
-
     setBookmarkStatus(prev => {
       const newStatus = { ...prev };
-      if (newStatus[item.id]) {
-        delete newStatus[item.id]; // 삭제
-      } else {
-        newStatus[item.id] = item; // 추가
-      }
-      // 저장
+      if (newStatus[item.id]) delete newStatus[item.id]; 
+      else newStatus[item.id] = item; 
       saveData(getSafeKey(userEmail, 'bookmark'), newStatus);
       return newStatus;
     });

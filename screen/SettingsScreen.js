@@ -19,7 +19,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { saveToken, getToken, removeToken } from '../utils/storage';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { api } from '../api/client';
-import { AlramContext } from '../data/Alram'; // Context import
+import { AlramContext } from '../data/Alram'; 
 
 const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_USER = {
@@ -34,7 +34,7 @@ export default function SettingsScreen() {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // Context 가져오기
+  // Context에서 로그인/로그아웃 함수 가져오기
   const { loginUser, logoutUser } = useContext(AlramContext);
 
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
@@ -47,17 +47,20 @@ export default function SettingsScreen() {
   const [nightPushOnly, setNightPushOnly] = useState(false);
   const [marketingEnabled, setMarketingEnabled] = useState(false);
 
+  // 1. 초기 설정: 구글 로그인 설정 & 자동 로그인 체크
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
       offlineAccess: true,
       forceCodeForRefreshToken: true,
+      // 캘린더 권한을 포함한 스코프 설정
       scopes: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'], 
     });
 
     checkLoginStatus();
   }, []);
 
+  // 앱 실행 시 로그인 상태 확인 (자동 로그인)
   const checkLoginStatus = async () => {
     setLoading(true);
     try {
@@ -72,46 +75,52 @@ export default function SettingsScreen() {
       // 1. 개발자 모드 확인
       if (token === DEV_TOKEN) {
         setUserInfo(DEV_USER);
-        loginUser(DEV_USER.email);
+        loginUser(DEV_USER.email); // Context 동기화
         setLoading(false);
         return;
       }
 
-      // 2. 구글 네이티브 로그인 복구 (조용히 로그인)
-      const response = await GoogleSignin.signInSilently();
-      
-      if (response && response.data && response.data.user) {
-         const user = response.data.user;
-         // 🚨 [수정] userInfo 객체 생성
-         const userObj = {
-            email: user.email,
-            name: user.name,
-            picture: user.photo, 
-         };
-         
-         setUserInfo(userObj);
-         loginUser(user.email); // Context에 알림
-         
-         // 토큰 갱신 및 저장 (null 체크)
-         const { accessToken } = await GoogleSignin.getTokens();
-         if (accessToken) {
-            await saveToken(accessToken);
-         }
-      } else {
-         setUserInfo(null);
+      // 2. 구글 네이티브 자동 로그인 (권한/세션 복구)
+      try {
+        const response = await GoogleSignin.signInSilently();
+        
+        if (response && response.data && response.data.user) {
+           const user = response.data.user;
+           const userObj = {
+              email: user.email,
+              name: user.name,
+              picture: user.photo, 
+           };
+           
+           setUserInfo(userObj);
+           loginUser(user.email); // Context 동기화
+           
+           // 토큰 갱신 및 재저장
+           const { accessToken } = await GoogleSignin.getTokens();
+           if (accessToken) {
+              await saveToken(accessToken);
+           }
+        } else {
+           // 로그인 정보가 없으면 초기화
+           throw new Error("No user data");
+        }
+      } catch (e) {
+        console.log("Silent login failed (session expired):", e.code);
+        // 세션 만료 시 로그아웃 처리
+        setUserInfo(null);
+        await removeToken();
+        logoutUser(); 
       }
 
     } catch (e) {
-      console.log("Silent login failed (will try logout):", e.code);
-      // 토큰이 있는데 로그인이 안 되면 만료된 것이므로 로그아웃 처리
+      console.log("Login check error:", e);
       setUserInfo(null);
-      await removeToken();
-      logoutUser();
     } finally {
       setLoading(false);
     }
   };
 
+  // 구글 로그인 버튼 핸들러
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
@@ -127,9 +136,8 @@ export default function SettingsScreen() {
         };
 
         setUserInfo(newUserInfo);
-        loginUser(newUserInfo.email); // Context에 알림
+        loginUser(newUserInfo.email); // Context 동기화
 
-        // 토큰 저장
         const { accessToken } = await GoogleSignin.getTokens();
         if (accessToken) {
             await saveToken(accessToken);
@@ -137,21 +145,19 @@ export default function SettingsScreen() {
 
         console.log("구글 로그인 성공:", newUserInfo.email);
         
-        // 백엔드 유저 등록 (선택)
+        // 백엔드에 유저 등록 (선택 사항: 키워드 기능 등을 위해)
         try {
             await api.post('/user/register', { 
                 email: newUserInfo.email, 
                 expoPushToken: null 
             });
-        } catch(e) {
-           // 백엔드 등록 실패는 무시 (이미 등록된 유저일 수 있음)
-        }
+        } catch(e) {}
       } 
 
     } catch (error) {
       console.error("Login Error:", error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // 취소됨
+        // 사용자 취소
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         Alert.alert("오류", "Google Play 서비스를 사용할 수 없습니다.");
       } else {
@@ -162,17 +168,15 @@ export default function SettingsScreen() {
     }
   };
 
-  // 개발자 로그인
+  // 개발자 모드 로그인 로직
   const performDevLogin = async () => {
     setLoading(true);
     try {
       await saveToken(DEV_TOKEN);
       setUserInfo(DEV_USER);
-      loginUser(DEV_USER.email); // Context에 알림
+      loginUser(DEV_USER.email); // Context 동기화
 
       console.log(`📡 개발자 계정 등록: ${DEV_USER.email}`);
-      
-      // 백엔드 등록 (개발자 계정도 키워드 기능을 위해 필요할 수 있음)
       try {
          await api.post('/user/register', { 
            email: DEV_USER.email, 
@@ -199,19 +203,35 @@ export default function SettingsScreen() {
     }
   };
 
+  // 로그아웃 로직 (권한 초기화 포함)
   const executeLogout = async () => {
     setLoading(true);
     try {
-      await GoogleSignin.signOut(); 
-      await removeToken();
+      const token = await getToken();
       
-      setUserInfo(null);
-      setPushEnabled(false);
-      logoutUser(); // Context 비우기
-      
+      // 1. 구글 권한 연결 끊기 (Revoke) - 재로그인 시 권한 묻게 함
+      try {
+        await GoogleSignin.revokeAccess(); 
+        await GoogleSignin.signOut();
+      } catch (e) {
+        console.log("SignOut/Revoke error (ignored):", e);
+      }
+
+      // 2. 기존 방식의 토큰 만료 요청 (보조)
+      if (token && token !== DEV_TOKEN) {
+        fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        }).catch(() => {});
+      }
     } catch (e) {
       console.error("로그아웃 에러:", e);
     } finally {
+      // 3. 로컬 데이터 및 상태 초기화
+      await removeToken();
+      setUserInfo(null);
+      setPushEnabled(false);
+      logoutUser(); // Context 상태 초기화
       setLoading(false);
     }
   };
@@ -283,8 +303,9 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 120 }}>
+    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 140 }}>
       
+      {/* 개발자 모드 비밀번호 모달 */}
       <Modal
         visible={isPasswordModalVisible}
         transparent={true}
