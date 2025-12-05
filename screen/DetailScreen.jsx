@@ -222,7 +222,7 @@ export default function DetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
     // ... (기존 스타일 유지) ...
-    scrollContainer: { flexGrow: 1, backgroundColor: 'white' },
+    scrollContainer: { flexGrow: 1, backgroundColor: 'white',paddingBottom: 60 },
     wrapper: { flex: 1, paddingTop: 20, alignItems: 'center', backgroundColor: 'white' },
     badge: { backgroundColor: 'rgb(219, 31, 38)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginBottom: 15 },
     badgeText: { color: 'white', fontWeight: 'bold', fontSize: 14 },

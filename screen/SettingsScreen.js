@@ -23,7 +23,7 @@ import { AlramContext } from '../data/Alram';
 
 const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_USER = {
-  email: "test@knu.ac.kr",
+  email: "TheZZok@knuThe.ac.kr",
   name: "개발자",
   picture: "https://cdn-icons-png.flaticon.com/512/25/25231.png",
 };
