@@ -19,7 +19,7 @@ const INITIAL_MOCK_EVENTS = [ //
     },
 ];
 
-export const AlramContext = createContext({
+export const AlarmContext = createContext({
     readStatus: {},
     bookmarkStatus: {},     
     mockEvents: [], 
@@ -28,39 +28,30 @@ export const AlramContext = createContext({
     addMockEvent: () => {},
 });
 
-export const AlramProvider = ({ children }) => {
+export const AlarmProvider = ({ children }) => {
   // AuthContext로부터 현재 로그인된 유저의 이메일을 실시간으로 가져옵니다.
   const { userEmail } = useAuth(); 
-  
   const [readStatus, setReadStatus] = useState({});
   const [bookmarkStatus, setBookmarkStatus] = useState({});
   const [mockEvents, setMockEvents] = useState(INITIAL_MOCK_EVENTS);
 
-  // 저장 키 생성 유틸 (기존 로직 유지)
-  const getSafeKey = (email, type) => {
-    if (!email) return '';
-    const safeEmail = email.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    return `${type}_${safeEmail}`;
-  };
-
   // 특정 유저의 로컬 데이터를 로드하는 함수
   const loadUserData = useCallback(async (email) => {
-  if (!email) return;
-  try {
-    // getSafeKey 함수 대신 상수의 헬퍼 함수 사용
-    const bookmarkKey = STORAGE_KEYS.BOOKMARK(email);
-    const readKey = STORAGE_KEYS.READ(email);
+    if (!email) return;
+    try {
+      const bookmarkKey = STORAGE_KEYS.BOOKMARK(email);
+      const readKey = STORAGE_KEYS.READ(email);
 
-    const [savedBookmarks, savedReads] = await Promise.all([
-      getData(bookmarkKey),
-      getData(readKey)
-    ]);
-    // ... 이하 동일
-  } catch (e) {
-    console.error("데이터 로드 실패:", e);
-  }
-}, []);
-
+      const [savedBookmarks, savedReads] = await Promise.all([
+        getData(bookmarkKey),
+        getData(readKey)
+      ]);
+      setBookmarkStatus(savedBookmarks || {});
+      setReadStatus(savedReads || {});
+    } catch (e) {
+      console.error("데이터 로드 실패:", e);
+    }
+  }, []);
   // 유저(userEmail)가 변경될 때마다(로그인/로그아웃/세션복구) 데이터를 새로 불러옵니다.
   useEffect(() => {
     loadUserData(userEmail);
@@ -86,18 +77,17 @@ export const AlramProvider = ({ children }) => {
       const newStatus = { ...prev };
       if (newStatus[item.id]) delete newStatus[item.id]; 
       else newStatus[item.id] = item; 
-      saveData(getSafeKey(userEmail, 'bookmark'), newStatus);
+      saveData(STORAGE_KEYS.BOOKMARK(userEmail), newStatus);
       return newStatus;
     });
   }, [userEmail]);
 
-  // 목업 이벤트 추가
   const addMockEvent = useCallback((newEvent) => {
     setMockEvents(prev => [...prev, newEvent]);
   }, []);
 
   return (
-    <AlramContext.Provider value={{ 
+    <AlarmContext.Provider value={{ 
         readStatus, 
         bookmarkStatus,
         mockEvents, 
@@ -106,6 +96,6 @@ export const AlramProvider = ({ children }) => {
         addMockEvent,
     }}>
       {children}
-    </AlramContext.Provider>
+    </AlarmContext.Provider>
   );
 };

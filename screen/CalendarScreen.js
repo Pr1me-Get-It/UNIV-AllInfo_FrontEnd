@@ -5,7 +5,8 @@ import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin'; 
 import { getToken, saveToken, removeToken } from '../utils/storage';
-import { AlramContext } from '../data/Alram';
+import { AlarmContext } from '../data/Alarm';
+import { useAuth } from '../context/AuthContext';
 
 LocaleConfig.locales['kr'] = {
   monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
@@ -23,8 +24,9 @@ export default function CalendarScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const { mockEvents, userEmail } = useContext(AlramContext);
   const [selectedDate, setSelectedDate] = useState(TODAY_STR);
+  const { userEmail } = useAuth();
+  const { mockEvents } = useContext(AlarmContext) || {};
 
   useFocusEffect(
     useCallback(() => {

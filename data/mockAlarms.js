@@ -1,4 +1,4 @@
-export const ALRAM_DATA = [
+export const ALARM_DATA = [
     { id: '1', title: '학교 공지사항' , image: require('../assets/knu.png')},
     { id: '2', title: '학과 행사 안내', image: require('../assets/knu.png') },
     { id: '3', title: '장학금 신청 알림', image: require('../assets/knu.png') },

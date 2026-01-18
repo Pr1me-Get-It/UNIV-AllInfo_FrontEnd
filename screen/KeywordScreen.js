@@ -15,7 +15,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
-import { AlramContext } from '../data/Alram'; // Context 사용
+import { AlarmContext } from '../data/Alarm'; // Context 사용
 
 // 데이터 그룹 분리
 const DEPARTMENTS = [
@@ -42,7 +42,7 @@ export default function KeywordScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   
   // Context에서 현재 로그인된 이메일 가져오기
-  const { userEmail } = useContext(AlramContext);
+  const { userEmail } = useContext(AlarmContext);
 
   // 이메일이 변경되거나 화면이 포커스될 때 데이터 로드
   useFocusEffect(

@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 // 화면들 import
 import HomeScreen from './screen/HomeScreen';
 import DetailScreen from './screen/DetailScreen';
-import { AlramProvider } from './data/Alram';
+import { AuthProvider } from './context/AuthContext';
+import { AlarmProvider } from './data/Alarm';
 import BookmarkScreen from './screen/BookmarkScreen';
 import CalendarScreen from './screen/CalendarScreen';
 import SettingsScreen from './screen/SettingsScreen';
@@ -32,59 +33,59 @@ function MainTab() {
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
-          height: 100, 
+          height: 100,
           position: 'absolute',
           bottom: 0,
         }
       }}
     >
-      <Tab.Screen 
-        name="Home" 
-        component={HomeScreen} 
-        options={{ 
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
           title: '홈',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
-        }} 
+        }}
       />
-      <Tab.Screen 
+      <Tab.Screen
         name="Bookmark"
-        component={BookmarkScreen} 
-        options={{ 
+        component={BookmarkScreen}
+        options={{
           title: '북마크',
-          tabBarIcon: ({ color, size }) => ( <Ionicons name="star" size={size} color={color} /> ),
-        }} 
+          tabBarIcon: ({ color, size }) => (<Ionicons name="star" size={size} color={color} />),
+        }}
       />
-      <Tab.Screen 
+      <Tab.Screen
         name="Keyword"
-        component={KeywordScreen} 
-        options={{ 
+        component={KeywordScreen}
+        options={{
           title: '키워드',
-          tabBarIcon: ({ color, size }) => ( 
-            <Ionicons name="pricetags" size={size} color={color} /> 
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="pricetags" size={size} color={color} />
           ),
-        }} 
+        }}
       />
-      <Tab.Screen 
+      <Tab.Screen
         name="Calendar"
-        component={CalendarScreen} 
-        options={{ 
+        component={CalendarScreen}
+        options={{
           title: '캘린더',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar-outline" size={size} color={color} />
           ),
-        }} 
+        }}
       />
-      <Tab.Screen 
+      <Tab.Screen
         name="All"
-        component={SettingsScreen} 
-        options={{ 
+        component={SettingsScreen}
+        options={{
           title: '설정',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),
-        }} 
+        }}
       />
     </Tab.Navigator>
   );
@@ -92,21 +93,23 @@ function MainTab() {
 
 export default function App() {
   return (
-    <AlramProvider>
-      <NavigationContainer>
-        <Stack.Navigator>
-          <Stack.Screen 
-            name="MainTab" 
-            component={MainTab} 
-            options={{ headerShown: false }} 
-          />
-          <Stack.Screen 
-            name="Detail" 
-            component={DetailScreen}
-            options={{ title: '상세 정보' }} 
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </AlramProvider>
+    <AuthProvider>
+      <AlarmProvider>
+        <NavigationContainer>
+          <Stack.Navigator>
+            <Stack.Screen
+              name="MainTab"
+              component={MainTab}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Detail"
+              component={DetailScreen}
+              options={{ title: '상세 정보' }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </AlarmProvider>
+    </AuthProvider>
   );
 }

@@ -1,51 +1,27 @@
 // screen/BookmarkScreen.jsx
-import React, { useContext, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native'; // 👈 추가
+import React, { useContext } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AlramContext } from '../data/Alram';
-import { getToken } from '../utils/storage'; // 👈 추가
+import { AlarmContext } from '../data/Alarm';
+import { useAuth } from '../context/AuthContext';
 
 export default function BookmarkScreen({ navigation }) {
-    const context = useContext(AlramContext);
+    // 1. Context에서 필요한 데이터와 인증 상태를 가져옵니다.
+    const context = useContext(AlarmContext);
     const { bookmarkStatus } = context || { bookmarkStatus: {} };
     
-    // 👇 [추가] 로그인 상태 관리
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [loading, setLoading] = useState(true);
-
-    // 👇 [추가] 화면이 포커스될 때마다 로그인 여부 체크
-    useFocusEffect(
-        useCallback(() => {
-            checkLogin();
-        }, [])
-    );
-
-    const checkLogin = async () => {
-        setLoading(true);
-        const token = await getToken();
-        setIsLoggedIn(!!token); // 토큰이 있으면 true, 없으면 false
-        setLoading(false);
-    };
-
+    // AuthContext가 제공하는 isAuthenticated를 사용하여 로그인 여부를 판단합니다.
+    const { isAuthenticated } = useAuth();
+    
     const bookmarkedItems = bookmarkStatus ? Object.values(bookmarkStatus) : [];
 
-    // 👇 [추가] 로딩 중 표시
-    if (loading) {
-        return (
-            <View style={[styles.container, styles.center]}>
-                <ActivityIndicator size="large" color="rgb(219, 31, 38)" />
-            </View>
-        );
-    }
-
-    // 👇 [추가] 비로그인 시 안내 화면
-    if (!isLoggedIn) {
+    // 2. 비로그인 상태일 때의 처리 (중복된 checkLogin 로직 삭제)
+    if (!isAuthenticated) {
         return (
             <View style={styles.loginContainer}> 
                 <Ionicons name="lock-closed-outline" size={60} color="#ccc" style={{ marginBottom: 20 }} />
                 <Text style={styles.msg}>로그인이 필요한 기능입니다.</Text>
-                <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('All')}>
+                <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('Settings')}>
                     <Text style={styles.btnText}>로그인 하러 가기</Text>
                 </TouchableOpacity>
             </View>
@@ -93,12 +69,8 @@ export default function BookmarkScreen({ navigation }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, paddingTop: 60, backgroundColor: '#f5f5f5' },
-    // 👇 [추가] 중앙 정렬 스타일
-    center: { justifyContent: 'center', alignItems: 'center', paddingBottom: 100 }, 
-    
     headerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, marginLeft: 20 },
     headerText: { fontSize: 24, fontWeight: 'bold', marginLeft: 10, color: '#333' },
-    
     listContainer: { 
         flex: 1, 
         backgroundColor: 'white', 
@@ -112,17 +84,14 @@ const styles = StyleSheet.create({
     customIcon: { width: 40, height: 40, resizeMode: 'contain' },
     textWrapper: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     itemText: { fontSize: 16, color: '#333', fontWeight: '500', flex: 1, marginRight: 10 },
-    
     emptyBox: { padding: 40, alignItems: 'center' },
     emptyText: { color: '#999', fontSize: 16 },
-    
     loginContainer: { 
         flex: 1, 
         justifyContent: 'center', 
         alignItems: 'center', 
-        backgroundColor: '#f5f5f5' // 배경색만 유지
+        backgroundColor: '#f5f5f5'
     },
-    // 👇 [추가] 로그인 안내 스타일 (CalendarScreen과 동일)
     msg: { fontSize: 16, color: 'rgba(136, 136, 136, 1)', marginBottom: 15 },
     btn: { backgroundColor: '#333', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
     btnText: { color: '#fff', fontWeight: '600' },

@@ -3,14 +3,14 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AlramContext } from '../data/Alram';
+import { AlarmContext } from '../data/Alarm';
 import { api } from '../api/client';
-import { ALRAM_DATA } from '../data/mockAlrams';
+import { ALARM_DATA } from '../data/mockAlarms';
 
 const DEFAULT_IMAGE = require('../assets/knu.png');
 
 export default function HomeScreen({ navigation }) {
-    const { readStatus } = useContext(AlramContext) || { readStatus: {} };
+    const { readStatus } = useContext(AlarmContext) || { readStatus: {} };
     const safeStatus = readStatus || {};
 
     const [data, setData] = useState([]);
@@ -50,7 +50,7 @@ export default function HomeScreen({ navigation }) {
             console.error('공지사항 조회 실패 (목업 데이터 사용):', error);
             if (pageNum === 1) {
                 const mockList = Array.from({ length: 1 }).flatMap((_, i) =>
-                    ALRAM_DATA.map(item => ({
+                    ALARM_DATA.map(item => ({
                         ...item,
                         id: `mock-${i}-${item.id}`,
                         title: `[Test] ${item.title}`,

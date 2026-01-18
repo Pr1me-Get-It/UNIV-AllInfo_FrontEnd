@@ -19,7 +19,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { saveToken, getToken, removeToken } from '../utils/storage';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { api } from '../api/client';
-import { AlramContext } from '../data/Alram'; 
+import { useAuth } from '../context/AuthContext';
 
 const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_USER = {
@@ -35,7 +35,7 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
   
   // Context에서 로그인/로그아웃 함수 가져오기
-  const { loginUser, logoutUser } = useContext(AlramContext);
+  const { userEmail, loginUser, logoutUser, isAuthenticated } = useAuth();
 
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
@@ -129,20 +129,10 @@ export default function SettingsScreen() {
       
       if (response.data && response.data.user) {
         const user = response.data.user;
-        const newUserInfo = {
-            email: user.email,
-            name: user.name,
-            picture: user.photo, 
-        };
-
-        setUserInfo(newUserInfo);
-        loginUser(newUserInfo.email); // Context 동기화
+        await loginUser(user.email);
 
         const { accessToken } = await GoogleSignin.getTokens();
-        if (accessToken) {
-            await saveToken(accessToken);
-        }
-
+        if (accessToken) await saveToken(accessToken);
         console.log("구글 로그인 성공:", newUserInfo.email);
         
         // 백엔드에 유저 등록 (선택 사항: 키워드 기능 등을 위해)
@@ -155,13 +145,8 @@ export default function SettingsScreen() {
       } 
 
     } catch (error) {
-      console.error("Login Error:", error);
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // 사용자 취소
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert("오류", "Google Play 서비스를 사용할 수 없습니다.");
-      } else {
-        Alert.alert("오류", "로그인 실패: " + error.message);
+      if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
+        Alert.alert("오류", "로그인 중 문제가 발생했습니다.");
       }
     } finally {
       setLoading(false);
@@ -261,34 +246,19 @@ export default function SettingsScreen() {
     }
 
     setPushEnabled(value); 
-    
     if (value) {
-      let tokenData = null;
       try {
-        tokenData = await registerForPushNotificationsAsync();
-      } catch (err) {
-        console.log("푸시 토큰 에러:", err);
-        setPushEnabled(false);
-        return;
-      }
+        const tokenData = await registerForPushNotificationsAsync();
+        const expoPushToken = typeof tokenData === "string" ? tokenData : tokenData?.data;
 
-      const token = typeof tokenData === "string" ? tokenData : tokenData?.data;
-
-      if (!token) {
-        setPushEnabled(false);
-        return;
-      }
-
-      try {
-        const response = await api.post('/user/register', {
-          email: userInfo.email,
-          expoPushToken: token
-        });
-        Alert.alert("설정 완료", "푸시 알림이 설정되었습니다.");
+        if (expoPushToken) {
+          // 4. 직접 api.post 대신 서비스 함수 사용
+          await registerUser(userEmail, expoPushToken); 
+          Alert.alert("알림", "푸시 알림 설정이 완료되었습니다.");
+        }
       } catch (e) {
-        console.error("서버 등록 실패:", e);
         setPushEnabled(false);
-        Alert.alert("오류", "서버 등록 중 문제가 발생했습니다.");
+        // 에러 알림은 client.js의 인터셉터가 자동으로 띄워줍니다.
       }
     }
   };

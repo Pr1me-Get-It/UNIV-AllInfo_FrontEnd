@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Button, TouchableOpacity, Linking, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { AlramContext } from '../data/Alram';
+import { AlarmContext } from '../data/Alarm';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { getToken } from '../utils/storage';
@@ -10,7 +10,7 @@ const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
 export default function DetailScreen({ route, navigation }) {
     const params = route.params || {};
     const item = params.item || null; 
-    const context = useContext(AlramContext);
+    const context = useContext(AlarmContext);
     const { markAsRead, toggleBookmark, bookmarkStatus, addMockEvent } = context || {};
     const itemId = item ? item.id : null;
     

@@ -3,7 +3,6 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { registerUser } from '../api/userService'; // 1. 분리된 서비스 함수 임포트
 import { getToken, saveToken, removeToken } from '../utils/storage';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
-import { STORAGE_KEYS } from '../constants/storageKeys';
 import { AUTH_CONFIG } from '../constants/config';
 
 const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
@@ -58,17 +57,16 @@ export const AuthProvider = ({ children }) => {
 
   // 2. 직접적인 api.post 호출을 userService의 함수로 대체
   const syncUserToBackend = async (email) => {
-      let pushToken = null;
+      let expoPushToken = null;
       try {
-         pushToken = await registerForPushNotificationsAsync();
+         expoPushToken = await registerForPushNotificationsAsync();
       } catch(e) {
          console.warn("푸시 토큰 발급 실패:", e);
       }
 
       try {
         console.log(`📡 [Auth] 백엔드 동기화 시도: ${email}`);
-        // 중복 로직 제거: userService.js의 함수를 호출함
-        await registerUser(email, pushToken || null); 
+        await registerUser(email, expoPushToken || null); 
       } catch (e) {
           console.error("❌ [Auth] 백엔드 동기화 에러:", e);
       }
