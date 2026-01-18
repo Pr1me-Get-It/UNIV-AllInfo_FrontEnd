@@ -1,12 +1,13 @@
 // src/api/client.js
 import axios from "axios";
 import { getToken } from "../utils/storage";
+import { API_CONFIG } from '../constants/config';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 export const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 15000,
+  baseURL: process.env.EXPO_PUBLIC_API_BASE_URL,
+  timeout: API_CONFIG.TIMEOUT, 
   headers: { "Content-Type": "application/json" },
 });
 
