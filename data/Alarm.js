@@ -62,7 +62,7 @@ export const AlarmProvider = ({ children }) => {
     if (!userEmail) return; 
     setReadStatus(prev => {
       const newStatus = { ...prev, [id]: isRead };
-      saveData(getSafeKey(userEmail, 'read'), newStatus);
+      saveData(STORAGE_KEYS.READ(userEmail), newStatus);
       return newStatus;
     });
   }, [userEmail]);

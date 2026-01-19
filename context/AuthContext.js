@@ -1,6 +1,6 @@
 import React, { createContext, useState, useCallback, useEffect, useContext } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { registerUser } from '../api/userService'; // 1. 분리된 서비스 함수 임포트
+import { registerUser } from '../api/userService'; 
 import { getToken, saveToken, removeToken } from '../utils/storage';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { AUTH_CONFIG } from '../constants/config';
