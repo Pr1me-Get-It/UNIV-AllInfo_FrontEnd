@@ -1,4 +1,5 @@
-import React, { createContext, useState, useCallback, useEffect, useContext } from 'react';
+/* src/context/AuthContext.tsx */
+import React, { createContext, useState, useCallback, useEffect, useContext, ReactNode } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { registerUser } from '../api/userService'; 
 import { getToken, saveToken, removeToken } from '../utils/storage';
@@ -6,17 +7,46 @@ import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { AUTH_CONFIG } from '../constants/config';
 
 const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
-const DEV_EMAIL = AUTH_CONFIG.DEV_EMAIL
+const DEV_EMAIL = AUTH_CONFIG.DEV_EMAIL;
 
-export const AuthContext = createContext({
+// 1. Context 데이터 타입 정의
+interface AuthContextType {
+  userEmail: string | null;
+  isAuthenticated: boolean;
+  loginUser: (email: string) => Promise<void>;
+  logoutUser: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextType>({
   userEmail: null,
   isAuthenticated: false,
-  loginUser: () => {},
-  logoutUser: () => {},
+  loginUser: async () => {},
+  logoutUser: async () => {},
 });
 
-export const AuthProvider = ({ children }) => {
-  const [userEmail, setUserEmail] = useState(null);
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // 백엔드 동기화 로직
+  const syncUserToBackend = async (email: string) => {
+    let expoPushToken: string | null = null;
+    try {
+      expoPushToken = await registerForPushNotificationsAsync();
+    } catch (e) {
+      console.warn("푸시 토큰 발급 실패:", e);
+    }
+
+    try {
+      console.log(`📡 [Auth] 백엔드 동기화 시도: ${email}`);
+      await registerUser(email, expoPushToken); 
+    } catch (e) {
+      console.error("❌ [Auth] 백엔드 동기화 에러:", e);
+    }
+  };
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -30,6 +60,7 @@ export const AuthProvider = ({ children }) => {
       const token = await getToken();
       if (!token) return;
 
+      // 개발자 모드 체크
       if (token === DEV_TOKEN) {
         setUserEmail(DEV_EMAIL);
         return;
@@ -37,16 +68,15 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const userInfo = await GoogleSignin.signInSilently();
-        if (userInfo?.data?.user) {
-           const email = userInfo.data.user.email;
+        const email = userInfo.data?.user.email;
+        
+        if (email) {
            setUserEmail(email);
-
-           const { accessToken } = await GoogleSignin.getTokens();
-           if (accessToken) await saveToken(accessToken);
-
-           syncUserToBackend(email);
+           const tokens = await GoogleSignin.getTokens();
+           if (tokens.accessToken) await saveToken(tokens.accessToken);
+           await syncUserToBackend(email);
         }
-      } catch (e) {
+      } catch (e: any) {
         console.log("❌ [Auth] 세션 복구 실패:", e.code);
         await logoutUser(); 
       }
@@ -55,35 +85,16 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  // 2. 직접적인 api.post 호출을 userService의 함수로 대체
-  const syncUserToBackend = async (email) => {
-      let expoPushToken = null;
-      try {
-         expoPushToken = await registerForPushNotificationsAsync();
-      } catch(e) {
-         console.warn("푸시 토큰 발급 실패:", e);
-      }
-
-      try {
-        console.log(`📡 [Auth] 백엔드 동기화 시도: ${email}`);
-        await registerUser(email, expoPushToken || null); 
-      } catch (e) {
-          console.error("❌ [Auth] 백엔드 동기화 에러:", e);
-      }
-  };
-
-  const loginUser = useCallback(async (email) => {
+  const loginUser = useCallback(async (email: string) => {
     setUserEmail(email);
     if (email !== DEV_EMAIL) {
       await syncUserToBackend(email);
     }
   }, []);
 
-  // 3. 로그아웃 로직 안정화 (Try-Finally 활용)
   const logoutUser = useCallback(async () => {
     console.log("👋 [Auth] 로그아웃 실행");
     try {
-        // 구글 세션 해제 시도
         if (userEmail && userEmail !== DEV_EMAIL) {
              try {
                 await GoogleSignin.revokeAccess();
@@ -93,7 +104,6 @@ export const AuthProvider = ({ children }) => {
              }
         }
     } finally {
-        // 네트워크 오류와 상관없이 로컬 토큰과 상태는 반드시 삭제
         await removeToken(); 
         setUserEmail(null);
     }
