@@ -12,7 +12,7 @@ import { AuthProvider } from './context/AuthContext';
 import { AlarmProvider } from './data/Alarm';
 import BookmarkScreen from './screen/BookmarkScreen';
 import CalendarScreen from './screen/CalendarScreen';
-import SettingsScreen from './screen/SettingsScreen';
+import ProfileScreen from './screen/ProfileScreen';
 import KeywordScreen from './screen/KeywordScreen';
 
 const Tab = createBottomTabNavigator();
@@ -20,7 +20,7 @@ const Stack = createNativeStackNavigator();
 
 function MainTab() {
   return (
-    <Tab.Navigator
+    <Tab.Navigator id="MainTabNavigator"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: 'rgb(219, 31, 38)',
@@ -79,11 +79,11 @@ function MainTab() {
       />
       <Tab.Screen
         name="All"
-        component={SettingsScreen}
+        component={ProfileScreen}
         options={{
-          title: '설정',
+          title: '내정보',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color} />
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
@@ -96,7 +96,7 @@ export default function App() {
     <AuthProvider>
       <AlarmProvider>
         <NavigationContainer>
-          <Stack.Navigator>
+          <Stack.Navigator id="MainTabNavigator">
             <Stack.Screen
               name="MainTab"
               component={MainTab}

@@ -7,3 +7,4 @@ export const ALARM_DATA = [
     { id: '6', title: '취업 특강 안내', image: require('../assets/knu.png') }, 
     { id: '7', title: '동아리 모집', image: require('../assets/knu.png') },
 ];
+

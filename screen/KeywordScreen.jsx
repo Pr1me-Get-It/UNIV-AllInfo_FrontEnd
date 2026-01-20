@@ -41,8 +41,6 @@ export default function KeywordScreen({ navigation }) {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
-  // Context에서 현재 로그인된 이메일 가져오기
   const { userEmail, isAuthenticated } = useAuth();
 
   // 이메일이 변경되거나 화면이 포커스될 때 데이터 로드
@@ -55,10 +53,6 @@ export default function KeywordScreen({ navigation }) {
       }
     }, [isAuthenticated, userEmail])
   );
-
-  if (!isAuthenticated) {
-    return <LoginPlaceholder />;
-  }
 
   const fetchKeywords = async (email) => {
     try {
@@ -114,6 +108,11 @@ export default function KeywordScreen({ navigation }) {
       Alert.alert("오류", "키워드 삭제 실패");
     }
   };
+
+
+  if (!isAuthenticated) {
+    return <LoginPlaceholder />;
+  }
 
   const renderItem = ({ item }) => (
     <View style={styles.registeredKeywordItem}>

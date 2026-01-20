@@ -1,37 +1,41 @@
 /* src/context/AuthContext.tsx */
 import React, { createContext, useState, useCallback, useEffect, useContext, ReactNode } from 'react';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { registerUser } from '../api/userService'; 
 import { getToken, saveToken, removeToken } from '../utils/storage';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { AUTH_CONFIG } from '../constants/config';
+import { Alert } from 'react-native';
 
 const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
 const DEV_EMAIL = AUTH_CONFIG.DEV_EMAIL;
 
-// 1. Context 데이터 타입 정의
+// 1. 사용자 정보 타입 정의
+interface UserInfo {
+  name: string | null;
+  email: string;
+  picture: string | null;
+}
+
+// 2. Context 데이터 타입 정의
 interface AuthContextType {
   userEmail: string | null;
+  userInfo: UserInfo | null; // UI 출력을 위한 유저 정보
   isAuthenticated: boolean;
-  loginUser: (email: string) => Promise<void>;
-  logoutUser: () => Promise<void>;
+  isLoading: boolean;
+  loginWithGoogle: () => Promise<void>; // 구글 로그인 로직 내장
+  loginDev: () => Promise<void>;       // 개발자 로그인 로직 내장
+  logout: () => Promise<void>;         // 통합 로그아웃
 }
 
-export const AuthContext = createContext<AuthContextType>({
-  userEmail: null,
-  isAuthenticated: false,
-  loginUser: async () => {},
-  logoutUser: async () => {},
-});
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // 백엔드 동기화 로직
+  // 백엔드 동기화 로직 (유지)
   const syncUserToBackend = async (email: string) => {
     let expoPushToken: string | null = null;
     try {
@@ -41,13 +45,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     try {
-      console.log(`📡 [Auth] 백엔드 동기화 시도: ${email}`);
       await registerUser(email, expoPushToken); 
+      console.log(`📡 [Auth] 백엔드 동기화 성공: ${email}`);
     } catch (e) {
       console.error("❌ [Auth] 백엔드 동기화 에러:", e);
     }
   };
 
+  // 초기화 및 자동 로그인 체크
   useEffect(() => {
     const initializeAuth = async () => {
       GoogleSignin.configure({
@@ -58,67 +63,115 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       const token = await getToken();
-      if (!token) return;
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
 
-      // 개발자 모드 체크
       if (token === DEV_TOKEN) {
         setUserEmail(DEV_EMAIL);
+        setUserInfo({ name: "개발자", email: DEV_EMAIL, picture: "https://cdn-icons-png.flaticon.com/512/25/25231.png" });
+        setIsLoading(false);
         return;
       }
 
       try {
-        const userInfo = await GoogleSignin.signInSilently();
-        const email = userInfo.data?.user.email;
-        
-        if (email) {
-           setUserEmail(email);
-           const tokens = await GoogleSignin.getTokens();
-           if (tokens.accessToken) await saveToken(tokens.accessToken);
-           await syncUserToBackend(email);
+        const silentResponse = await GoogleSignin.signInSilently();
+        if (silentResponse.data?.user) {
+          const { user } = silentResponse.data;
+          setUserEmail(user.email);
+          setUserInfo({ name: user.name || "", email: user.email, picture: user.photo });
+          
+          const tokens = await GoogleSignin.getTokens();
+          if (tokens.accessToken) await saveToken(tokens.accessToken);
+          await syncUserToBackend(user.email);
         }
-      } catch (e: any) {
-        console.log("❌ [Auth] 세션 복구 실패:", e.code);
-        await logoutUser(); 
+      } catch (e) {
+        console.log("❌ [Auth] 세션 복구 실패, 로그아웃 처리");
+        await logout(); 
+      } finally {
+        setIsLoading(false);
       }
     };
 
     initializeAuth();
   }, []);
 
-  const loginUser = useCallback(async (email: string) => {
-    setUserEmail(email);
-    if (email !== DEV_EMAIL) {
-      await syncUserToBackend(email);
-    }
-  }, []);
-
-  const logoutUser = useCallback(async () => {
-    console.log("👋 [Auth] 로그아웃 실행");
+  // 실제 구글 로그인 실행 함수
+  const loginWithGoogle = async () => {
+    setIsLoading(true);
     try {
-        if (userEmail && userEmail !== DEV_EMAIL) {
-             try {
-                await GoogleSignin.revokeAccess();
-                await GoogleSignin.signOut();
-             } catch(e) {
-                console.warn("구글 세션 해제 중 오류 (무시하고 진행):", e);
-             }
-        }
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      
+      if (response.data?.user) {
+        const { user } = response.data;
+        const { accessToken } = await GoogleSignin.getTokens();
+        
+        if (accessToken) await saveToken(accessToken);
+        setUserEmail(user.email);
+        setUserInfo({ name: user.name || "", email: user.email, picture: user.photo });
+        await syncUserToBackend(user.email);
+      }
+    } catch (error: any) {
+      if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
+        Alert.alert("로그인 오류", "구글 로그인에 실패했습니다.");
+      }
     } finally {
-        await removeToken(); 
-        setUserEmail(null);
+      setIsLoading(false);
+    }
+  };
+
+  // 개발자 로그인 실행 함수
+  const loginDev = async () => {
+    setIsLoading(true);
+    try {
+      await saveToken(DEV_TOKEN);
+      setUserEmail(DEV_EMAIL);
+      setUserInfo({ name: "개발자", email: DEV_EMAIL, picture: "https://cdn-icons-png.flaticon.com/512/25/25231.png" });
+      await syncUserToBackend(DEV_EMAIL);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 통합 로그아웃 함수
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      if (userEmail && userEmail !== DEV_EMAIL) {
+        try {
+          await GoogleSignin.revokeAccess();
+          await GoogleSignin.signOut();
+        } catch (e) {
+          console.warn("구글 세션 해제 중 오류 (무시):", e);
+        }
+      }
+    } finally {
+      await removeToken(); 
+      setUserEmail(null);
+      setUserInfo(null);
+      setIsLoading(false);
     }
   }, [userEmail]);
 
   return (
     <AuthContext.Provider value={{ 
         userEmail,
+        userInfo,
         isAuthenticated: !!userEmail,
-        loginUser,
-        logoutUser
+        isLoading,
+        loginWithGoogle,
+        loginDev,
+        logout
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("AuthProvider 내에서 useAuth를 사용해야 합니다.");
+  return context;
+};
