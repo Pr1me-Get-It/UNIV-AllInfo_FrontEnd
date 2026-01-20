@@ -4,6 +4,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { AlarmContext } from '../data/Alarm';
 import { useAuth } from '../context/AuthContext';
+import LoginPlaceholder from '../components/ui/LoginPlaceholder'
 
 export default function BookmarkScreen({ navigation }) {
     // 1. Context에서 필요한 데이터와 인증 상태를 가져옵니다.
@@ -11,22 +12,14 @@ export default function BookmarkScreen({ navigation }) {
     const { bookmarkStatus } = context || { bookmarkStatus: {} };
     
     // AuthContext가 제공하는 isAuthenticated를 사용하여 로그인 여부를 판단합니다.
-    const { isAuthenticated } = useAuth();
+    const { userEmail, isAuthenticated } = useAuth();
     
     const bookmarkedItems = bookmarkStatus ? Object.values(bookmarkStatus) : [];
 
-    // 2. 비로그인 상태일 때의 처리 (중복된 checkLogin 로직 삭제)
+    // 2. 비로그인 상태일 때의 처리
     if (!isAuthenticated) {
-        return (
-            <View style={styles.loginContainer}> 
-                <Ionicons name="lock-closed-outline" size={60} color="#ccc" style={{ marginBottom: 20 }} />
-                <Text style={styles.msg}>로그인이 필요한 기능입니다.</Text>
-                <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('Settings')}>
-                    <Text style={styles.btnText}>로그인 하러 가기</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
+    return <LoginPlaceholder />;
+  }
 
     return (
         <View style={styles.container}>

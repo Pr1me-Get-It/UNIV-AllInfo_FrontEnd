@@ -15,8 +15,9 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
-import { useAuth } from '../context/AuthContext'; // 👈 추가
+import { useAuth } from '../context/AuthContext'; 
 import { syncKeywords, deleteUserKeyword } from '../api/userService';
+import LoginPlaceholder from '../components/ui/LoginPlaceholder'
 // 데이터 그룹 분리
 const DEPARTMENTS = [
   { label: "컴퓨터", value: "CSE" },
@@ -54,6 +55,10 @@ export default function KeywordScreen({ navigation }) {
       }
     }, [isAuthenticated, userEmail])
   );
+
+  if (!isAuthenticated) {
+    return <LoginPlaceholder />;
+  }
 
   const fetchKeywords = async (email) => {
     try {
@@ -143,18 +148,6 @@ export default function KeywordScreen({ navigation }) {
     </View>
   );
 
-  // 비로그인 상태일 때 화면
-  if (!isAuthenticated) {
-    return (
-      <View style={styles.loginContainer}>
-        <Ionicons name="key-outline" size={60} color="#ccc" style={{ marginBottom: 20 }} />
-        <Text style={styles.msg}>로그인이 필요한 기능입니다.</Text>
-        <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('All')}>
-          <Text style={styles.btnText}>로그인 하러 가기</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.mainContainer}>
