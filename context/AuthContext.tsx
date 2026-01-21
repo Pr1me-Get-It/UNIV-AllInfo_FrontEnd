@@ -1,7 +1,7 @@
 /* src/context/AuthContext.tsx */
 import React, { createContext, useState, useCallback, useEffect, useContext, ReactNode } from 'react';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { registerUser } from '../api/userService'; 
+import { registerUser } from '../api/userService';
 import { getToken, saveToken, removeToken } from '../utils/storage';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { AUTH_CONFIG } from '../constants/config';
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      await registerUser(email, expoPushToken); 
+      await registerUser(email, expoPushToken);
       console.log(`📡 [Auth] 백엔드 동기화 성공: ${email}`);
     } catch (e) {
       console.error("❌ [Auth] 백엔드 동기화 에러:", e);
@@ -56,10 +56,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       GoogleSignin.configure({
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
         offlineAccess: true,
         forceCodeForRefreshToken: true,
-        scopes: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'], 
+        scopes: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'],
       });
 
       const token = await getToken();
@@ -81,14 +81,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const { user } = silentResponse.data;
           setUserEmail(user.email);
           setUserInfo({ name: user.name || "", email: user.email, picture: user.photo });
-          
+
           const tokens = await GoogleSignin.getTokens();
           if (tokens.accessToken) await saveToken(tokens.accessToken);
           await syncUserToBackend(user.email);
         }
       } catch (e) {
         console.log("❌ [Auth] 세션 복구 실패, 로그아웃 처리");
-        await logout(); 
+        await logout();
       } finally {
         setIsLoading(false);
       }
@@ -97,17 +97,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initializeAuth();
   }, []);
 
-  // 실제 구글 로그인 실행 함수
+  // 실제 구글 로그인 실행 함수 
   const loginWithGoogle = async () => {
     setIsLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
-      
+
       if (response.data?.user) {
         const { user } = response.data;
         const { accessToken } = await GoogleSignin.getTokens();
-        
+
         if (accessToken) await saveToken(accessToken);
         setUserEmail(user.email);
         setUserInfo({ name: user.name || "", email: user.email, picture: user.photo });
@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await saveToken(DEV_TOKEN);
       setUserEmail(DEV_EMAIL);
-      setUserInfo({ name: "개발자", email: DEV_EMAIL, picture: "https://cdn-icons-png.flaticon.com/512/25/25231.png" });
+      setUserInfo({ name: "개발자 ", email: DEV_EMAIL, picture: "https://cdn-icons-png.flaticon.com/512/25/25231.png" });
       await syncUserToBackend(DEV_EMAIL);
     } finally {
       setIsLoading(false);
@@ -137,33 +137,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 통합 로그아웃 함수
   const logout = useCallback(async () => {
+    console.log("📡 [AuthContext] logout 함수 시작"); // 추가
     setIsLoading(true);
     try {
       if (userEmail && userEmail !== DEV_EMAIL) {
+        console.log("📡 [AuthContext] 구글 세션 해제 시도 중..."); // 추가
         try {
           await GoogleSignin.revokeAccess();
           await GoogleSignin.signOut();
+          console.log("📡 [AuthContext] 구글 세션 해제 완료"); // 추가
         } catch (e) {
           console.warn("구글 세션 해제 중 오류 (무시):", e);
         }
       }
     } finally {
-      await removeToken(); 
+      console.log("📡 [AuthContext] 로컬 토큰 삭제 및 상태 초기화 시작"); // 추가
+      await removeToken();
       setUserEmail(null);
       setUserInfo(null);
       setIsLoading(false);
+      console.log("📡 [AuthContext] logout 완료 (상태 초기화됨)"); // 추가
     }
   }, [userEmail]);
 
   return (
-    <AuthContext.Provider value={{ 
-        userEmail,
-        userInfo,
-        isAuthenticated: !!userEmail,
-        isLoading,
-        loginWithGoogle,
-        loginDev,
-        logout
+    <AuthContext.Provider value={{
+      userEmail,
+      userInfo,
+      isAuthenticated: !!userEmail,
+      isLoading,
+      loginWithGoogle,
+      loginDev,
+      logout
     }}>
       {children}
     </AuthContext.Provider>

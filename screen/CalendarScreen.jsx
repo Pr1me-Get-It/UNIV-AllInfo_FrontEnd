@@ -41,9 +41,6 @@ export default function CalendarScreen({ navigation }) {
     }, [userEmail, mockEvents])
   );
 
-  if (!isAuthenticated) {
-    return <LoginPlaceholder />;
-  }
 
   const fetchCalendarEvents = async (retryCount = 0) => {
     if (retryCount === 0) setLoading(true);
@@ -151,7 +148,9 @@ export default function CalendarScreen({ navigation }) {
     if (!dateTime) return '종일';
     return new Date(dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
-
+   if (!isAuthenticated) {
+    return <LoginPlaceholder />;
+  }
   if (!loading && !isLoggedIn) {
     return (
       <View style={styles.loginContainer}>

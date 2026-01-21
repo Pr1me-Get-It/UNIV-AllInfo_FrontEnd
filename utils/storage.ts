@@ -76,6 +76,12 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
  * @returns 파싱된 데이터 객체 또는 null
  */
 export const getData = async <T>(key: string): Promise<T | null> => {
+  // 1. 키가 비어있는지 먼저 확인 (방어 코드)
+  if (!key || key.trim() === "") {
+    console.warn("⚠️ [Storage] 빈 키가 전달되어 조회를 중단합니다.");
+    return null;
+  }
+
   try {
     let result: string | null;
     if (Platform.OS === 'web') {
@@ -83,11 +89,7 @@ export const getData = async <T>(key: string): Promise<T | null> => {
     } else {
       result = await SecureStore.getItemAsync(key);
     }
-
-    if (result) {
-      return JSON.parse(result) as T;
-    }
-    return null;
+    // ... 이하 동일
   } catch (e) {
     console.error("Get data error:", e);
     return null;

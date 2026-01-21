@@ -15,23 +15,24 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { useAuth } from '../context/AuthContext'; 
+import { useAuth } from '../context/AuthContext';
 import { registerUser } from '../api/userService';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { useNavigation } from '@react-navigation/native';
 
 const PRIMARY = 'rgb(219, 31, 38)';
-const DEV_PASSWORD = "1557"; 
+const DEV_PASSWORD = "1557";
 
 export default function ProfileScreen() {
   const navigation = useNavigation(); //
-  
+
   // 1. 모든 훅(useState, useAuth 등)은 반드시 최상단에 모여야 합니다.
-  const { 
-    userEmail, 
-    isAuthenticated, 
-    loginUser, 
-    logoutUser 
+  const {
+    userEmail,
+    isAuthenticated,
+    loginWithGoogle, // 구글 로그인 함수
+    loginDev,        // 개발자 로그인 함수
+    logout
   } = useAuth(); //
 
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
@@ -48,18 +49,29 @@ export default function ProfileScreen() {
     if (passwordInput === DEV_PASSWORD) {
       setIsPasswordModalVisible(false);
       setPasswordInput('');
-      loginUser("test@knu.ac.kr"); 
+      loginDev();
     } else {
       Alert.alert("오류", "비밀번호가 틀렸습니다.");
     }
   };
 
   const handleLogout = () => {
-    Alert.alert("로그아웃", "로그아웃 하시겠습니까?", [
-      { text: "취소", style: "cancel" },
-      { text: "확인", onPress: logoutUser } 
-    ]);
-  };
+  console.log("🚩 [ProfileScreen] 로그아웃 버튼 클릭됨"); 
+  Alert.alert("로그아웃", "로그아웃 하시겠습니까?", [
+    { 
+      text: "취소", 
+      style: "cancel",
+      onPress: () => console.log("🚩 [ProfileScreen] 로그아웃 취소됨") 
+    },
+    { 
+      text: "확인", 
+      onPress: () => {
+        console.log("🚩 [ProfileScreen] 로그아웃 '확인' 누름 -> AuthContext.logout 호출"); 
+        logout(); 
+      } 
+    } 
+  ]);
+};
 
   const handlePushToggle = async (value) => {
     if (!isAuthenticated) {
@@ -139,11 +151,14 @@ export default function ProfileScreen() {
           <View style={styles.loginCard}>
             <Text style={styles.sectionTitle}>로그인</Text>
             <Text style={styles.sectionDescription}>학교 공지를 개인화해서 받고 캘린더를 연동하려면 로그인하세요.</Text>
-            <TouchableOpacity style={styles.googleLoginButton} onPress={() => Alert.alert("준비중", "구글 로그인")}>
+            <TouchableOpacity style={styles.googleLoginButton} onPress={loginWithGoogle}>
               <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.googleLoginButtonText}>Google로 로그인</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.googleLoginButton, { backgroundColor: '#333', marginTop: 10 }]} onPress={() => setIsPasswordModalVisible(true)}>
+            <TouchableOpacity
+              style={[styles.googleLoginButton, { backgroundColor: '#333', marginTop: 10 }]}
+              onPress={() => setIsPasswordModalVisible(true)} // 👈 비밀번호 모달을 띄우도록 수정
+            >
               <Ionicons name="code-slash" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.googleLoginButtonText}>개발자 로그인 (Test)</Text>
             </TouchableOpacity>

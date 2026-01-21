@@ -1,6 +1,6 @@
 /* src/constants/config.js */
 export const API_CONFIG = {
-  TIMEOUT: 7000,
+  TIMEOUT: 15000,
   // 배포 환경에 따라 BASE_URL을 여기서 조건부 관리할 수도 있습니다.
 };
 
