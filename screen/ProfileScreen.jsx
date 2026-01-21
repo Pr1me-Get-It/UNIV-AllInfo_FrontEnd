@@ -96,9 +96,6 @@ export default function ProfileScreen() {
     <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 140 }}>
       {/* 상단 액션 바 */}
       <View style={styles.topActionBar}>
-        <TouchableOpacity onPress={() => Alert.alert('검색', '준비 중')}>
-          <Ionicons name="search" size={26} color="#555" />
-        </TouchableOpacity>
         <TouchableOpacity onPress={() => Alert.alert('설정', '준비 중')}>
           <Ionicons name="settings" size={26} color="#555" />
         </TouchableOpacity>
@@ -166,9 +163,9 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/* 알림 설정 섹션 */}
+      {/*맞춤형 서비스 섹션*/ }
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>알림 설정</Text>
+        <Text style={styles.sectionTitle}>맞춤형 서비스</Text>
         <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Keyword')}>
           <View>
             <Text style={styles.menuLabel}>키워드 설정</Text>
@@ -176,10 +173,24 @@ export default function ProfileScreen() {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
+        <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Bookmark')}>
+          <View>
+            <Text style={styles.menuLabel}>즐겨 찾기</Text>
+            <Text style={styles.menuDescription}>내가 찜한 컨텐츠들.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        </TouchableOpacity>
+      </View>
+
+      {/* 알림 설정 섹션 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>알림 설정</Text>
         <SettingRow label="푸시 알림 받기" description="중요 공지, 마감 알림 등을 푸시로 받아요." value={pushEnabled} onValueChange={handlePushToggle} />
         <SettingRow label="알림 소리" description="알림이 도착했을 때 소리를 재생합니다." value={soundEnabled} onValueChange={setSoundEnabled} />
         <SettingRow label="야간에는 중요한 공지만" description="밤 11시 ~ 아침 7시에는 마감 임박/긴급 공지만 보내요." value={nightPushOnly} onValueChange={setNightPushOnly} />
       </View>
+
+      
 
       {/* 공지 · 홍보 섹션 */}
       <View style={styles.section}>
