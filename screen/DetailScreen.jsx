@@ -4,16 +4,28 @@ import { AlarmContext } from '../data/Alarm';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { getToken } from '../utils/storage';
+import { SOURCE_LABELS } from '../constants/labeltag';
 
 const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
+const stripHtml = (text) => {
+    if (!text) return '';
+    return text
+        .replace(/<[^>]*>?/gm, '') // <태그> 제거
+        .replace(/&nbsp;/g, ' ')   // 공백 엔티티 변환
+        .replace(/&amp;/g, '&')    // & 엔티티 변환
+        .replace(/&lt;/g, '<')     // < 엔티티 변환
+        .replace(/&gt;/g, '>');    // > 엔티티 변환
+};
 
 export default function DetailScreen({ route, navigation }) {
     const params = route.params || {};
-    const item = params.item || null; 
+    const item = params.item || null;
     const context = useContext(AlarmContext);
     const { markAsRead, toggleBookmark, bookmarkStatus, addMockEvent } = context || {};
     const itemId = item ? item.id : null;
-    
+    const sourcePrefix = item?.source ? item.source.split('/')[0] : '';
+    const displaySource = SOURCE_LABELS[sourcePrefix] || item?.source || '출처 없음';
+
     // 현재 북마크 여부 확인
     const isBookmarked = (bookmarkStatus && itemId) ? !!bookmarkStatus[itemId] : false;
 
@@ -32,7 +44,7 @@ export default function DetailScreen({ route, navigation }) {
     const fetchDeadline = async () => {
         setLoadingDeadline(true);
         try {
-            const response = await api.get(`/notice/deadline/${item.id}`);
+            const response = await api.get(`/notice/${item.id}/deadline`);
             if (response.data.isExistDeadline) {
                 setDeadlineInfo(response.data.deadline);
             }
@@ -63,7 +75,7 @@ export default function DetailScreen({ route, navigation }) {
     // ... (handleMarkUnread, openLink, addToCalendar 등 기존 함수 유지) ...
     const handleMarkUnread = () => {
         if (markAsRead) {
-            markAsRead(item.id, false); 
+            markAsRead(item.id, false);
             navigation.goBack();
         }
     };
@@ -76,7 +88,7 @@ export default function DetailScreen({ route, navigation }) {
 
     const addToCalendar = async () => {
         if (!deadlineInfo) return;
-        
+
         try {
             const token = await getToken();
             if (!token) {
@@ -89,7 +101,7 @@ export default function DetailScreen({ route, navigation }) {
                     id: `dev-${Date.now()}`,
                     summary: `[개발] ${item.title}`,
                     location: item.source,
-                    start: { 
+                    start: {
                         date: deadlineInfo.end || deadlineInfo.start
                     }
                 };
@@ -103,7 +115,7 @@ export default function DetailScreen({ route, navigation }) {
                 description: item.link + "\n\n(UNIV-AllInfo 앱에서 등록됨)",
                 location: item.source,
                 start: {
-                    date: deadlineInfo.start || deadlineInfo.end 
+                    date: deadlineInfo.start || deadlineInfo.end
                 },
                 end: {
                     date: deadlineInfo.end || deadlineInfo.start
@@ -137,20 +149,24 @@ export default function DetailScreen({ route, navigation }) {
             </View>
         );
     }
-    
+    const formatDate = (dateStr) => {
+        if (!dateStr) return null;
+        return dateStr.split('T')[0];
+    };
+
     return (
         <ScrollView contentContainerStyle={styles.scrollContainer}>
             <View style={styles.wrapper}>
                 <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{item.source || '공지'}</Text>
+                    <Text style={styles.badgeText}>{displaySource}</Text>
                 </View>
-                
-                <Text style={styles.headerTitle}>{item.title || '제목 없음'}</Text>
-                
+
+                <Text style={styles.title}>{stripHtml(item?.title) || '제목 없음'}</Text>
+
                 {/* 👇 [수정] 좋아요 숫자를 likeCount State로 표시 */}
                 <View style={styles.metaContainer}>
                     <Text style={styles.dateText}>게시일: {item.date || '날짜 정보 없음'}</Text>
-                    <Text style={styles.metaDivider}>|</Text> 
+                    <Text style={styles.metaDivider}>|</Text>
                     <View style={styles.metaLike}>
                         <Ionicons name="heart" size={14} color="#FF5252" />
                         <Text style={styles.metaLikeText}>{likeCount}</Text>
@@ -158,16 +174,17 @@ export default function DetailScreen({ route, navigation }) {
                 </View>
 
                 {/* ... 마감일 및 본문 ... */}
-                 {loadingDeadline ? (
-                    <ActivityIndicator size="small" color="rgb(219, 31, 38)" style={{marginBottom: 10}} />
-                ) : deadlineInfo ? (
+                {loadingDeadline ? (
+                    <ActivityIndicator size="small" color="rgb(219, 31, 38)" style={{ marginBottom: 10 }} />
+                ) : deadlineInfo && (deadlineInfo.kickoff || deadlineInfo.deadline) ? (
                     <View style={styles.deadlineCard}>
                         <View style={styles.deadlineRow}>
                             <Ionicons name="calendar" size={20} color="rgb(219, 31, 38)" />
                             <Text style={styles.deadlineTitle}>신청/마감 일정</Text>
                         </View>
                         <Text style={styles.deadlineDate}>
-                            {deadlineInfo.start ? `${deadlineInfo.start} ~ ` : ''}{deadlineInfo.end}
+                            {deadlineInfo.kickoff ? `${formatDate(deadlineInfo.kickoff)} ~ ` : ''}
+                            {formatDate(deadlineInfo.deadline) || '기한 없음'}
                         </Text>
                         <TouchableOpacity style={styles.calendarBtn} onPress={addToCalendar}>
                             <Text style={styles.calendarBtnText}>📅 캘린더에 등록하기</Text>
@@ -176,7 +193,6 @@ export default function DetailScreen({ route, navigation }) {
                 ) : (
                     <Text style={styles.noDeadlineText}>- 마감일 정보가 없는 공지입니다 -</Text>
                 )}
-
 
                 <View style={styles.container}>
                     <View style={styles.contentBox}>
@@ -192,23 +208,23 @@ export default function DetailScreen({ route, navigation }) {
                     </View>
 
                     {/* 👇 [수정] 버튼 클릭 시 handleLikeToggle 호출 */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.bookmarkBtn, isBookmarked && styles.bookmarkBtnActive]}
                         onPress={handleLikeToggle}
                     >
-                        <Ionicons 
-                            name={isBookmarked ? "star" : "star-outline"} 
-                            size={24} 
-                            color={isBookmarked ? "#fff" : "#333"} 
+                        <Ionicons
+                            name={isBookmarked ? "star" : "star-outline"}
+                            size={24}
+                            color={isBookmarked ? "#fff" : "#333"}
                         />
                         <Text style={[styles.btnText, isBookmarked && { color: '#fff' }]}>
                             {isBookmarked ? "북마크 해제" : "북마크에 추가"}
                         </Text>
                     </TouchableOpacity>
-                    
+
                     {/* ... (읽음 표시 버튼 등) ... */}
-                     <View style={{ marginTop: 20 }}>
-                         <Text style={{ color: 'green', marginBottom: 20, fontWeight: 'bold' }}>
+                    <View style={{ marginTop: 20 }}>
+                        <Text style={{ color: 'green', marginBottom: 20, fontWeight: 'bold' }}>
                             ✔ 읽음 처리되었습니다.
                         </Text>
                     </View>
@@ -233,11 +249,13 @@ const styles = StyleSheet.create({
     contentText: { fontSize: 16, color: '#555', lineHeight: 24, textAlign: 'center', marginBottom: 20 },
     linkButton: { flexDirection: 'row', backgroundColor: '#333', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center', gap: 8 },
     linkButtonText: { color: '#fff', fontWeight: '600' },
-    bookmarkBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5
-        , paddingHorizontal: 20, borderRadius: 30, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff', gap: 8, marginBottom: 5 },
+    bookmarkBtn: {
+        flexDirection: 'row', alignItems: 'center', paddingVertical: 5
+        , paddingHorizontal: 20, borderRadius: 30, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff', gap: 8, marginBottom: 5
+    },
     bookmarkBtnActive: { backgroundColor: '#FFD700', borderColor: '#FFD700' },
     btnText: { fontSize: 16, fontWeight: '600', color: '#333' },
-    
+
     metaContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
     metaDivider: { marginHorizontal: 8, color: '#ddd' },
     metaLike: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF0F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },

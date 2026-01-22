@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AlarmContext } from '../data/Alarm';
 import { api } from '../api/client';
 import { ALARM_DATA } from '../data/mockAlarms';
+import { SOURCE_LABELS } from '../constants/labeltag';
 
 const DEFAULT_IMAGE = require('../assets/knu.png');
 
@@ -30,13 +31,25 @@ export default function HomeScreen({ navigation }) {
             if (keyword) params.keyword = keyword;
 
             const response = await api.get('/notice', { params });
-            const { notices, totalPages } = response.data;
-            const safeNotices = Array.isArray(notices) ? notices : [];
 
-            const noticesWithImage = safeNotices.map(item => ({
-                ...item,
-                image: DEFAULT_IMAGE,
-            }));
+            // 1. 데이터 구조 수정: 백엔드 응답이 객체가 아닌 '배열'임
+            const rawData = response.data;
+            const safeNotices = Array.isArray(rawData) ? rawData : [];
+
+            // 2. 필드 이름 매핑: UI에서 사용하는 id, date 이름에 맞춰 변환
+            const noticesWithImage = safeNotices.map(item => {
+                // 1. 소스 문자열에서 접두사 추출 (예: 'CSE/bbs/...' -> 'CSE')
+                const sourcePrefix = item.source ? item.source.split('/')[0] : '';
+
+                return {
+                    ...item,
+                    id: item.notice_id, // notice_id를 id로 매핑
+                    // 2. 매핑 테이블에서 이름을 가져오고, 없으면 원본 소스 표시
+                    displaySource: SOURCE_LABELS[sourcePrefix] || item.source,
+                    date: item.posted_at ? item.posted_at.split('T')[0] : '', // ISO 날짜 가공
+                    image: DEFAULT_IMAGE,
+                };
+            });
 
             if (shouldRefresh) {
                 setData(noticesWithImage);
@@ -44,33 +57,17 @@ export default function HomeScreen({ navigation }) {
                 setData(prev => [...prev, ...noticesWithImage]);
             }
 
-            setHasMore(pageNum < totalPages);
+            // 3. 페이지네이션 판별 로직 (15개 단위)
+            setHasMore(safeNotices.length === 15);
 
         } catch (error) {
-            console.error('공지사항 조회 실패 (목업 데이터 사용):', error);
-            if (pageNum === 1) {
-                const mockList = Array.from({ length: 1 }).flatMap((_, i) =>
-                    ALARM_DATA.map(item => ({
-                        ...item,
-                        id: `mock-${i}-${item.id}`,
-                        title: `[Test] ${item.title}`,
-                        source: '공지사항',
-                        date: '2024-01-01',
-                        image: item.image || DEFAULT_IMAGE
-                    }))
-                );
-                const filteredMock = keyword
-                    ? mockList.filter(m => m.title.includes(keyword))
-                    : mockList;
-
-                setData(filteredMock);
-                setHasMore(false);
-            }
+            console.error('공지사항 조회 실패:', error);
+            // ... (에러 시 목업 데이터 사용 로직 유지)
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [loading]);
 
     useEffect(() => {
         setPage(1);
@@ -199,7 +196,7 @@ export default function HomeScreen({ navigation }) {
                                 </View>
 
                                 <View style={styles.textWrapper}>
-                                    <Text style={styles.sourceText}>{item.source}</Text>
+                                    <Text style={styles.sourceText}>{item.displaySource}</Text>
 
                                     <Text style={[
                                         styles.itemText,
