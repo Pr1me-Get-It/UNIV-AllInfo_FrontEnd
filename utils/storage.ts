@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 
@@ -51,9 +52,7 @@ export const removeToken = async (): Promise<void> => {
 };
 
 /**
- * 일반 데이터 저장 (객체/배열 등)
- * @param key - 저장할 키
- * @param value - 저장할 값 (자동으로 JSON 직렬화됨)
+ * [일반 저장소] 데이터 저장 (공지사항 캐시 등) - AsyncStorage로 변경
  */
 export const saveData = async <T>(key: string, value: T): Promise<void> => {
   if (value === undefined || value === null) return;
@@ -66,17 +65,19 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
       console.error("Save data error:", e);
     }
   } else {
-    await SecureStore.setItemAsync(key, jsonValue);
+    try {
+      // 대용량 데이터 캐싱을 위해 AsyncStorage 사용
+      await AsyncStorage.setItem(key, jsonValue);
+    } catch (e) {
+      console.error("AsyncStorage save error:", e);
+    }
   }
 };
 
 /**
- * 일반 데이터 가져오기
- * @param key - 가져올 키
- * @returns 파싱된 데이터 객체 또는 null
+ * [일반 저장소] 데이터 가져오기 - AsyncStorage로 변경
  */
 export const getData = async <T>(key: string): Promise<T | null> => {
-  // 1. 키가 비어있는지 먼저 확인 (방어 코드)
   if (!key || key.trim() === "") {
     console.warn("⚠️ [Storage] 빈 키가 전달되어 조회를 중단합니다.");
     return null;
@@ -87,9 +88,11 @@ export const getData = async <T>(key: string): Promise<T | null> => {
     if (Platform.OS === 'web') {
       result = localStorage.getItem(key);
     } else {
-      result = await SecureStore.getItemAsync(key);
+      // AsyncStorage에서 데이터 조회
+      result = await AsyncStorage.getItem(key);
     }
-    // ... 이하 동일
+    
+    return result ? JSON.parse(result) : null;
   } catch (e) {
     console.error("Get data error:", e);
     return null;
@@ -97,8 +100,7 @@ export const getData = async <T>(key: string): Promise<T | null> => {
 };
 
 /**
- * 특정 키의 데이터 삭제
- * @param key - 삭제할 키
+ * [일반 저장소] 특정 키의 데이터 삭제
  */
 export const removeData = async (key: string): Promise<void> => {
   if (Platform.OS === 'web') {
@@ -106,6 +108,10 @@ export const removeData = async (key: string): Promise<void> => {
       localStorage.removeItem(key);
     } catch (e) {}
   } else {
-    await SecureStore.deleteItemAsync(key);
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch (e) {
+      console.error("AsyncStorage remove error:", e);
+    }
   }
 };

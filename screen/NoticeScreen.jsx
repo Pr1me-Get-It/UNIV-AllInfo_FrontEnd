@@ -1,16 +1,18 @@
-/* screen/HomeScreen.jsx */
+/* screen/NoticeScreen.jsx */
 
 import React, { useContext, useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AlarmContext } from '../data/Alarm';
 import { api } from '../api/client';
 import { ALARM_DATA } from '../data/mockAlarms';
-import  SOURCE_LABELS  from '../constants/labeltag.json';
+import SOURCE_LABELS from '../constants/labeltag.json';
+import { saveData, getData } from '../utils/storage';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 const DEFAULT_IMAGE = require('../assets/knu.png');
 
-export default function HomeScreen({ navigation }) {
+export default function NoticeScreen({ navigation }) {
     const { readStatus } = useContext(AlarmContext) || { readStatus: {} };
     const safeStatus = readStatus || {};
 
@@ -21,48 +23,92 @@ export default function HomeScreen({ navigation }) {
     const [hasMore, setHasMore] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [filterMode, setFilterMode] = useState('all');
+    const [isFilterModalVisible, setFilterModalVisible] = useState(false); // 필터 모달 표시 여부
+    const [selectedSources, setSelectedSources] = useState(Object.keys(SOURCE_LABELS));
+    const [modalSearchQuery, setModalSearchQuery] = useState('');
+    const handleCloseModal = () => {
+        setModalSearchQuery(''); // 모달 닫을 때 검색어 초기화
+        setFilterModalVisible(false); // 모달 숨기기
+    };
+    const toggleSource = (code) => {
+        setSelectedSources(prev =>
+            prev.includes(code)
+                ? prev.filter(c => c !== code) // 이미 있으면 제거
+                : [...prev, code]             // 없으면 추가
+        );
+    };
+    const toggleAll = () => {
+        const allCodes = Object.keys(SOURCE_LABELS);
+        // 모든 학과가 이미 선택되어 있다면 -> 모두 해제
+        if (selectedSources.length === allCodes.length) {
+            setSelectedSources([]);
+        } else {
+            // 하나라도 비어있다면 -> 전체 포함 모든 학과 체크
+            setSelectedSources(allCodes);
+        }
+    };
 
-    const fetchNotices = useCallback(async (pageNum, keyword = '', shouldRefresh = false) => {
-        if (!shouldRefresh && loading) return;
+    const fetchMonthlyNotices = useCallback(async (keyword = '', isForceRefresh = false) => {
+        // 1. 캐시 확인 (강제 새로고침이 아닐 때만)
+        if (!isForceRefresh && !keyword) {
+            const cachedData = await getData(STORAGE_KEYS.NOTICE_CACHE);
+            const cacheTime = await getData(STORAGE_KEYS.NOTICE_CACHE_TIME);
 
-        setLoading(true);
-        try {
-            const params = { p: pageNum };
-            if (keyword) params.keyword = keyword;
-
-            const response = await api.get('/notice', { params });
-
-            // 1. 데이터 구조 수정: 백엔드 응답이 객체가 아닌 '배열'임
-            const rawData = response.data;
-            const safeNotices = Array.isArray(rawData) ? rawData : [];
-
-            // 2. 필드 이름 매핑: UI에서 사용하는 id, date 이름에 맞춰 변환
-            const noticesWithImage = safeNotices.map(item => {
-                // 1. 소스 문자열에서 접두사 추출 (예: 'CSE/bbs/...' -> 'CSE')
-                const sourcePrefix = item.source ? item.source.split('/')[0] : '';
-
-                return {
-                    ...item,
-                    id: item.notice_id, // notice_id를 id로 매핑
-                    // 2. 매핑 테이블에서 이름을 가져오고, 없으면 원본 소스 표시
-                    displaySource: SOURCE_LABELS[sourcePrefix] || item.source,
-                    date: item.posted_at ? item.posted_at.split('T')[0] : '', // ISO 날짜 가공
-                    image: DEFAULT_IMAGE,
-                };
-            });
-
-            if (shouldRefresh) {
-                setData(noticesWithImage);
-            } else {
-                setData(prev => [...prev, ...noticesWithImage]);
+            // 캐시가 존재하고 1시간(3600000ms)이 지나지 않았다면 그대로 사용
+            if (cachedData && cacheTime && Date.now() - Number(cacheTime) < 3600000) {
+                console.log("🚀 캐시된 데이터를 사용합니다.");
+                setData(cachedData);
+                return;
             }
+        }
 
-            // 3. 페이지네이션 판별 로직 (15개 단위)
-            setHasMore(safeNotices.length === 15);
+        // 2. 서버에서 데이터 가져오기 (기존 로직 유지)
+        setLoading(true);
+        let pageNum = 1;
+        let allFetchedData = [];
+        let shouldContinue = true;
+        // 한 달 전 날짜 계산
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
+        try {
+            while (shouldContinue) {
+                const params = { p: pageNum };
+                if (keyword) params.keyword = keyword;
+
+                const response = await api.get('/notice', { params });
+                const rawData = response.data; // 백엔드 응답 배열
+                const safeNotices = Array.isArray(rawData) ? rawData : [];
+
+                if (safeNotices.length === 0) break;
+
+                const processedBatch = safeNotices.map(item => ({
+                    ...item,
+                    id: item.notice_id,
+                    displaySource: SOURCE_LABELS[item.source?.split('/')[0]] || item.source,
+                    date: item.posted_at ? item.posted_at.split('T')[0] : '',
+                    image: DEFAULT_IMAGE,
+                }));
+
+                allFetchedData = [...allFetchedData, ...processedBatch];
+
+                // 이번 배치(Batch)에 한 달보다 오래된 공지가 포함되어 있는지 확인
+                const oldestInBatch = new Date(safeNotices[safeNotices.length - 1].posted_at);
+                if (oldestInBatch < oneMonthAgo || safeNotices.length < 15) {
+                    shouldContinue = false; // 한 달을 넘었거나 더 이상 데이터가 없으면 중단
+                } else {
+                    pageNum++;
+                }
+            }
+            setData(allFetchedData);
+            // 3. 가져온 데이터를 로컬에 저장 (검색어가 없을 때만 메인 데이터로 저장)
+            if (!keyword) {
+                await saveData(STORAGE_KEYS.NOTICE_CACHE, allFetchedData);
+                await saveData(STORAGE_KEYS.NOTICE_CACHE_TIME, String(Date.now()));
+                console.log("💾 한 달 치 데이터를 로컬에 캐싱했습니다.");
+            }
         } catch (error) {
-            console.error('공지사항 조회 실패:', error);
-            // ... (에러 시 목업 데이터 사용 로직 유지)
+            console.error('데이터 조회 실패:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -71,35 +117,133 @@ export default function HomeScreen({ navigation }) {
 
     useEffect(() => {
         setPage(1);
-        fetchNotices(1, query, true);
+        fetchMonthlyNotices(query);
     }, [query]);
 
     const loadMore = () => {
         if (!loading && hasMore) {
             const nextPage = page + 1;
             setPage(nextPage);
-            fetchNotices(nextPage, query, false);
+            fetchMonthlyNotices(nextPage, query, false);
         }
     };
 
     const onRefresh = () => {
         setRefreshing(true);
-        setPage(1);
-        fetchNotices(1, query, true);
+        fetchMonthlyNotices(query, true);
     };
 
-    const unreadCount = data.filter(item => !safeStatus[item.id]).length;
+    const unreadCount = data.filter(item => {
+        // 현재 공지의 학과 코드 추출
+        const sourcePrefix = item.source ? item.source.split('/')[0] : '';
+        // 선택된 학과 목록에 포함되어 있고 + 읽지 않은 상태인 것만 카운트
+        return selectedSources.includes(sourcePrefix) && !safeStatus[item.id];
+    }).length;
+    const displayedData = data.filter(item => {
+        // 학과 필터
+        const sourcePrefix = item.source ? item.source.split('/')[0] : '';
+        const matchesSourceFilter = selectedSources.includes(sourcePrefix);
 
-    const displayedData = filterMode === 'all'
-        ? data
-        : data.filter(item => !safeStatus[item.id]);
+        // 상단 탭(전체/미확인) 필터
+        const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
+
+        return matchesSourceFilter && matchesReadFilter;
+    });
 
     return (
         <View style={styles.container}>
             <View style={styles.headerContainer}>
-                <Ionicons name='notifications' size={28} color='rgba(50, 50, 50, 0.7)' />
-                <Text style={styles.headerText}>알림함</Text>
+                {/* 좌측 영역: 종 아이콘 + 알림함 텍스트 */}
+                <View style={styles.headerLeft}>
+                    <Ionicons name='notifications' size={28} color='rgba(50, 50, 50, 0.7)' />
+                    <Text style={styles.headerText}>알림함</Text>
+                </View>
+
+                {/* 우측 영역: 필터 아이콘 추가 */}
+                <TouchableOpacity
+                    style={styles.filterIconButton}
+                    onPress={() => setFilterModalVisible(true)}
+                >
+                    <Ionicons name="filter-outline" size={24} color="rgba(50, 50, 50, 0.7)" />
+                </TouchableOpacity>
             </View>
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isFilterModalVisible}
+                onRequestClose={handleCloseModal}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.bottomSheet}>
+                        <View style={styles.sheetHeader}>
+                            <Text style={styles.sheetTitle}>학과 필터</Text>
+                            <View style={styles.modalSearchBox}>
+                                <Ionicons name="search" size={16} color="#888" />
+                                <TextInput
+                                    style={styles.modalSearchInput}
+                                    placeholder="학과명 검색..."
+                                    value={modalSearchQuery}
+                                    onChangeText={setModalSearchQuery}
+                                    placeholderTextColor="#aaa"
+                                />
+                                {modalSearchQuery.length > 0 && (
+                                    <TouchableOpacity onPress={() => setModalSearchQuery('')}>
+                                        <Ionicons name="close-circle" size={18} color="#ccc" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                            <TouchableOpacity
+                                style={styles.saveButton}
+                                onPress={handleCloseModal}
+                            >
+                                <Text style={styles.saveButtonText}>저장</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.filterList}>
+                            {/* 1. '전체' 옵션 */}
+                            {!modalSearchQuery && (
+                                <TouchableOpacity
+                                    style={[styles.filterItem, selectedSources.length === Object.keys(SOURCE_LABELS).length && styles.filterItemActive]}
+                                    onPress={toggleAll} // 👈 전체 토글 함수 연결
+                                >
+                                    <View style={styles.filterItemContent}>
+                                        <Text style={styles.filterItemText}>전체</Text>
+                                        <Ionicons
+                                            name={selectedSources.length === Object.keys(SOURCE_LABELS).length ? "checkbox" : "square-outline"}
+                                            size={22}
+                                            color={selectedSources.length === Object.keys(SOURCE_LABELS).length ? "rgb(219, 31, 38)" : "#ccc"}
+                                        />
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* 2. 학과 목록 */}
+                            {Object.entries(SOURCE_LABELS)
+                                .filter(([code, name]) => name.includes(modalSearchQuery))
+                                .map(([code, name]) => {
+                                    const isChecked = selectedSources.includes(code);
+                                    return (
+                                        <TouchableOpacity
+                                            key={code}
+                                            style={[styles.filterItem, isChecked && styles.filterItemActive]}
+                                            onPress={() => toggleSource(code)} // 👈 개별 토글 함수 연결
+                                        >
+                                            <View style={styles.filterItemContent}>
+                                                <Text style={[styles.filterItemText, isChecked && styles.filterItemTextActive]}>{name}</Text>
+                                                <Ionicons
+                                                    name={isChecked ? "checkbox" : "square-outline"}
+                                                    size={22}
+                                                    color={isChecked ? "rgb(219, 31, 38)" : "#ccc"}
+                                                />
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
 
             <View style={styles.balanceContainer}>
                 <Text style={styles.balanceLabel}>확인하지 않은 알림</Text>
@@ -169,9 +313,6 @@ export default function HomeScreen({ navigation }) {
                     contentContainerStyle={{ paddingBottom: 20 }}
                     onRefresh={onRefresh}
                     refreshing={refreshing}
-                    onEndReached={loadMore}
-                    onEndReachedThreshold={0.5}
-
                     ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ margin: 10 }} /> : null}
                     ListEmptyComponent={
                         !loading && (
@@ -293,5 +434,135 @@ const styles = StyleSheet.create({
     tabTextActive: {
         color: 'rgb(219, 31, 38)',
         fontWeight: '700',
+    },
+    headerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between', // 양 끝으로 배치
+        marginBottom: 12,
+        paddingHorizontal: 20 // 기존 marginLeft 대신 전체 패딩 적용
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    headerText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginLeft: 10,
+        color: 'rgba(50, 50, 50, 0.7)'
+    },
+    filterIconButton: {
+        padding: 5, // 터치 영역 확보
+
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)', // 반투명 배경
+        justifyContent: 'flex-end', // 아래쪽 정렬
+    },
+    bottomSheet: {
+        backgroundColor: 'white',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        height: '60%', // 화면의 60% 높이
+        padding: 20,
+    },
+    sheetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    sheetTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    filterList: {
+        flex: 1,
+    },
+    filterItem: {
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f9f9f9',
+    },
+    filterItemActive: {
+        backgroundColor: 'rgba(219, 31, 38, 0.05)',
+    },
+    filterItemText: {
+        fontSize: 16,
+        color: '#333',
+    },
+    filterItemTextActive: {
+        color: 'rgb(219, 31, 38)',
+        fontWeight: 'bold',
+    },
+    /* styles 객체 수정 및 추가 */
+
+    sheetHeader: {
+        flexDirection: 'row', // 가로 정렬
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingBottom: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    sheetTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginRight: 10,
+    },
+    modalSearchBox: {
+        flex: 1, // 중간 영역 가득 채우기
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f0f0f0',
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        marginRight: 10,
+        height: 40,
+    },
+    modalSearchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: '#333',
+        marginLeft: 5,
+        padding: 0, // 안드로이드 수직 패딩 제거
+    },
+    saveButton: {
+        backgroundColor: 'rgb(219, 31, 38)', // 프로젝트 메인 레드 컬러 적용
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        color: 'white', // 흰색 글씨
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    sheetHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingBottom: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        justifyContent: 'space-between', // 요소 간 간격 조절
+    },
+    filterItem: {
+        paddingVertical: 12, // 패딩 살짝 조정
+        borderBottomWidth: 1,
+        borderBottomColor: '#f9f9f9',
+        paddingHorizontal: 5,
+    },
+    filterItemContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between', // 글자는 왼쪽, 체크박스는 오른쪽
+        alignItems: 'center',
     },
 });
