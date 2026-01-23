@@ -60,7 +60,7 @@ function MainTab() {
 export default function App() {
   // ⭐ 1. 모든 Hooks는 반드시 컴포넌트 최상단에 위치해야 합니다.
   const [isAppReady, setIsAppReady] = useState(false);
-  const [isShowSplash, setIsShowSplash] = useState(true);
+  const [isShowSplash, setIsShowSplash] = useState(false);
 
   const prepare = async () => {
     try {

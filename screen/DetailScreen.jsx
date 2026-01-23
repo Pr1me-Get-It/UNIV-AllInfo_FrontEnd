@@ -4,7 +4,7 @@ import { AlarmContext } from '../data/Alarm';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { getToken } from '../utils/storage';
-import { SOURCE_LABELS } from '../constants/labeltag';
+import  SOURCE_LABELS  from '../constants/labeltag.json';
 
 const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
 const stripHtml = (text) => {

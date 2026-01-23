@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AlarmContext } from '../data/Alarm';
 import { api } from '../api/client';
 import { ALARM_DATA } from '../data/mockAlarms';
-import { SOURCE_LABELS } from '../constants/labeltag';
+import  SOURCE_LABELS  from '../constants/labeltag.json';
 
 const DEFAULT_IMAGE = require('../assets/knu.png');
 
