@@ -129,6 +129,7 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
 
     const addMockEvent = useCallback((newEvent: MockEvent) => {
         setMockEvents((prev: MockEvent[]) => [...prev, newEvent]);
+    
     }, []);
 
     return (

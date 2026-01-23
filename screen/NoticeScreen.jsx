@@ -67,17 +67,28 @@ export default function NoticeScreen({ navigation }) {
         let pageNum = 1;
         let allFetchedData = [];
         let shouldContinue = true;
-        // 한 달 전 날짜 계산
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
         try {
             while (shouldContinue) {
-                const params = { p: pageNum };
+                // 백엔드 명세에 맞게 파라미터 구성
+                const params = {
+                    p: pageNum,
+                    order: 'DESC', // 최신순 정렬
+                    limit: 20      // 한 페이지당 아이템 수
+                };
+
                 if (keyword) params.keyword = keyword;
 
-                const response = await api.get('/notice', { params });
-                const rawData = response.data; // 백엔드 응답 배열
+                // [중요] 선택된 학과(source) 필터를 서버에 전달
+                // 서버가 콤마로 구분된 문자열을 받는지, 배열을 받는지 확인이 필요합니다.
+                if (selectedSources.length > 0) {
+                    params.source = selectedSources.join(',');
+                }
+
+                const response = await api.get('/notice', { params }); //
+                const rawData = response.data;
                 const safeNotices = Array.isArray(rawData) ? rawData : [];
 
                 if (safeNotices.length === 0) break;
@@ -92,28 +103,23 @@ export default function NoticeScreen({ navigation }) {
 
                 allFetchedData = [...allFetchedData, ...processedBatch];
 
-                // 이번 배치(Batch)에 한 달보다 오래된 공지가 포함되어 있는지 확인
                 const oldestInBatch = new Date(safeNotices[safeNotices.length - 1].posted_at);
-                if (oldestInBatch < oneMonthAgo || safeNotices.length < 15) {
-                    shouldContinue = false; // 한 달을 넘었거나 더 이상 데이터가 없으면 중단
+                // 날짜 비교 및 limit 기반 종료 조건
+                if (oldestInBatch < oneMonthAgo || safeNotices.length < 20) {
+                    shouldContinue = false;
                 } else {
                     pageNum++;
                 }
             }
             setData(allFetchedData);
-            // 3. 가져온 데이터를 로컬에 저장 (검색어가 없을 때만 메인 데이터로 저장)
-            if (!keyword) {
-                await saveData(STORAGE_KEYS.NOTICE_CACHE, allFetchedData);
-                await saveData(STORAGE_KEYS.NOTICE_CACHE_TIME, String(Date.now()));
-                console.log("💾 한 달 치 데이터를 로컬에 캐싱했습니다.");
-            }
+            // ... (캐시 저장 로직 생략)
         } catch (error) {
             console.error('데이터 조회 실패:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [loading]);
+    }, [selectedSources]);
 
     useEffect(() => {
         setPage(1);

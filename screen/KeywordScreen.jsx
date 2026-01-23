@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  FlatList, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,7 +15,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
-import { useAuth } from '../context/AuthContext'; 
+import { useAuth } from '../context/AuthContext';
 import { syncKeywords, deleteUserKeyword } from '../api/userService';
 import LoginPlaceholder from '../components/ui/LoginPlaceholder'
 // 데이터 그룹 분리
@@ -54,19 +54,23 @@ export default function KeywordScreen({ navigation }) {
     }, [isAuthenticated, userEmail])
   );
 
-  const fetchKeywords = async (email) => {
+  const fetchKeywords = useCallback(async () => {
+    if (!userEmail) return;
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await syncKeywords(email); // 서비스 함수 사용
-      if (response.data.success) {
+      const response = await syncKeywords(userEmail);
+      // [중요] response.data.keywords가 없을 경우를 대비해 빈 배열([])로 기본값 설정
+      if (response.data && response.data.success) {
         setKeywords(response.data.keywords || []);
       }
-    } catch (e) {
-      console.error("키워드 로딩 실패:", e);
+    } catch (error) {
+      // 500 에러 발생 시 여기서 잡힙니다.
+      console.error("키워드 로딩 실패", error.response?.data || error.message);
+      setKeywords([]); // 에러 발생 시 상태를 초기화하여 다음 로직 오류 방지
     } finally {
       setLoading(false);
     }
-  };
+  }, [userEmail]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -77,23 +81,38 @@ export default function KeywordScreen({ navigation }) {
     }
   }, [userEmail]);
 
-  const addKeyword = async (keywordToAdd) => {
-    const targetKeyword = typeof keywordToAdd === 'object' ? keywordToAdd.value : (keywordToAdd || inputText).trim();
-    if (!targetKeyword || !userEmail) return;
+  const addKeyword = async (input) => {
+    // 1. 입력값이 객체(추천 키워드)인지 문자열(직접 입력)인지 판별
+    const keywordToAdd = typeof input === 'object' ? input.value : input;
 
-    if (keywords.includes(targetKeyword)) {
-      Alert.alert("알림", `이미 등록된 키워드입니다: ${targetKeyword}`);
+    // 2. 유효성 검사 (변수명을 inputText 또는 전달받은 keywordToAdd로 통일)
+    if (!keywordToAdd || !keywordToAdd.trim()) return;
+
+    const trimmedKeyword = keywordToAdd.trim();
+
+    // 3. 중복 체크 (keywords가 배열인지 확인 후 체크)
+    if (Array.isArray(keywords) && keywords.includes(trimmedKeyword)) {
+      Alert.alert("알림", "이미 등록된 키워드입니다.");
       return;
     }
 
+    setLoading(true);
     try {
-      const response = await syncKeywords(userEmail, [targetKeyword]); // 백엔드 전송
-      if (response.data.success) {
-        setKeywords(response.data.keywords);
-        setInputText('');
+      const currentKeywords = Array.isArray(keywords) ? keywords : [];
+      // 4. API 호출 (새 키워드를 앞에 추가)
+      const response = await syncKeywords(userEmail, [trimmedKeyword, ...currentKeywords]);
+
+      if (response.data && response.data.success) {
+        // 5. 서버 응답 데이터로 상태 업데이트
+        setKeywords(response.data.keywords || []);
+        setInputText(''); // 직접 입력창 초기화
+        Alert.alert("성공", `[${trimmedKeyword}] 키워드가 등록되었습니다.`);
       }
-    } catch (e) {
-      Alert.alert("오류", "키워드 추가 실패");
+    } catch (error) {
+      console.error("키워드 추가 실패", error);
+      Alert.alert("오류", "서버 문제로 키워드를 추가할 수 없습니다.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -125,7 +144,7 @@ export default function KeywordScreen({ navigation }) {
 
   const renderRecommendations = () => (
     <View style={styles.recommendContainer}>
-      
+
       <Text style={styles.recommendLabel}>학부</Text>
       <View style={styles.chipWrapper}>
         {DEPARTMENTS.map((k, i) => (
@@ -143,7 +162,7 @@ export default function KeywordScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </View>
-      
+
     </View>
   );
 
@@ -196,56 +215,56 @@ export default function KeywordScreen({ navigation }) {
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#f5f5f5', paddingBottom: 90 },
   keyboardView: { flex: 1 },
-  
-  header: { 
-    paddingTop: 60, 
-    paddingHorizontal: 20, 
-    paddingBottom: 20, 
-    backgroundColor: '#f5f5f5', 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#e0e0e0' 
+
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: '#f5f5f5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0'
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   description: { fontSize: 14, color: '#666', lineHeight: 20 },
-  
+
   listContent: { padding: 20, flexGrow: 1 },
-  
-  registeredKeywordItem: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    backgroundColor: 'rgb(219, 31, 38)', 
-    paddingVertical: 12, 
-    paddingHorizontal: 16, 
-    borderRadius: 12, 
-    marginBottom: 10, 
-    shadowColor: "#000", 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 3, 
-    elevation: 3 
+
+  registeredKeywordItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgb(219, 31, 38)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3
   },
   registeredKeywordText: { fontSize: 16, color: '#fff', fontWeight: '700' },
-  
+
   emptyContainer: { alignItems: 'center', marginTop: 30, marginBottom: 20 },
   emptyText: { fontSize: 16, color: '#999' },
-  
+
   recommendContainer: { marginTop: 10, marginBottom: 40 },
   recommendLabel: { fontSize: 14, fontWeight: 'bold', color: '#888', marginBottom: 12, marginLeft: 4 },
-  
+
   chipWrapper: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB' },
-  deptChip: { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }, 
+  deptChip: { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' },
   chipText: { color: '#374151', fontSize: 14, fontWeight: '500' },
-  
+
   inputContainer: { flexDirection: 'row', padding: 15, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff', alignItems: 'center' },
   input: { flex: 1, backgroundColor: '#f5f5f5', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25, fontSize: 16, marginRight: 10 },
   addButton: { backgroundColor: 'rgb(219, 31, 38)', width: 45, height: 45, borderRadius: 25, justifyContent: 'center', alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 },
 
   // 비로그인 화면 스타일 (다른 탭과 통일)
-  loginContainer: { 
-    flex: 1, 
-    justifyContent: 'center', 
+  loginContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f5f5f5'
   },
