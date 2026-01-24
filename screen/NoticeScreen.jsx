@@ -407,10 +407,10 @@ const styles = StyleSheet.create({
     searchInput: { flex: 1, fontSize: 16, color: '#333' },
 
     listContainer: { flex: 1, backgroundColor: 'white', borderRadius: 20, marginHorizontal: 20, marginBottom: 110, paddingVertical: 10 },
-    itemRow: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(238, 238, 238, 1)' },
+    itemRow: { flexDirection: 'row', alignItems: 'center', padding: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(238, 238, 238, 1)' },
 
-    iconBackground: { backgroundColor: 'transparent', width: 50, height: 50, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-    customIcon: { width: 40, height: 40, resizeMode: 'contain' },
+    iconBackground: { backgroundColor: 'transparent', width: 30, height: 30, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+    customIcon: { width: 30, height: 30, resizeMode: 'contain' },
 
     textWrapper: { flex: 1 },
 
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
         borderBottomColor: '#eee',
     },
     sheetTitle: {
-        fontSize: 18,
+        fontSize: 12,
         fontWeight: 'bold',
         marginRight: 10,
     },
