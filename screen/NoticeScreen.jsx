@@ -49,18 +49,21 @@ export default function NoticeScreen({ navigation }) {
     };
 
     const fetchMonthlyNotices = useCallback(async (keyword = '', isForceRefresh = false) => {
-        // 1. 캐시 확인 (강제 새로고침이 아닐 때만)
+        /*
         if (!isForceRefresh && !keyword) {
             const cachedData = await getData(STORAGE_KEYS.NOTICE_CACHE);
             const cacheTime = await getData(STORAGE_KEYS.NOTICE_CACHE_TIME);
 
-            // 캐시가 존재하고 1시간(3600000ms)이 지나지 않았다면 그대로 사용
-            if (cachedData && cacheTime && Date.now() - Number(cacheTime) < 3600000) {
-                console.log("🚀 캐시된 데이터를 사용합니다.");
+            if (
+                cachedData &&
+                cacheTime &&
+                Date.now() - Number(cacheTime) < 3600000
+            ) {
+                console.log('🚀 캐시된 공지 사용');
                 setData(cachedData);
-                return;
+                return; // 🔥 여기서 함수 종료
             }
-        }
+        }*/
 
         // 2. 서버에서 데이터 가져오기 (기존 로직 유지)
         setLoading(true);
@@ -83,10 +86,7 @@ export default function NoticeScreen({ navigation }) {
 
                 // [중요] 선택된 학과(source) 필터를 서버에 전달
                 // 서버가 콤마로 구분된 문자열을 받는지, 배열을 받는지 확인이 필요합니다.
-                if (selectedSources.length > 0) {
-                    params.source = selectedSources.join(',');
-                }
-
+               
                 const response = await api.get('/notice', { params }); //
                 const rawData = response.data;
                 const safeNotices = Array.isArray(rawData) ? rawData : [];
@@ -123,8 +123,8 @@ export default function NoticeScreen({ navigation }) {
 
     useEffect(() => {
         setPage(1);
-        fetchMonthlyNotices(query);
-    }, [query]);
+        fetchMonthlyNotices(query, true);
+    }, [query, selectedSources]);
 
     const loadMore = () => {
         if (!loading && hasMore) {
@@ -138,17 +138,29 @@ export default function NoticeScreen({ navigation }) {
         setRefreshing(true);
         fetchMonthlyNotices(query, true);
     };
+    const normalizeSource = (source) => {
+        if (!source) return null;
+        const key = source.split('/')[0].toUpperCase().trim();
+
+        // SOURCE_LABELS에 없는 값이면 null 처리
+        return SOURCE_LABELS[key] ? key : null;
+    };
 
     const unreadCount = data.filter(item => {
-        // 현재 공지의 학과 코드 추출
-        const sourcePrefix = item.source ? item.source.split('/')[0] : '';
-        // 선택된 학과 목록에 포함되어 있고 + 읽지 않은 상태인 것만 카운트
-        return selectedSources.includes(sourcePrefix) && !safeStatus[item.id];
+        const sourcePrefix = normalizeSource(item.source);
+        return (
+            (!sourcePrefix || selectedSources.includes(sourcePrefix)) &&
+            !safeStatus[item.id]
+        );
     }).length;
+
     const displayedData = data.filter(item => {
         // 학과 필터
-        const sourcePrefix = item.source ? item.source.split('/')[0] : '';
-        const matchesSourceFilter = selectedSources.includes(sourcePrefix);
+        const sourcePrefix = normalizeSource(item.source);
+        const matchesSourceFilter =
+            selectedSources.length === 0 ||
+            !sourcePrefix ||
+            selectedSources.includes(sourcePrefix);
 
         // 상단 탭(전체/미확인) 필터
         const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
