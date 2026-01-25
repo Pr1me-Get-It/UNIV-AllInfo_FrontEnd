@@ -237,7 +237,16 @@ export default function DetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-    // ... (기존 스타일 유지) ...
+    title: {
+        fontSize: 20,         // 상세 페이지이므로 크게 설정
+        fontWeight: 'bold',   // 강조
+        color: '#333',        // 글자 색상
+        lineHeight: 30,       // 줄 간격 (제목이 길어질 때 대비)
+        marginBottom: 10,     // 아래 요소와의 간격
+        marginTop: 5,
+        marginLeft: 15,
+        marginRight: 15,        
+    },
     scrollContainer: { flexGrow: 1, backgroundColor: 'white' },
     wrapper: { flex: 1, paddingTop: 20, alignItems: 'center', backgroundColor: 'white' },
     badge: { backgroundColor: 'rgb(219, 31, 38)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginBottom: 15 },

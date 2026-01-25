@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   TOKEN: 'user_access_token' as const,
   USER_INFO: 'user_info' as const,
   LIKED_NOTICES: 'user_liked_notices' as const,
+  FILTER_SETTINGS: 'filter_settings' as const,
 
   /**
    * 사용자별 동적 키 생성을 위한 헬퍼 함수
