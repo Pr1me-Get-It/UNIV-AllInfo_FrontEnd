@@ -1,0 +1,34 @@
+# Antigravity 에이전트 매뉴얼 및 프로젝트 규칙
+
+이 파일은 **UNIV-AllInfo_FrontEnd** 프로젝트의 표준 및 규칙을 문서화한 것입니다. 앞으로의 모든 코드 변경 시 이 가이드라인을 따라주세요.
+
+## 1. 📂 코드 구조 (Code Structure)
+- **루트 디렉토리**: `src/`는 모든 소스 코드의 홈입니다.
+  - `src/screens/`: 페이지 컴포넌트
+  - `src/components/`: 재사용 가능한 UI 컴포넌트
+  - `src/navigation/`: 네비게이션 설정 (`RootNavigator`, `TabNavigator`)
+  - `src/constants/`: 정적 상수 (색상, 텍스트, 키값 등)
+  - `src/context/` & `src/api/`: 상태 관리 및 API 로직
+- **설정**: 설정 파일들(`package.json`, `tsconfig.json`)은 프로젝트 루트에 유지합니다.
+
+## 2. 🔷 TypeScript 가이드라인
+- **확장자**: 모든 React 컴포넌트는 `.tsx`를 사용해야 합니다. 로직 파일은 `.ts`를 사용합니다.
+- **타입**: 절대적으로 필요한 경우가 아니라면 `any` 사용을 피하세요 (예: 임시 마이그레이션 단계). Props와 State에 대한 인터페이스를 정의하세요.
+- **Strict Mode**: 런타임 오류를 방지하기 위해 타입 안정성을 추구하세요.
+
+## 3. 🎨 스타일링 및 디자인 시스템
+- **색상**: 헥사 코드 색상(예: `#db1f26`)을 **하드코딩하지 마세요**.
+  - 항상 `src/constants/colors.ts`에서 import 하여 사용하세요.
+  - 예시: `import { COLORS } from '../constants/colors';` -> `color={COLORS.primary}`.
+- **컴포넌트**: 일관성을 유지하기 위해 중앙화된 스타일이나 재사용 가능한 컴포넌트를 사용하세요.
+
+## 4. 🚀 네비게이션
+- **등록**: 새로운 스크린을 추가할 때, `TabNavigator.tsx` (탭인 경우) 또는 `RootNavigator.tsx` (스택/모달인 경우)에 등록하세요.
+- **Import**: `src/`를 기준으로 올바른 상대 경로를 사용하고 있는지 확인하세요.
+
+## 5. 🛠 유지보수 (Maintenance)
+- **리팩토링**: 코드를 수정할 때, 사용하지 않는 import 문이 있는지 확인하고 제거하세요.
+- **일관성**: 기존의 'Hooks를 사용한 함수형 컴포넌트' 패턴을 따르세요.
+
+## 6. 언어
+- **한글화**: 모든 작업시 계획 마크다운, 작업설명, 주석은 한글로 작성.

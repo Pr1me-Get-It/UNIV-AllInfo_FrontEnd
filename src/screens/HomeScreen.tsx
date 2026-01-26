@@ -1,17 +1,17 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Image, 
-  TouchableOpacity, 
-  Alert, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
   Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { EXTERNAL_LINKS } from '../constants/links';
-import { COLORS } from '../constants/thema';
+import { COLORS } from '../constants/colors';
 
 export default function HomeScreen() {
 
@@ -32,12 +32,12 @@ export default function HomeScreen() {
     <View style={styles.page}>
       {/* 상단 헤더 섹션 (로고 및 검색) */}
       <View style={styles.topBar}>
-        <Image 
-          source={require('../assets/cow.png')} 
-          style={styles.logoIcon} 
+        <Image
+          source={require('../assets/cow.png')}
+          style={styles.logoIcon}
           resizeMode="contain"
         />
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.searchButton}
           onPress={() => Alert.alert('검색', '준비 중입니다.')}
         >
@@ -61,7 +61,7 @@ export default function HomeScreen() {
             >
               <View style={styles.iconContainer}>
                 {/* links.js에 icon 이름이 있다면 적용, 없으면 기본 아이콘 */}
-                <Ionicons name={link.icon || "link-outline"} size={28} color={COLORS.primary || "#333"} />
+                <Ionicons name={link.icon as any || "link-outline"} size={28} color={COLORS.primary || "#333"} />
               </View>
               <Text style={styles.linkText}>{link.title}</Text>
             </TouchableOpacity>
@@ -73,11 +73,11 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { 
-    flex: 1, 
-    backgroundColor: '#F3F4F6', 
-    paddingTop: 50, 
-    paddingHorizontal: 20 
+  page: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingTop: 50,
+    paddingHorizontal: 20
   },
   topBar: {
     flexDirection: 'row',

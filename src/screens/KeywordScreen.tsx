@@ -43,17 +43,6 @@ export default function KeywordScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const { userEmail, isAuthenticated } = useAuth();
 
-  // 이메일이 변경되거나 화면이 포커스될 때 데이터 로드
-  useFocusEffect(
-    useCallback(() => {
-      if (isAuthenticated && userEmail) {
-        fetchKeywords(userEmail);
-      } else {
-        setKeywords([]);
-      }
-    }, [isAuthenticated, userEmail])
-  );
-
   const fetchKeywords = useCallback(async () => {
     if (!userEmail) return;
     setLoading(true);
@@ -72,44 +61,66 @@ export default function KeywordScreen({ navigation }) {
     }
   }, [userEmail]);
 
+  // 이메일이 변경되거나 화면이 포커스될 때 데이터 로드
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated && userEmail) {
+        fetchKeywords();
+      } else {
+        setKeywords([]);
+      }
+    }, [isAuthenticated, userEmail, fetchKeywords])
+  );
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     if (userEmail) {
-      fetchKeywords(userEmail).finally(() => setRefreshing(false));
+      fetchKeywords().finally(() => setRefreshing(false));
     } else {
       setRefreshing(false);
     }
-  }, [userEmail]);
+  }, [userEmail, fetchKeywords]);
 
   const addKeyword = async (input) => {
-    // 1. 입력값이 객체(추천 키워드)인지 문자열(직접 입력)인지 판별
     const keywordToAdd = typeof input === 'object' ? input.value : input;
 
-    // 2. 유효성 검사 (변수명을 inputText 또는 전달받은 keywordToAdd로 통일)
     if (!keywordToAdd || !keywordToAdd.trim()) return;
 
     const trimmedKeyword = keywordToAdd.trim();
 
-    // 3. 중복 체크 (keywords가 배열인지 확인 후 체크)
     if (Array.isArray(keywords) && keywords.includes(trimmedKeyword)) {
       Alert.alert("알림", "이미 등록된 키워드입니다.");
       return;
     }
 
+    // 1. [낙관적 업데이트] UI 먼저 갱신
+    const prevKeywords = [...keywords]; // 롤백용 이전 상태 저장
+    const newKeywords = [trimmedKeyword, ...prevKeywords];
+
+    setKeywords(newKeywords);
+    setInputText('');
+
     setLoading(true);
     try {
-      const currentKeywords = Array.isArray(keywords) ? keywords : [];
-      // 4. API 호출 (새 키워드를 앞에 추가)
-      const response = await syncKeywords(userEmail, [trimmedKeyword, ...currentKeywords]);
+      // 2. 백그라운드에서 API 호출
+      console.log(`➕ [추가 시도] ${trimmedKeyword} 추가 중... (전송될 리스트: ${newKeywords})`);
+      const response = await syncKeywords(userEmail, newKeywords);
 
       if (response.data && response.data.success) {
-        // 5. 서버 응답 데이터로 상태 업데이트
-        setKeywords(response.data.keywords || []);
-        setInputText(''); // 직접 입력창 초기화
-        Alert.alert("성공", `[${trimmedKeyword}] 키워드가 등록되었습니다.`);
+        console.log(`✅ [추가 완료] 백엔드에 반영됨.`);
+        // 성공 시: 서버 데이터로 최신화 (혹시 모를 동기화)
+        // 만약 서버 데이터가 비어있다면, 우리가 로컬에서 만든 newKeywords 유지
+        const serverKeywords = response.data.keywords;
+        if (serverKeywords && serverKeywords.length > 0) {
+          setKeywords(serverKeywords);
+        }
+      } else {
+        throw new Error("Server indicated failure");
       }
     } catch (error) {
-      console.error("키워드 추가 실패", error);
+      console.error(`❌ [추가 에러]`, error);
+      // 3. 실패 시: 롤백 (원상복구)
+      setKeywords(prevKeywords);
       Alert.alert("오류", "서버 문제로 키워드를 추가할 수 없습니다.");
     } finally {
       setLoading(false);
@@ -118,13 +129,35 @@ export default function KeywordScreen({ navigation }) {
 
   const deleteKeyword = async (keywordToDelete) => {
     if (!userEmail) return;
+
+    // [수정] 낙관적 업데이트: UI에서 하나만 제거
+    const prevKeywords = [...keywords];
+    const newKeywords = keywords.filter(k => k !== keywordToDelete);
+
+    console.log(`🗑 [삭제 시도] ${keywordToDelete} 삭제 중... (현재: ${prevKeywords} -> 예정: ${newKeywords})`);
+
+    setKeywords(newKeywords);
+
     try {
       const response = await deleteUserKeyword(userEmail, keywordToDelete);
+
       if (response.data.success) {
-        setKeywords(response.data.keywords);
+        console.log(`✅ [삭제 완료] 백엔드에서 ${keywordToDelete} 삭제됨.`);
+        // 서버에서 최신 리스트를 주면 그것으로 한 번 더 동기화 (선택 사항)
+        if (response.data.keywords) {
+          setKeywords(response.data.keywords);
+        }
+      } else {
+        console.error(`❌ [삭제 실패] 백엔드 응답 실패:`, response.data);
+        // 실패 시 롤백
+        setKeywords(prevKeywords);
+        Alert.alert("오류", "키워드 삭제 실패");
       }
     } catch (e) {
-      Alert.alert("오류", "키워드 삭제 실패");
+      console.error(`❌ [삭제 에러] 네트워크/서버 오류:`, e);
+      // 에러 발생 시 롤백
+      setKeywords(prevKeywords);
+      Alert.alert("오류", "네트워크 오류로 삭제 실패");
     }
   };
 

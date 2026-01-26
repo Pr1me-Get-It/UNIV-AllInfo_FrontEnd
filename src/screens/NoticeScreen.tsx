@@ -1,46 +1,84 @@
-/* screen/NoticeScreen.jsx */
+/* screen/NoticeScreen.tsx */
 
-import React, { useContext, useState, useEffect, useCallback } from 'react';
-import { 
-  View, Text, FlatList, TouchableOpacity, StyleSheet, 
-  Image, TextInput, ActivityIndicator, Modal, ScrollView 
+import React, { useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import {
+    View, Text, FlatList, TouchableOpacity, StyleSheet,
+    Image, TextInput, ActivityIndicator, Modal, ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AlarmContext } from '../data/Alarm';
 import { api } from '../api/client';
 import SOURCE_LABELS from '../constants/labeltag.json';
-import { saveData, getData } from '../utils/storage'; 
+import { saveData, getData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { COLORS } from '../constants/colors';
+import { useQuery } from '@tanstack/react-query';
 
 const DEFAULT_IMAGE = require('../assets/knu.png');
 
-export default function NoticeScreen({ navigation }) {
+// --- 1. Fetch Function 분리 (한 달치 데이터 모두 로드) ---
+const fetchNotices = async ({ queryKey }: any) => {
+    const [_, keyword] = queryKey;
+
+    let pageNum = 1;
+    let allFetchedData: any[] = [];
+    let shouldContinue = true;
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+    while (shouldContinue) {
+        const params: any = { p: pageNum, order: 'DESC', limit: 20 };
+        if (keyword) params.keyword = keyword;
+
+        const response = await api.get('/notice', { params });
+        const rawData = response.data;
+        const safeNotices = Array.isArray(rawData) ? rawData : [];
+
+        if (safeNotices.length === 0) break;
+
+        // 데이터 전처리
+        const processedBatch = safeNotices.map((item: any) => ({
+            ...item,
+            id: item.notice_id,
+            displaySource: SOURCE_LABELS[item.source?.split('/')[0]] || item.source,
+            date: item.posted_at ? item.posted_at.split('T')[0] : '',
+            image: DEFAULT_IMAGE,
+        }));
+
+        allFetchedData = [...allFetchedData, ...processedBatch];
+
+        // 마지막 데이터가 한 달 전보다 오래됐으면 중단
+        const oldestInBatch = new Date(safeNotices[safeNotices.length - 1].posted_at);
+        if (oldestInBatch < oneMonthAgo || safeNotices.length < 20) {
+            shouldContinue = false;
+        } else {
+            pageNum++;
+        }
+    }
+
+    return allFetchedData;
+};
+
+export default function NoticeScreen({ navigation }: any) {
     const { readStatus } = useContext(AlarmContext) || { readStatus: {} };
     const safeStatus = readStatus || {};
 
-    const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(false);
     const [query, setQuery] = useState('');
-    const [refreshing, setRefreshing] = useState(false);
     const [filterMode, setFilterMode] = useState('all');
     const [isFilterModalVisible, setFilterModalVisible] = useState(false);
     const [modalSearchQuery, setModalSearchQuery] = useState('');
-
-    // 학과 코드 목록 상태 (초기값은 빈 배열)
-    const [selectedSources, setSelectedSources] = useState([]);
+    const [selectedSources, setSelectedSources] = useState<string[]>([]);
 
     // 1. 앱 시작 시 저장된 필터 데이터 불러오기
     useEffect(() => {
         const initFilters = async () => {
             try {
-                // 키값이 undefined 인지 체크 (안전 장치)
                 const filterKey = STORAGE_KEYS.FILTER_SETTINGS || 'filter_settings';
                 const saved = await getData(filterKey);
-                
+
                 if (saved && Array.isArray(saved) && saved.length > 0) {
                     setSelectedSources(saved);
                 } else {
-                    // 저장된 데이터가 없으면 '전체 선택'을 기본값으로 함
                     setSelectedSources(Object.keys(SOURCE_LABELS));
                 }
             } catch (e) {
@@ -51,8 +89,8 @@ export default function NoticeScreen({ navigation }) {
         initFilters();
     }, []);
 
-    // 필터 상태가 바뀔 때마다 저장하는 함수
-    const persistFilters = async (newList) => {
+    // 필터 저장 함수
+    const persistFilters = async (newList: string[]) => {
         try {
             const filterKey = STORAGE_KEYS.FILTER_SETTINGS || 'filter_settings';
             await saveData(filterKey, newList);
@@ -61,108 +99,71 @@ export default function NoticeScreen({ navigation }) {
         }
     };
 
+    // --- 3. React Query: useQuery 사용 (한 달치 데이터 모두 로드) ---
+    const {
+        data: allNotices = [],
+        isLoading,
+        refetch,
+        isRefetching
+    } = useQuery({
+        queryKey: ['notices', query],
+        queryFn: fetchNotices,
+    });
+
     const handleCloseModal = () => {
         setModalSearchQuery('');
         setFilterModalVisible(false);
     };
 
-    // 개별 학과 토글
-    const toggleSource = (code) => {
+    const toggleSource = (code: string) => {
         const updated = selectedSources.includes(code)
             ? selectedSources.filter(c => c !== code)
             : [...selectedSources, code];
-        
         setSelectedSources(updated);
-        persistFilters(updated); 
+        persistFilters(updated);
     };
 
-    // 전체 선택/해제 토글
     const toggleAll = () => {
         const allCodes = Object.keys(SOURCE_LABELS);
         const updated = selectedSources.length === allCodes.length ? [] : allCodes;
-        
         setSelectedSources(updated);
-        persistFilters(updated); 
+        persistFilters(updated);
     };
 
-    const fetchMonthlyNotices = useCallback(async (keyword = '') => {
-        setLoading(true);
-        let pageNum = 1;
-        let allFetchedData = [];
-        let shouldContinue = true;
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    const onRefresh = useCallback(() => {
+        refetch();
+    }, [refetch]);
 
-        try {
-            while (shouldContinue) {
-                const params = { p: pageNum, order: 'DESC', limit: 20 };
-                if (keyword) params.keyword = keyword;
-               
-                const response = await api.get('/notice', { params });
-                const rawData = response.data;
-                const safeNotices = Array.isArray(rawData) ? rawData : [];
-
-                if (safeNotices.length === 0) break;
-
-                const processedBatch = safeNotices.map(item => ({
-                    ...item,
-                    id: item.notice_id,
-                    displaySource: SOURCE_LABELS[item.source?.split('/')[0]] || item.source,
-                    date: item.posted_at ? item.posted_at.split('T')[0] : '',
-                    image: DEFAULT_IMAGE,
-                }));
-
-                allFetchedData = [...allFetchedData, ...processedBatch];
-                const oldestInBatch = new Date(safeNotices[safeNotices.length - 1].posted_at);
-                
-                if (oldestInBatch < oneMonthAgo || safeNotices.length < 20) {
-                    shouldContinue = false;
-                } else {
-                    pageNum++;
-                }
-            }
-            setData(allFetchedData);
-        } catch (error) {
-            console.error('데이터 조회 실패:', error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchMonthlyNotices(query);
-    }, [query, fetchMonthlyNotices]);
-
-    const onRefresh = () => {
-        setRefreshing(true);
-        fetchMonthlyNotices(query);
-    };
-
-    const normalizeSource = (source) => {
+    const normalizeSource = (source: string) => {
         if (!source) return null;
         const key = source.split('/')[0].toUpperCase().trim();
         return SOURCE_LABELS[key] ? key : null;
     };
 
-    const unreadCount = data.filter(item => {
-        const sourcePrefix = normalizeSource(item.source);
-        return (
-            (!sourcePrefix || selectedSources.includes(sourcePrefix)) &&
-            !safeStatus[item.id]
-        );
-    }).length;
+    // --- 5. 클라이언트 사이드 필터링 & 카운트 ---
+    // 주의: 서버 페이지네이션을 사용하므로, unreadCount는 '현재 로드된 데이터' 기준입니다.
+    const unreadCount = useMemo(() => {
+        return allNotices.filter((item: any) => {
+            const sourcePrefix = normalizeSource(item.source);
+            return (
+                (!sourcePrefix || selectedSources.includes(sourcePrefix)) &&
+                !safeStatus[item.id]
+            );
+        }).length;
+    }, [allNotices, selectedSources, safeStatus]);
 
-    const displayedData = data.filter(item => {
-        const sourcePrefix = normalizeSource(item.source);
-        const matchesSourceFilter =
-            selectedSources.length === 0 ||
-            !sourcePrefix ||
-            selectedSources.includes(sourcePrefix);
+    const displayedData = useMemo(() => {
+        return allNotices.filter((item: any) => {
+            const sourcePrefix = normalizeSource(item.source);
+            const matchesSourceFilter =
+                selectedSources.length === 0 ||
+                !sourcePrefix ||
+                selectedSources.includes(sourcePrefix);
 
-        const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
-        return matchesSourceFilter && matchesReadFilter;
-    });
+            const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
+            return matchesSourceFilter && matchesReadFilter;
+        });
+    }, [allNotices, selectedSources, safeStatus, filterMode]);
 
     return (
         <View style={styles.container}>
@@ -221,7 +222,7 @@ export default function NoticeScreen({ navigation }) {
                                         <Ionicons
                                             name={selectedSources.length === Object.keys(SOURCE_LABELS).length ? "checkbox" : "square-outline"}
                                             size={22}
-                                            color={selectedSources.length === Object.keys(SOURCE_LABELS).length ? "rgb(219, 31, 38)" : "#ccc"}
+                                            color={selectedSources.length === Object.keys(SOURCE_LABELS).length ? COLORS.primary : "#ccc"}
                                         />
                                     </View>
                                 </TouchableOpacity>
@@ -242,7 +243,7 @@ export default function NoticeScreen({ navigation }) {
                                                 <Ionicons
                                                     name={isChecked ? "checkbox" : "square-outline"}
                                                     size={22}
-                                                    color={isChecked ? "rgb(219, 31, 38)" : "#ccc"}
+                                                    color={isChecked ? COLORS.primary : "#ccc"}
                                                 />
                                             </View>
                                         </TouchableOpacity>
@@ -255,6 +256,10 @@ export default function NoticeScreen({ navigation }) {
 
             <View style={styles.balanceContainer}>
                 <Text style={styles.balanceLabel}>확인하지 않은 알림</Text>
+                {/* 
+                  React Query의 Pagination 특성상 로드되지 않은 데이터의 unread 상태는 알 수 없습니다.
+                  이 점은 사용자에게 '최근 알림 중' 이라고 인지시키는 것이 좋습니다.
+                */}
                 <Text style={styles.balanceText}>{unreadCount} 개</Text>
             </View>
 
@@ -298,8 +303,9 @@ export default function NoticeScreen({ navigation }) {
                     showsVerticalScrollIndicator={true}
                     contentContainerStyle={{ paddingBottom: 20 }}
                     onRefresh={onRefresh}
-                    refreshing={refreshing}
-                    ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ margin: 10 }} /> : null}
+                    refreshing={isRefetching}
+                    ListFooterComponent={isLoading ? <ActivityIndicator style={{ margin: 10 }} /> : null}
+                    ListEmptyComponent={!isLoading ? <Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>데이터가 없습니다.</Text> : null}
                     renderItem={({ item }) => {
                         const isRead = safeStatus[item.id] === true;
                         return (
@@ -334,14 +340,13 @@ export default function NoticeScreen({ navigation }) {
     );
 }
 
-// ... 스타일 정의는 이전과 동일함 (생략)
 const styles = StyleSheet.create({
     container: { flex: 1, paddingTop: 60, backgroundColor: '#f5f5f5' },
     headerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 20 },
     headerLeft: { flexDirection: 'row', alignItems: 'center' },
     headerText: { fontSize: 24, fontWeight: 'bold', marginLeft: 10, color: 'rgba(50, 50, 50, 0.7)' },
     filterIconButton: { padding: 5 },
-    balanceContainer: { backgroundColor: 'rgb(219, 31, 38)', marginHorizontal: 20, marginBottom: 15, padding: 10, borderRadius: 15, alignItems: 'center' },
+    balanceContainer: { backgroundColor: COLORS.primary, marginHorizontal: 20, marginBottom: 15, padding: 10, borderRadius: 15, alignItems: 'center' },
     balanceLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 5 },
     balanceText: { color: 'white', fontSize: 28, fontWeight: 'bold' },
     searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 20, marginBottom: 10, paddingHorizontal: 15, paddingVertical: 3, borderRadius: 12, borderWidth: 1, borderColor: '#e0e0e0' },
@@ -351,30 +356,30 @@ const styles = StyleSheet.create({
     iconBackground: { width: 30, height: 30, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
     customIcon: { width: 30, height: 30, resizeMode: 'contain' },
     textWrapper: { flex: 1 },
-    sourceText: { fontSize: 10, color: 'rgb(219, 31, 38)', fontWeight: 'bold', marginBottom: 2 },
+    sourceText: { fontSize: 10, color: COLORS.primary, fontWeight: 'bold', marginBottom: 2 },
     itemText: { fontSize: 14, color: '#333', fontWeight: '500', marginBottom: 4 },
     readText: { color: '#aaa' },
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     dateText: { fontSize: 12, color: '#888' },
-    unreadLabel: { fontSize: 12, color: 'rgb(219, 31, 38)', fontWeight: 'bold' },
+    unreadLabel: { fontSize: 12, color: COLORS.primary, fontWeight: 'bold' },
     readLabel: { fontSize: 12, color: '#bbb', fontWeight: 'normal' },
     tabsContainer: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 10, backgroundColor: '#fff', borderRadius: 999, padding: 4, borderWidth: 1, borderColor: '#e0e0e0' },
     tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, borderRadius: 999 },
     tabButtonActive: { backgroundColor: 'rgba(219, 31, 38, 0.08)' },
     tabText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-    tabTextActive: { color: 'rgb(219, 31, 38)', fontWeight: '700' },
+    tabTextActive: { color: COLORS.primary, fontWeight: '700' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     bottomSheet: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '60%', padding: 20 },
     sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#eee', justifyContent: 'space-between' },
     sheetTitle: { fontSize: 16, fontWeight: 'bold', marginRight: 10 },
     modalSearchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10, paddingHorizontal: 10, marginRight: 10, height: 40 },
     modalSearchInput: { flex: 1, fontSize: 14, color: '#333', marginLeft: 5 },
-    saveButton: { backgroundColor: 'rgb(219, 31, 38)', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 8 },
+    saveButton: { backgroundColor: COLORS.primary, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 8 },
     saveButtonText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
     filterList: { flex: 1 },
     filterItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f9f9f9', paddingHorizontal: 5 },
     filterItemActive: { backgroundColor: 'rgba(219, 31, 38, 0.05)' },
     filterItemContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     filterItemText: { fontSize: 16, color: '#333' },
-    filterItemTextActive: { color: 'rgb(219, 31, 38)', fontWeight: 'bold' },
+    filterItemTextActive: { color: COLORS.primary, fontWeight: 'bold' },
 });

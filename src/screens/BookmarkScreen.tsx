@@ -6,20 +6,28 @@ import { AlarmContext } from '../data/Alarm';
 import { useAuth } from '../context/AuthContext';
 import LoginPlaceholder from '../components/ui/LoginPlaceholder'
 
-export default function BookmarkScreen({ navigation }) {
+// 타입 정의 추가
+interface BookmarkItem {
+    id: string | number;
+    title: string;
+    image: any;
+    [key: string]: any; // 다른 속성 허용
+}
+
+export default function BookmarkScreen({ navigation }: any) {
     // 1. Context에서 필요한 데이터와 인증 상태를 가져옵니다.
     const context = useContext(AlarmContext);
     const { bookmarkStatus } = context || { bookmarkStatus: {} };
-    
+
     // AuthContext가 제공하는 isAuthenticated를 사용하여 로그인 여부를 판단합니다.
     const { userEmail, isAuthenticated } = useAuth();
-    
-    const bookmarkedItems = bookmarkStatus ? Object.values(bookmarkStatus) : [];
+
+    const bookmarkedItems = bookmarkStatus ? Object.values(bookmarkStatus) as BookmarkItem[] : [];
 
     // 2. 비로그인 상태일 때의 처리
     if (!isAuthenticated) {
-    return <LoginPlaceholder />;
-  }
+        return <LoginPlaceholder />;
+    }
 
     return (
         <View style={styles.container}>
@@ -64,12 +72,12 @@ const styles = StyleSheet.create({
     container: { flex: 1, paddingTop: 60, backgroundColor: '#f5f5f5' },
     headerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, marginLeft: 20 },
     headerText: { fontSize: 24, fontWeight: 'bold', marginLeft: 10, color: '#333' },
-    listContainer: { 
-        flex: 1, 
-        backgroundColor: 'white', 
-        borderRadius: 20, 
-        marginHorizontal: 20, 
-        marginBottom: 110, 
+    listContainer: {
+        flex: 1,
+        backgroundColor: 'white',
+        borderRadius: 20,
+        marginHorizontal: 20,
+        marginBottom: 110,
         paddingVertical: 10,
     },
     itemRow: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
@@ -79,10 +87,10 @@ const styles = StyleSheet.create({
     itemText: { fontSize: 16, color: '#333', fontWeight: '500', flex: 1, marginRight: 10 },
     emptyBox: { padding: 40, alignItems: 'center' },
     emptyText: { color: '#999', fontSize: 16 },
-    loginContainer: { 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
+    loginContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
         backgroundColor: '#f5f5f5'
     },
     msg: { fontSize: 16, color: 'rgba(136, 136, 136, 1)', marginBottom: 15 },
