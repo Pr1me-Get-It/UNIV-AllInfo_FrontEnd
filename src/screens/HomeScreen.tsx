@@ -75,7 +75,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#fff',
     paddingTop: 50,
     paddingHorizontal: 20
   },
@@ -89,6 +89,7 @@ const styles = StyleSheet.create({
   logoIcon: {
     width: 50,
     height: 50,
+    backgroundColor: '#fff',
   },
   searchButton: {
     padding: 5,

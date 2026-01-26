@@ -24,7 +24,7 @@ const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_PASSWORD = "1557";
 
 export default function ProfileScreen() {
-  const navigation = useNavigation(); //
+  const navigation = useNavigation<any>();
 
   // 1. 모든 훅(useState, useAuth 등)은 반드시 최상단에 모여야 합니다.
   const {
@@ -56,22 +56,22 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-  console.log("🚩 [ProfileScreen] 로그아웃 버튼 클릭됨"); 
-  Alert.alert("로그아웃", "로그아웃 하시겠습니까?", [
-    { 
-      text: "취소", 
-      style: "cancel",
-      onPress: () => console.log("🚩 [ProfileScreen] 로그아웃 취소됨") 
-    },
-    { 
-      text: "확인", 
-      onPress: () => {
-        console.log("🚩 [ProfileScreen] 로그아웃 '확인' 누름 -> AuthContext.logout 호출"); 
-        logout(); 
-      } 
-    } 
-  ]);
-};
+    console.log("🚩 [ProfileScreen] 로그아웃 버튼 클릭됨");
+    Alert.alert("로그아웃", "로그아웃 하시겠습니까?", [
+      {
+        text: "취소",
+        style: "cancel",
+        onPress: () => console.log("🚩 [ProfileScreen] 로그아웃 취소됨")
+      },
+      {
+        text: "확인",
+        onPress: () => {
+          console.log("🚩 [ProfileScreen] 로그아웃 '확인' 누름 -> AuthContext.logout 호출");
+          logout();
+        }
+      }
+    ]);
+  };
 
   const handlePushToggle = async (value) => {
     if (!isAuthenticated) {
@@ -163,7 +163,7 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/*맞춤형 서비스 섹션*/ }
+      {/*맞춤형 서비스 섹션*/}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>맞춤형 서비스</Text>
         <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Keyword')}>
@@ -190,7 +190,7 @@ export default function ProfileScreen() {
         <SettingRow label="야간에는 중요한 공지만" description="밤 11시 ~ 아침 7시에는 마감 임박/긴급 공지만 보내요." value={nightPushOnly} onValueChange={setNightPushOnly} />
       </View>
 
-      
+
 
       {/* 공지 · 홍보 섹션 */}
       <View style={styles.section}>
@@ -249,7 +249,7 @@ function SettingRow({ label, description, value, onValueChange }) {
 
 // 스타일 시트
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#F3F4F6', paddingTop: 60, paddingHorizontal: 20 },
+  page: { flex: 1, backgroundColor: '#fff', paddingTop: 60, paddingHorizontal: 20 },
   section: { marginBottom: 18 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 },
   sectionDescription: { fontSize: 13, color: '#6B7280', marginBottom: 12 },

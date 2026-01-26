@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View } from 'react-native';
+import { View, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -61,6 +61,7 @@ export default function App() {
   // 최종 메인 앱 렌더링
   return (
     <QueryClientProvider client={queryClient}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <View style={{ flex: 1 }}>
         <AuthProvider>
           <AlarmProvider>

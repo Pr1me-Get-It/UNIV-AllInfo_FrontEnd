@@ -195,6 +195,7 @@ export default function CalendarScreen({ navigation }: any) {
           map[date].push({
             id: event.id,
             summary: summary,
+            displayText: event.displayText, // 날짜별 표시 텍스트 배열
             color: type === 1 ? '#E0F2FE' : (type === 0 ? '#FEE2E2' : '#E3F2FD'),
             textColor: type === 1 ? '#0369a1' : (type === 0 ? '#b91c1c' : '#0284c7'),
             isStart: index === 0,
@@ -226,12 +227,17 @@ export default function CalendarScreen({ navigation }: any) {
         </Text>
         <View style={styles.eventContainer}>
           {dayEvents.slice(0, maxEvents).map((ev: any, i: number) => {
-            let shouldShowTitle = false;
-            if (ev.totalDays <= 2) {
-              shouldShowTitle = ev.isStart;
+            let slicedText = '';
+
+            // displayText 배열이 있으면 사용, 없으면 자동 슬라이싱
+            if (ev.displayText && ev.displayText[ev.dayIndex]) {
+              slicedText = ev.displayText[ev.dayIndex];
             } else {
-              const middleIndex = Math.floor((ev.totalDays - 1) / 2);
-              shouldShowTitle = ev.dayIndex === middleIndex;
+              // 첫 날부터 순서대로 6글자씩 슬라이싱
+              const summary = ev.summary || '일정';
+              const charsPerCell = 6;
+              const startIdx = ev.dayIndex * charsPerCell;
+              slicedText = summary.slice(startIdx, startIdx + charsPerCell);
             }
 
             return (
@@ -243,31 +249,35 @@ export default function CalendarScreen({ navigation }: any) {
                     backgroundColor: ev.color,
                     height: 14,
                     marginBottom: 1,
+                    // 시작: 오른쪽만 확장, 끝: 왼쪽만 확장, 중간: 양쪽 확장
                     width: '110%',
-                    marginLeft: '-10%',
+                    marginLeft: ev.isStart ? '0%' : (ev.isEnd ? '-10%' : '-1%'),
                     borderTopLeftRadius: ev.isStart ? 3 : 0,
                     borderBottomLeftRadius: ev.isStart ? 3 : 0,
                     borderTopRightRadius: ev.isEnd ? 3 : 0,
                     borderBottomRightRadius: ev.isEnd ? 3 : 0,
                     justifyContent: 'center',
-                    paddingHorizontal: 2,
-                    zIndex: shouldShowTitle ? 10 : 0
+                    alignItems: 'center',
+                    paddingHorizontal: 1,
                   }
                 ]}
               >
-                {shouldShowTitle && (
+                {slicedText.length > 0 && (
                   <Animated.Text
                     style={[
                       styles.eventTitle,
                       {
                         color: ev.textColor,
                         opacity: textOpacity,
-                        textAlign: ev.totalDays > 2 ? 'center' : 'left'
+                        // 순차 슬라이싱이므로 왼쪽 정렬, 마지막만 오른쪽 정렬
+                        textAlign: ev.isEnd && !ev.isStart ? 'right' : 'left',
+                        fontSize: 9,
+                        width: '100%',
                       }
                     ]}
                     numberOfLines={1}
                   >
-                    {ev.summary || '일정'}
+                    {slicedText}
                   </Animated.Text>
                 )}
               </View>
@@ -385,12 +395,12 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginLeft: 10 },
 
-  dayBox: { width: dayWidth, alignItems: 'center', paddingTop: 5, overflow: 'hidden' },
+  dayBox: { width: dayWidth, alignItems: 'center', paddingTop: 5, overflow: 'visible' },
   selectedDayBox: { backgroundColor: 'rgba(219, 31, 38, 0.05)', borderRadius: 8 },
   dayText: { fontSize: 14, color: '#333', marginBottom: 2 },
   todayText: { color: 'rgb(219, 31, 38)', fontWeight: 'bold' },
   selectedDayText: { fontWeight: 'bold' },
-  eventContainer: { width: '100%', marginTop: 2, paddingHorizontal: 1 },
+  eventContainer: { width: '100%', marginTop: 2, paddingHorizontal: 1, overflow: 'visible' },
   block: { marginBottom: 1 },
   eventTitle: { fontSize: 10, fontWeight: 'bold', marginLeft: 2 },
 

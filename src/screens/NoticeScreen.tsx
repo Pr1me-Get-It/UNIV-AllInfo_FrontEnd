@@ -169,7 +169,7 @@ export default function NoticeScreen({ navigation }: any) {
         <View style={styles.container}>
             <View style={styles.headerContainer}>
                 <View style={styles.headerLeft}>
-                    <Ionicons name='notifications' size={28} color='rgba(50, 50, 50, 0.7)' />
+                    <Ionicons name='notifications' size={28} color='#333' />
                     <Text style={styles.headerText}>알림함</Text>
                 </View>
 
@@ -177,7 +177,7 @@ export default function NoticeScreen({ navigation }: any) {
                     style={styles.filterIconButton}
                     onPress={() => setFilterModalVisible(true)}
                 >
-                    <Ionicons name="filter-outline" size={24} color="rgba(50, 50, 50, 0.7)" />
+                    <Ionicons name="filter-outline" size={24} color="#333" />
                 </TouchableOpacity>
             </View>
 
@@ -341,10 +341,10 @@ export default function NoticeScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, paddingTop: 60, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, paddingTop: 60, backgroundColor: '#fff' },
     headerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 20 },
     headerLeft: { flexDirection: 'row', alignItems: 'center' },
-    headerText: { fontSize: 24, fontWeight: 'bold', marginLeft: 10, color: 'rgba(50, 50, 50, 0.7)' },
+    headerText: { fontSize: 24, fontWeight: 'bold', marginLeft: 10, color: '#333' },
     filterIconButton: { padding: 5 },
     balanceContainer: { backgroundColor: COLORS.primary, marginHorizontal: 20, marginBottom: 15, padding: 10, borderRadius: 15, alignItems: 'center' },
     balanceLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 5 },
