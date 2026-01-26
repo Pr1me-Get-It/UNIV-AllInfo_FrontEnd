@@ -1,5 +1,14 @@
-import React, { useState, useCallback, useMemo, useContext } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import React, { useState, useCallback, useMemo, useContext, useRef, useEffect } from 'react';
+import {
+  View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity,
+  Modal, Dimensions, PanResponder, Platform, UIManager, Animated
+} from 'react-native';
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+const MIN_HEIGHT = 50;
+const MAX_HEIGHT = 100;
+const DRAG_THRESHOLD = 30;
+
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +18,7 @@ import { AlarmContext } from '../data/Alarm';
 import { useAuth } from '../context/AuthContext';
 import LoginPlaceholder from '../components/ui/LoginPlaceholder'
 import academicSchedule from '../constants/academic_schedule.json';
+import { useQuery } from '@tanstack/react-query';
 
 // 한국어 설정
 LocaleConfig.locales['kr'] = {
@@ -24,23 +34,124 @@ const TODAY_STR = new Date().toISOString().split('T')[0];
 const screenWidth = Dimensions.get('window').width;
 const dayWidth = (screenWidth - 32) / 7;
 
-export default function CalendarScreen({ navigation }) {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
+// API 호출 함수 분리
+const fetchGoogleEvents = async () => {
+  try {
+    const storedToken = await getToken();
+    if (!storedToken) return [];
+
+    let accessToken = storedToken;
+    try {
+      const tokens = await GoogleSignin.getTokens();
+      if (tokens.accessToken) accessToken = tokens.accessToken;
+    } catch (e) { }
+
+    const timeMin = new Date('2025-01-01T00:00:00Z').toISOString();
+    const timeMax = new Date('2025-12-31T23:59:59Z').toISOString();
+
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&orderBy=startTime&singleEvents=true`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.items || [];
+    }
+  } catch (e) {
+    console.error("Google Calendar API Error:", e);
+  }
+  return [];
+};
+
+export default function CalendarScreen({ navigation }: any) {
   const [selectedDate, setSelectedDate] = useState(TODAY_STR);
   const [filterMode, setFilterMode] = useState('all');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const animatedHeight = useRef(new Animated.Value(MIN_HEIGHT)).current;
+  const textOpacity = animatedHeight.interpolate({
+    inputRange: [MIN_HEIGHT, MIN_HEIGHT + 20, MAX_HEIGHT],
+    outputRange: [0, 0, 1],
+    extrapolate: 'clamp'
+  });
 
   const { userEmail, isAuthenticated } = useAuth();
-  const { mockEvents } = useContext(AlarmContext) || {};
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false, // 부모(FlatList)가 터치 뺏어가는 것을 방지
+
+      onPanResponderMove: (_, gestureState) => {
+        const baseHeight = isExpanded ? MAX_HEIGHT : MIN_HEIGHT;
+        // 캘린더가 보통 5~6주이므로, 단일 셀 높이 변화는 전체 드래그의 1/n이어야 핸들이 손가락을 따라옴
+        const APPROX_ROWS = 10;
+        let newHeight = baseHeight + (gestureState.dy / APPROX_ROWS);
+
+        // 범위 제한
+        if (newHeight < MIN_HEIGHT) newHeight = MIN_HEIGHT;
+        if (newHeight > MAX_HEIGHT) newHeight = MAX_HEIGHT;
+
+        animatedHeight.setValue(newHeight);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // 드래그가 끝났을 때 결정
+
+        let targetHeight = MIN_HEIGHT;
+        let targetState = false;
+
+        // 임계값도 스케일링을 고려하여 조정 (더 많이 당겨야 인식되도록 할지, 아니면 그대로 둘지)
+        // 기존 30은 꽤 작은 값이므로 유지하되, 판단 기준은 gestureState.dy (손가락 이동 거리) 그대로 사용
+        if (isExpanded) {
+          if (gestureState.dy < -DRAG_THRESHOLD) {
+            targetHeight = MIN_HEIGHT;
+            targetState = false;
+          } else {
+            targetHeight = MAX_HEIGHT; // 복귀
+            targetState = true;
+          }
+        } else {
+          if (gestureState.dy > DRAG_THRESHOLD) {
+            targetHeight = MAX_HEIGHT;
+            targetState = true;
+          } else {
+            targetHeight = MIN_HEIGHT; // 복귀
+            targetState = false;
+          }
+        }
+
+        setIsExpanded(targetState);
+        Animated.spring(animatedHeight, {
+          toValue: targetHeight,
+          useNativeDriver: false,
+          friction: 12,
+          tension: 50
+        }).start();
+      },
+    })
+  ).current;
+
+  const { data: googleEvents = [], isLoading, refetch } = useQuery({
+    queryKey: ['calendarEvents', userEmail],
+    queryFn: fetchGoogleEvents,
+    enabled: !!userEmail && isAuthenticated,
+    staleTime: 1000 * 60 * 10,
+  });
 
   useFocusEffect(
     useCallback(() => {
-      if (userEmail) fetchCalendarEvents();
-    }, [userEmail, mockEvents])
+      if (userEmail && isAuthenticated) refetch();
+    }, [userEmail, isAuthenticated, refetch])
   );
 
-  const getDatesInRange = (startDate, endDate) => {
+  const events = useMemo(() => {
+    return [...googleEvents, ...academicSchedule];
+  }, [googleEvents]);
+
+  const getDatesInRange = (startDate: string, endDate: string) => {
     const dates = [];
     let curr = new Date(startDate);
     const end = new Date(endDate);
@@ -51,48 +162,16 @@ export default function CalendarScreen({ navigation }) {
     return dates;
   };
 
-  const fetchCalendarEvents = async () => {
-    setLoading(true);
-    try {
-      const storedToken = await getToken();
-      if (!storedToken) return;
-      
-      let accessToken = storedToken;
-      try {
-        const tokens = await GoogleSignin.getTokens();
-        if (tokens.accessToken) accessToken = tokens.accessToken;
-      } catch (e) {}
-
-      const timeMin = new Date('2025-01-01T00:00:00Z').toISOString();
-      const timeMax = new Date('2025-12-31T23:59:59Z').toISOString();
-
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&orderBy=startTime&singleEvents=true`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setEvents([...(data.items || []), ...academicSchedule]);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const visibleEvents = useMemo(() => {
-    return events.filter(event => {
+    return events.filter((event: any) => {
       if (filterMode === 'all') return true;
       const type = event.hasOwnProperty('type') ? event.type : -1;
       return filterMode === 'undergraduate' ? type === 0 : type === 1;
     });
   }, [events, filterMode]);
 
-  // 성능 최적화: 선택된 날짜의 일정만 메모이제이션하여 필터링
   const daySelectedEvents = useMemo(() => {
-    return visibleEvents.filter(e => {
+    return visibleEvents.filter((e: any) => {
       const s = e.start.date || e.start.dateTime?.split('T')[0];
       const end = e.end?.date || e.end?.dateTime?.split('T')[0] || s;
       return selectedDate >= s && selectedDate <= end;
@@ -100,22 +179,28 @@ export default function CalendarScreen({ navigation }) {
   }, [visibleEvents, selectedDate]);
 
   const eventsByDate = useMemo(() => {
-    const map = {};
-    const sorted = [...visibleEvents].sort((a, b) => a.id.localeCompare(b.id));
+    const map: any = {};
+    const sorted = [...visibleEvents].sort((a: any, b: any) => a.id.localeCompare(b.id));
 
-    sorted.forEach(event => {
+    sorted.forEach((event: any) => {
       const start = event.start.date || event.start.dateTime?.split('T')[0];
       const end = event.end?.date || event.end?.dateTime?.split('T')[0] || start;
       if (start) {
         const range = getDatesInRange(start, end);
+        const totalDays = range.length;
         range.forEach((date, index) => {
           if (!map[date]) map[date] = [];
           const type = event.hasOwnProperty('type') ? event.type : -1;
+          const summary = event.summary || '일정';
           map[date].push({
             id: event.id,
+            summary: summary,
             color: type === 1 ? '#E0F2FE' : (type === 0 ? '#FEE2E2' : '#E3F2FD'),
+            textColor: type === 1 ? '#0369a1' : (type === 0 ? '#b91c1c' : '#0284c7'),
             isStart: index === 0,
-            isEnd: index === range.length - 1
+            isEnd: index === totalDays - 1,
+            dayIndex: index,
+            totalDays: totalDays
           });
         });
       }
@@ -123,52 +208,86 @@ export default function CalendarScreen({ navigation }) {
     return map;
   }, [visibleEvents]);
 
-  const renderDay = useCallback(({ date, state }) => {
+  const renderDay = useCallback(({ date, state }: any) => {
     const dateStr = date.dateString;
     const dayEvents = eventsByDate[dateStr] || [];
     const isSelected = dateStr === selectedDate;
     const isToday = state === 'today';
-    const blockHeight = 10;
+    const maxEvents = 4;
 
     return (
-      <TouchableOpacity 
-        style={[styles.dayBox, isSelected && styles.selectedDayBox]} 
+      <AnimatedTouchableOpacity
+        style={[styles.dayBox, { height: animatedHeight }, isSelected && styles.selectedDayBox]}
         onPress={() => setSelectedDate(dateStr)}
+        activeOpacity={0.7}
       >
         <Text style={[styles.dayText, isToday && styles.todayText, isSelected && styles.selectedDayText]}>
           {date.day}
         </Text>
         <View style={styles.eventContainer}>
-          {dayEvents.slice(0, 3).map((ev, i) => (
-            <View 
-              key={`${ev.id}-${i}`} 
-              style={[
-                styles.block, 
-                { 
-                  backgroundColor: ev.color, 
-                  height: blockHeight - 1,
-                  borderTopLeftRadius: ev.isStart ? 4 : 0,
-                  borderBottomLeftRadius: ev.isStart ? 4 : 0,
-                  borderTopRightRadius: ev.isEnd ? 4 : 0,
-                  borderBottomRightRadius: ev.isEnd ? 4 : 0,
-                }
-              ]} 
-            />
-          ))}
-        </View>
-      </TouchableOpacity>
-    );
-  }, [eventsByDate, selectedDate]);
+          {dayEvents.slice(0, maxEvents).map((ev: any, i: number) => {
+            let shouldShowTitle = false;
+            if (ev.totalDays <= 2) {
+              shouldShowTitle = ev.isStart;
+            } else {
+              const middleIndex = Math.floor((ev.totalDays - 1) / 2);
+              shouldShowTitle = ev.dayIndex === middleIndex;
+            }
 
-  const formatTime = (dateTime) => {
+            return (
+              <View
+                key={`${ev.id}-${i}`}
+                style={[
+                  styles.block,
+                  {
+                    backgroundColor: ev.color,
+                    height: 14,
+                    marginBottom: 1,
+                    width: '110%',
+                    marginLeft: '-10%',
+                    borderTopLeftRadius: ev.isStart ? 3 : 0,
+                    borderBottomLeftRadius: ev.isStart ? 3 : 0,
+                    borderTopRightRadius: ev.isEnd ? 3 : 0,
+                    borderBottomRightRadius: ev.isEnd ? 3 : 0,
+                    justifyContent: 'center',
+                    paddingHorizontal: 2,
+                    zIndex: shouldShowTitle ? 10 : 0
+                  }
+                ]}
+              >
+                {shouldShowTitle && (
+                  <Animated.Text
+                    style={[
+                      styles.eventTitle,
+                      {
+                        color: ev.textColor,
+                        opacity: textOpacity,
+                        textAlign: ev.totalDays > 2 ? 'center' : 'left'
+                      }
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {ev.summary || '일정'}
+                  </Animated.Text>
+                )}
+              </View>
+            );
+          })}
+          {dayEvents.length > maxEvents && (
+            <Text style={{ fontSize: 8, color: '#999', marginTop: 1 }}>+{dayEvents.length - maxEvents}</Text>
+          )}
+        </View>
+      </AnimatedTouchableOpacity>
+    );
+  }, [eventsByDate, selectedDate, animatedHeight, textOpacity]);
+
+  const formatTime = (dateTime: string) => {
     if (!dateTime) return '종일';
     return new Date(dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
 
-  if (!isAuthenticated) return <LoginPlaceholder />;
-
-  return (
-    <View style={styles.container}>
+  const renderHeader = () => (
+    <>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
@@ -181,40 +300,65 @@ export default function CalendarScreen({ navigation }) {
         </View>
       </View>
 
-      <Calendar
-        current={selectedDate}
-        dayComponent={renderDay}
-        monthFormat={'yyyy년 M월'}
-        renderArrow={(direction) => (
-          <Ionicons name={direction === 'left' ? "chevron-back" : "chevron-forward"} size={28} color="rgb(219, 31, 38)" />
-        )}
-        theme={{ todayTextColor: 'rgb(219, 31, 38)' }}
-      />
-
-      <View style={styles.listContainer}>
-        <View style={styles.listHeaderContainer}>
-            <Text style={styles.listHeader}>{selectedDate} 일정</Text>
-            <Text style={styles.eventCountText}>{daySelectedEvents.length}개</Text>
-        </View>
-        <FlatList
-          data={daySelectedEvents}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={[styles.typeIndicator, { backgroundColor: item.type === 1 ? '#3B82F6' : 'rgb(219, 31, 38)' }]} />
-              <View style={styles.cardContent}>
-                  <Text style={styles.title}>{item.summary}</Text>
-                  <Text style={styles.timeLabel}>
-                      {item.start.date ? '하루 종일' : formatTime(item.start.dateTime)}
-                  </Text>
-              </View>
-            </View>
+      <View>
+        <Calendar
+          current={selectedDate}
+          dayComponent={renderDay}
+          monthFormat={'yyyy년 M월'}
+          renderArrow={(direction: any) => (
+            <Ionicons name={direction === 'left' ? "chevron-back" : "chevron-forward"} size={28} color="rgb(219, 31, 38)" />
           )}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={<Text style={styles.emptyText}>일정이 없습니다.</Text>}
+          theme={{
+            todayTextColor: 'rgb(219, 31, 38)',
+            'stylesheet.calendar.main': {
+              week: { marginTop: 2, marginBottom: 2, flexDirection: 'row', justifyContent: 'space-around' }
+            }
+          } as any}
+          disableMonthChange={isExpanded}
+          enableSwipeMonths={!isExpanded}
+          hideExtraDays={true}
         />
+        <View style={styles.dragHandleContainer} {...panResponder.panHandlers} onStartShouldSetResponderCapture={() => true}>
+          <View style={styles.dragHandle} />
+          <Text style={styles.dragText}>
+            {isExpanded ? "위로 올려서 접기" : "아래로 당겨서 펼치기"}
+          </Text>
+        </View>
       </View>
+
+      <View style={styles.listHeaderContainer}>
+        <Text style={styles.listHeader}>{selectedDate} 일정</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {isLoading && <ActivityIndicator size="small" color="rgb(219, 31, 38)" style={{ marginRight: 8 }} />}
+          <Text style={styles.eventCountText}>{daySelectedEvents.length}개</Text>
+        </View>
+      </View>
+    </>
+  );
+
+  if (!isAuthenticated) return <LoginPlaceholder />;
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={daySelectedEvents}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={[styles.typeIndicator, { backgroundColor: item.type === 1 ? '#3B82F6' : 'rgb(219, 31, 38)' }]} />
+            <View style={styles.cardContent}>
+              <Text style={styles.title}>{item.summary}</Text>
+              <Text style={styles.timeLabel}>
+                {item.start.date ? '하루 종일' : formatTime(item.start.dateTime)}
+              </Text>
+            </View>
+          </View>
+        )}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={<Text style={styles.emptyText}>일정이 없습니다.</Text>}
+      />
 
       <Modal visible={isFilterModalVisible} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} onPress={() => setFilterModalVisible(false)}>
@@ -240,35 +384,26 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginLeft: 10 },
-  
-  dayBox: { width: dayWidth, height: 55, alignItems: 'center', paddingTop: 5 },
+
+  dayBox: { width: dayWidth, alignItems: 'center', paddingTop: 5, overflow: 'hidden' },
   selectedDayBox: { backgroundColor: 'rgba(219, 31, 38, 0.05)', borderRadius: 8 },
-  dayText: { fontSize: 15, color: '#333' },
+  dayText: { fontSize: 14, color: '#333', marginBottom: 2 },
   todayText: { color: 'rgb(219, 31, 38)', fontWeight: 'bold' },
   selectedDayText: { fontWeight: 'bold' },
   eventContainer: { width: '100%', marginTop: 2, paddingHorizontal: 1 },
-  block: { width: '112%', marginBottom: 1 },
+  block: { marginBottom: 1 },
+  eventTitle: { fontSize: 10, fontWeight: 'bold', marginLeft: 2 },
 
-  listContainer: { 
-    flex: 1, 
-    backgroundColor: '#f9f9f9', 
-    paddingHorizontal: 20, 
-    paddingTop: 20, 
-    borderTopLeftRadius: 25, 
-    borderTopRightRadius: 25,
-    marginTop: -5 
-  },
-  listHeaderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15
-  },
+  dragHandleContainer: { alignItems: 'center', paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
+  dragHandle: { width: 40, height: 4, backgroundColor: '#ddd', borderRadius: 2, marginBottom: 4 },
+  dragText: { fontSize: 10, color: '#aaa' },
+
+  listHeaderContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 20, marginBottom: 10 },
   listHeader: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   eventCountText: { fontSize: 14, color: '#888', fontWeight: '600' },
   listContent: { paddingBottom: 120 },
-  
-  card: { backgroundColor: '#fff', padding: 15, borderRadius: 12, marginBottom: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#eee' },
+
+  card: { backgroundColor: '#fff', marginHorizontal: 20, padding: 15, borderRadius: 12, marginBottom: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#eee' },
   typeIndicator: { width: 4, height: 20, borderRadius: 2, marginRight: 10 },
   cardContent: { flex: 1 },
   title: { fontSize: 16, color: '#333', fontWeight: '500' },
