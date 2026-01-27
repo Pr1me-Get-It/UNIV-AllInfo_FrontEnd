@@ -1,6 +1,6 @@
 /* src/constants/theme.js */
 export const COLORS = {
-  PRIMARY: '#FF231F7C', // notifications.js에서 사용된 색상 예시
+  PRIMARY: 'rgba(255, 35, 31, 0.49)', // notifications.js에서 사용된 색상 예시
   WHITE: '#FFFFFF',
   BLACK: '#000000',
   GRAY_LIGHT: '#F0F0F0',

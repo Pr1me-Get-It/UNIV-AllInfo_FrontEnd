@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -78,6 +78,7 @@ export default function ProfileScreen() {
     // [변경] 커스텀 알림창으로 로그아웃 확인
     showAlert("로그아웃", "로그아웃 하시겠습니까?", () => {
       console.log("🚩 [ProfileScreen] 로그아웃 '확인' 누름 -> AuthContext.logout 호출");
+      setPushEnabled(false); // [수정] 로그아웃 시 푸시 알림 비활성화
       logout();
     });
   };
@@ -165,7 +166,7 @@ export default function ProfileScreen() {
         {isAuthenticated ? (
           <View style={styles.loginCardLoggedIn}>
             <View style={styles.profileInfo}>
-              <Image source={{ uri: "https://cdn-icons-png.flaticon.com/512/25/25231.png" }} style={styles.profileImage} />
+              <Image source={require('../assets/user.png')} style={[styles.profileImage, { backgroundColor: '#F3F4F6' }]} />
               <View>
                 <Text style={styles.welcomeText}>로그인됨</Text>
                 <Text style={styles.userNameText}>사용자 님</Text>
