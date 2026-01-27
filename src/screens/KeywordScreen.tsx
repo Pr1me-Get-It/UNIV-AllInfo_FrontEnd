@@ -16,8 +16,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { syncKeywords, deleteUserKeyword } from '../api/userService';
+import { syncKeywords, deleteUserKeyword, getUserKeywords } from '../api/userService';
 import LoginPlaceholder from '../components/ui/LoginPlaceholder'
+import { getData, saveData } from '../utils/storage';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 // 데이터 그룹 분리
 const DEPARTMENTS = [
   { label: "컴퓨터", value: "CSE" },
@@ -46,16 +48,26 @@ export default function KeywordScreen({ navigation }) {
   const fetchKeywords = useCallback(async () => {
     if (!userEmail) return;
     setLoading(true);
+
+    // 이메일에서 특수문자 제거하여 키 생성
+    const safeEmail = userEmail.replace(/\./g, '_');
+
     try {
-      const response = await syncKeywords(userEmail);
-      // [중요] response.data.keywords가 없을 경우를 대비해 빈 배열([])로 기본값 설정
-      if (response.data && response.data.success) {
-        setKeywords(response.data.keywords || []);
+      // 1. [로컬 스토리지] 로드하여 표시
+      // 백엔드 GET(조회) API가 500 에러를 반환하고, POST(동기화)는 데이터를 덮어쓰는 구조이므로
+      // 화면 진입 시에는 서버와 동기화하지 않고 오직 로컬 데이터만 보여줍니다.
+      // 실제 데이터 업데이트(추가/삭제)는 해당 동작 수행 시 API를 호출하여 처리합니다.
+      const localKeywords = await getData(STORAGE_KEYS.KEYWORDS(safeEmail));
+
+      if (localKeywords && Array.isArray(localKeywords)) {
+        setKeywords(localKeywords);
+        console.log(`� [로컬 로드] 저장된 키워드 불러오기 성공:`, localKeywords);
+      } else {
+        // 로컬 데이터가 없으면 빈 배열
+        setKeywords([]);
       }
     } catch (error) {
-      // 500 에러 발생 시 여기서 잡힙니다.
-      console.error("키워드 로딩 실패", error.response?.data || error.message);
-      setKeywords([]); // 에러 발생 시 상태를 초기화하여 다음 로직 오류 방지
+      console.error("키워드 로컬 로딩 실패", error);
     } finally {
       setLoading(false);
     }
@@ -100,6 +112,13 @@ export default function KeywordScreen({ navigation }) {
     setKeywords(newKeywords);
     setInputText('');
 
+    // [추가] 로컬 스토리지 즉시 저장
+    if (userEmail) {
+      const safeEmail = userEmail.replace(/\./g, '_');
+      await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
+      console.log(`💾 [로컬 저장] 키워드 추가 후 로컬 스토리지 업데이트: ${trimmedKeyword}`);
+    }
+
     setLoading(true);
     try {
       // 2. 백그라운드에서 API 호출
@@ -113,6 +132,9 @@ export default function KeywordScreen({ navigation }) {
         const serverKeywords = response.data.keywords;
         if (serverKeywords && serverKeywords.length > 0) {
           setKeywords(serverKeywords);
+          // 서버 데이터로 로컬 스토리지 최신화
+          const safeEmail = userEmail.replace(/\./g, '_');
+          await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), serverKeywords);
         }
       } else {
         throw new Error("Server indicated failure");
@@ -121,6 +143,10 @@ export default function KeywordScreen({ navigation }) {
       console.error(`❌ [추가 에러]`, error);
       // 3. 실패 시: 롤백 (원상복구)
       setKeywords(prevKeywords);
+      if (userEmail) {
+        const safeEmail = userEmail.replace(/\./g, '_');
+        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords);
+      }
       Alert.alert("오류", "서버 문제로 키워드를 추가할 수 없습니다.");
     } finally {
       setLoading(false);
@@ -138,25 +164,34 @@ export default function KeywordScreen({ navigation }) {
 
     setKeywords(newKeywords);
 
+    // [추가] 로컬 스토리지 즉시 저장
+    const safeEmail = userEmail.replace(/\./g, '_');
+    await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
+    console.log(`💾 [로컬 저장] 키워드 삭제 후 로컬 스토리지 업데이트: ${keywordToDelete}`);
+
     try {
       const response = await deleteUserKeyword(userEmail, keywordToDelete);
 
       if (response.data.success) {
         console.log(`✅ [삭제 완료] 백엔드에서 ${keywordToDelete} 삭제됨.`);
-        // 서버에서 최신 리스트를 주면 그것으로 한 번 더 동기화 (선택 사항)
+        // 서버에서 최신 리스트를 주면 그것으로 한 번 더 동기화
         if (response.data.keywords) {
           setKeywords(response.data.keywords);
+          // 서버 데이터로 로컬 스토리지 최신화
+          await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), response.data.keywords);
         }
       } else {
         console.error(`❌ [삭제 실패] 백엔드 응답 실패:`, response.data);
         // 실패 시 롤백
         setKeywords(prevKeywords);
+        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords);
         Alert.alert("오류", "키워드 삭제 실패");
       }
     } catch (e) {
       console.error(`❌ [삭제 에러] 네트워크/서버 오류:`, e);
       // 에러 발생 시 롤백
       setKeywords(prevKeywords);
+      await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords); // 로컬 스토리지 롤백
       Alert.alert("오류", "네트워크 오류로 삭제 실패");
     }
   };

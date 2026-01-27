@@ -14,7 +14,7 @@ interface KeywordResponse {
  * @param expoPushToken 엑스포 푸시 토큰 (없을 수 있음)
  */
 export const registerUser = async (
-  email: string, 
+  email: string,
   expoPushToken: string | null
 ): Promise<AxiosResponse<any>> => {
   return await api.post('/user/register', { email, expoPushToken });
@@ -26,10 +26,20 @@ export const registerUser = async (
  * @param keywords 추가할 키워드 배열 (기본값 빈 배열)
  */
 export const syncKeywords = async (
-  email: string, 
+  email: string,
   keywords: string[] = []
 ): Promise<AxiosResponse<KeywordResponse>> => {
   return await api.post('/user/keyword', { email, keywords });
+};
+
+/**
+ * 키워드 조회 (덮어쓰기 방지용 GET)
+ * @param email 유저 이메일
+ */
+export const getUserKeywords = async (
+  email: string
+): Promise<AxiosResponse<KeywordResponse>> => {
+  return await api.get('/user/keyword', { params: { email } });
 };
 
 /**
@@ -38,7 +48,7 @@ export const syncKeywords = async (
  * @param keyword 삭제할 단일 키워드
  */
 export const deleteUserKeyword = async (
-  email: string, 
+  email: string,
   keyword: string
 ): Promise<AxiosResponse<KeywordResponse>> => {
   return await api.delete('/user/keyword', {
