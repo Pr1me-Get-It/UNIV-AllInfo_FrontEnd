@@ -46,8 +46,10 @@ const fetchGoogleEvents = async () => {
       if (tokens.accessToken) accessToken = tokens.accessToken;
     } catch (e) { }
 
-    const timeMin = new Date('2025-01-01T00:00:00Z').toISOString();
-    const timeMax = new Date('2025-12-31T23:59:59Z').toISOString();
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const timeMin = new Date(`${currentYear - 1}-01-01T00:00:00Z`).toISOString();
+    const timeMax = new Date(`${currentYear + 1}-12-31T23:59:59Z`).toISOString();
 
     const response = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&orderBy=startTime&singleEvents=true`,
@@ -196,8 +198,9 @@ export default function CalendarScreen({ navigation }: any) {
             id: event.id,
             summary: summary,
             displayText: event.displayText, // 날짜별 표시 텍스트 배열
-            color: type === 1 ? '#E0F2FE' : (type === 0 ? '#FEE2E2' : '#E3F2FD'),
-            textColor: type === 1 ? '#0369a1' : (type === 0 ? '#b91c1c' : '#0284c7'),
+            // [수정] 대학원 일정(type === 1)을 검은색(무채색) 계열로 변경
+            color: type === 1 ? '#F3F4F6' : (type === 0 ? '#FEE2E2' : '#E3F2FD'),  // 대학원: 연한 회색 배경
+            textColor: type === 1 ? '#111827' : (type === 0 ? '#b91c1c' : '#0284c7'), // 대학원: 진한 검정 텍스트
             isStart: index === 0,
             isEnd: index === totalDays - 1,
             dayIndex: index,
@@ -235,7 +238,7 @@ export default function CalendarScreen({ navigation }: any) {
             } else {
               // 첫 날부터 순서대로 6글자씩 슬라이싱
               const summary = ev.summary || '일정';
-              const charsPerCell = 6;
+              const charsPerCell = 5;
               const startIdx = ev.dayIndex * charsPerCell;
               slicedText = summary.slice(startIdx, startIdx + charsPerCell);
             }
@@ -270,7 +273,9 @@ export default function CalendarScreen({ navigation }: any) {
                         color: ev.textColor,
                         opacity: textOpacity,
                         // 순차 슬라이싱이므로 왼쪽 정렬, 마지막만 오른쪽 정렬
-                        textAlign: ev.isEnd && !ev.isStart ? 'right' : 'left',
+                        // 요청 사항: 첫날(오른쪽), 마지막날(왼쪽), 중간(가운데)
+                        // 단, 하루짜리 일정(isStart && isEnd)은 가운데 정렬
+                        textAlign: (ev.isStart && ev.isEnd) ? 'center' : (ev.isStart ? 'right' : (ev.isEnd ? 'left' : 'center')),
                         fontSize: 9,
                         width: '100%',
                       }
@@ -355,7 +360,8 @@ export default function CalendarScreen({ navigation }: any) {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <View style={[styles.typeIndicator, { backgroundColor: item.type === 1 ? '#3B82F6' : 'rgb(219, 31, 38)' }]} />
+            {/* [수정] 대학원 일정 인디케이터 색상 변경 (파랑 -> 검정) */}
+            <View style={[styles.typeIndicator, { backgroundColor: item.type === 1 ? '#333' : 'rgb(219, 31, 38)' }]} />
             <View style={styles.cardContent}>
               <Text style={styles.title}>{item.summary}</Text>
               <Text style={styles.timeLabel}>

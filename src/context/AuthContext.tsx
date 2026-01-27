@@ -63,24 +63,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // C. 키워드 동기화 (추가된 로직)
     try {
-    // 1. 이메일에서 마침표(.) 등 특수문자 제거 (Storage Key 안전성 확보)
-    const safeEmail = email.replace(/\./g, '_');
+      // 1. 이메일에서 마침표(.) 등 특수문자 제거 (Storage Key 안전성 확보)
+      const safeEmail = email.replace(/\./g, '_');
 
-    // 2. getData에 <string[]> 타입을 명시하여 unknown 에러 해결
-    const localKeywords = await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail)) || [];
+      // 2. getData에 <string[]> 타입을 명시하여 unknown 에러 해결
+      const localKeywords = await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail)) || [];
 
-    // 3. 서버에 동기화 시도
-    const response = await syncKeywords(email, localKeywords);
+      // 3. 서버에 동기화 시도
+      const response = await syncKeywords(email, localKeywords);
 
-    if (response.data.success) {
-      const serverKeywords = response.data.keywords;
-      // 4. 서버 응답 데이터로 로컬 캐시 업데이트
-      await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), serverKeywords);
-      console.log(`📡 [Auth] 키워드 동기화 완료:`, serverKeywords);
+      if (response.data.success) {
+        const serverKeywords = response.data.keywords;
+        // 4. 서버 응답 데이터로 로컬 캐시 업데이트
+        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), serverKeywords);
+        console.log(`📡 [Auth] 키워드 동기화 완료:`, serverKeywords);
+      }
+    } catch (e) {
+      console.error("❌ [Auth] 키워드 동기화 에러:", e);
     }
-  } catch (e) {
-    console.error("❌ [Auth] 키워드 동기화 에러:", e);
-  }
   };
 
   // 초기화 및 자동 로그인 체크

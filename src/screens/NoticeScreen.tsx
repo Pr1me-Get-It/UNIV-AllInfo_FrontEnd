@@ -13,6 +13,8 @@ import { saveData, getData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { COLORS } from '../constants/colors';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../context/AuthContext';
+import { syncKeywords } from '../api/userService';
 
 const DEFAULT_IMAGE = require('../assets/knu.png');
 
@@ -37,13 +39,21 @@ const fetchNotices = async ({ queryKey }: any) => {
         if (safeNotices.length === 0) break;
 
         // 데이터 전처리
-        const processedBatch = safeNotices.map((item: any) => ({
-            ...item,
-            id: item.notice_id,
-            displaySource: SOURCE_LABELS[item.source?.split('/')[0]] || item.source,
-            date: item.posted_at ? item.posted_at.split('T')[0] : '',
-            image: DEFAULT_IMAGE,
-        }));
+        const processedBatch = safeNotices.map((item: any) => {
+            const rawSource = item.source;
+            const splitKey = rawSource?.split('/')[0];
+            const displaySource = SOURCE_LABELS[splitKey] || rawSource?.replace('공지사항', '').trim();
+
+
+
+            return {
+                ...item,
+                id: item.notice_id,
+                displaySource: displaySource,
+                date: item.posted_at ? item.posted_at.split('T')[0] : '',
+                image: DEFAULT_IMAGE,
+            };
+        });
 
         allFetchedData = [...allFetchedData, ...processedBatch];
 
@@ -61,6 +71,7 @@ const fetchNotices = async ({ queryKey }: any) => {
 
 export default function NoticeScreen({ navigation }: any) {
     const { readStatus } = useContext(AlarmContext) || { readStatus: {} };
+    const { userEmail } = useAuth(); // 유저 이메일 가져오기
     const safeStatus = readStatus || {};
 
     const [query, setQuery] = useState('');
@@ -115,19 +126,70 @@ export default function NoticeScreen({ navigation }: any) {
         setFilterModalVisible(false);
     };
 
-    const toggleSource = (code: string) => {
-        const updated = selectedSources.includes(code)
-            ? selectedSources.filter(c => c !== code)
-            : [...selectedSources, code];
+    const toggleSource = async (code: string) => {
+        const isAdding = !selectedSources.includes(code);
+        const updated = isAdding
+            ? [...selectedSources, code]
+            : selectedSources.filter(c => c !== code);
+
         setSelectedSources(updated);
         persistFilters(updated);
+
+        // [키워드 연동] 필터 선택 시 키워드 자동 추가/삭제
+        if (userEmail) {
+            try {
+                const safeEmail = userEmail.replace(/\./g, '_');
+                const localKeywords = await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail)) || [];
+                let newKeywords = [...localKeywords];
+
+                if (isAdding) {
+                    if (!newKeywords.includes(code)) newKeywords.push(code);
+                } else {
+                    newKeywords = newKeywords.filter(k => k !== code);
+                }
+
+                // 로컬 저장 및 서버 동기화
+                await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
+                await syncKeywords(userEmail, newKeywords);
+                console.log(`🔗 [필터-키워드 연동] ${code} ${isAdding ? '추가' : '삭제'}됨.`);
+            } catch (e) {
+                console.error("키워드 연동 실패:", e);
+            }
+        }
     };
 
-    const toggleAll = () => {
+    const toggleAll = async () => {
         const allCodes = Object.keys(SOURCE_LABELS);
-        const updated = selectedSources.length === allCodes.length ? [] : allCodes;
+        const isSelectingAll = selectedSources.length !== allCodes.length;
+        const updated = isSelectingAll ? allCodes : [];
+
         setSelectedSources(updated);
         persistFilters(updated);
+
+        // [키워드 연동] 전체 선택/해제 시 키워드 일괄 처리
+        if (userEmail) {
+            try {
+                const safeEmail = userEmail.replace(/\./g, '_');
+                const localKeywords = await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail)) || [];
+                let newKeywords = [...localKeywords];
+
+                if (isSelectingAll) {
+                    // 전체 추가: 없는 것들만 추가
+                    allCodes.forEach(code => {
+                        if (!newKeywords.includes(code)) newKeywords.push(code);
+                    });
+                } else {
+                    // 전체 해제: 학과 코드들만 제거 (사용자 정의 키워드는 유지)
+                    newKeywords = newKeywords.filter(k => !allCodes.includes(k));
+                }
+
+                await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
+                await syncKeywords(userEmail, newKeywords);
+                console.log(`🔗 [필터-키워드 연동] 전체 ${isSelectingAll ? '추가' : '해제'} 완료.`);
+            } catch (e) {
+                console.error("키워드 전체 연동 실패:", e);
+            }
+        }
     };
 
     const onRefresh = useCallback(() => {
@@ -137,7 +199,15 @@ export default function NoticeScreen({ navigation }: any) {
     const normalizeSource = (source: string) => {
         if (!source) return null;
         const key = source.split('/')[0].toUpperCase().trim();
-        return SOURCE_LABELS[key] ? key : null;
+
+        // 1. 코드로 찾기 (예: "CSE")
+        if (SOURCE_LABELS[key]) return key;
+
+        // 2. 이름으로 찾기 (예: "전기공학과공지사항" -> "전기공학과" -> "ELE")
+        const cleanName = source.replace('공지사항', '').trim();
+        const foundCode = Object.keys(SOURCE_LABELS).find(code => SOURCE_LABELS[code] === cleanName);
+
+        return foundCode || null;
     };
 
     // --- 5. 클라이언트 사이드 필터링 & 카운트 ---
@@ -156,7 +226,6 @@ export default function NoticeScreen({ navigation }: any) {
         return allNotices.filter((item: any) => {
             const sourcePrefix = normalizeSource(item.source);
             const matchesSourceFilter =
-                selectedSources.length === 0 ||
                 !sourcePrefix ||
                 selectedSources.includes(sourcePrefix);
 

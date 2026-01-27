@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,14 +18,15 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { syncKeywords, deleteUserKeyword, getUserKeywords } from '../api/userService';
 import LoginPlaceholder from '../components/ui/LoginPlaceholder'
+import CustomAlert from '../components/ui/CustomAlert';
 import { getData, saveData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 // 데이터 그룹 분리
-const DEPARTMENTS = [
-  { label: "컴퓨터", value: "CSE" },
-  { label: "전자", value: "SEE" },
-  { label: "전기", value: "ELE" },
-];
+import SOURCE_LABELS from '../constants/labeltag.json';
+
+// 데이터 그룹 분리
+// [변경] 학부 직접 추가 UI 제거됨
+
 
 const POPULAR_KEYWORDS = [
   { label: "장학", value: "장학" },
@@ -44,6 +45,21 @@ export default function KeywordScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { userEmail, isAuthenticated } = useAuth();
+
+  // 커스텀 알림창 상태
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+
+  const showAlert = (title, message) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertVisible(true);
+  };
+
+  const closeAlert = () => {
+    setAlertVisible(false);
+  };
 
   const fetchKeywords = useCallback(async () => {
     if (!userEmail) return;
@@ -101,13 +117,14 @@ export default function KeywordScreen({ navigation }) {
     const trimmedKeyword = keywordToAdd.trim();
 
     if (Array.isArray(keywords) && keywords.includes(trimmedKeyword)) {
-      Alert.alert("알림", "이미 등록된 키워드입니다.");
+      showAlert("알림", "이미 등록된 키워드입니다.");
       return;
     }
 
     // 1. [낙관적 업데이트] UI 먼저 갱신
     const prevKeywords = [...keywords]; // 롤백용 이전 상태 저장
-    const newKeywords = [trimmedKeyword, ...prevKeywords];
+    // [변경] 순서 변경: 기존 리스트 뒤에 추가 (아래로 쌓이게)
+    const newKeywords = [...prevKeywords, trimmedKeyword];
 
     setKeywords(newKeywords);
     setInputText('');
@@ -119,7 +136,7 @@ export default function KeywordScreen({ navigation }) {
       console.log(`💾 [로컬 저장] 키워드 추가 후 로컬 스토리지 업데이트: ${trimmedKeyword}`);
     }
 
-    setLoading(true);
+
     try {
       // 2. 백그라운드에서 API 호출
       console.log(`➕ [추가 시도] ${trimmedKeyword} 추가 중... (전송될 리스트: ${newKeywords})`);
@@ -147,9 +164,9 @@ export default function KeywordScreen({ navigation }) {
         const safeEmail = userEmail.replace(/\./g, '_');
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords);
       }
-      Alert.alert("오류", "서버 문제로 키워드를 추가할 수 없습니다.");
+      showAlert("오류", "서버 문제로 키워드를 추가할 수 없습니다.");
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 
@@ -157,6 +174,12 @@ export default function KeywordScreen({ navigation }) {
     if (!userEmail) return;
 
     // [수정] 낙관적 업데이트: UI에서 하나만 제거
+    // [보호 로직] 학과 코드(필터 연동)인 경우 삭제 방지
+    if (SOURCE_LABELS[keywordToDelete]) {
+      showAlert("알림", "학과 키워드는 [공지사항 필터]에서 해제해주세요.");
+      return;
+    }
+
     const prevKeywords = [...keywords];
     const newKeywords = keywords.filter(k => k !== keywordToDelete);
 
@@ -185,14 +208,14 @@ export default function KeywordScreen({ navigation }) {
         // 실패 시 롤백
         setKeywords(prevKeywords);
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords);
-        Alert.alert("오류", "키워드 삭제 실패");
+        showAlert("오류", "키워드 삭제 실패");
       }
     } catch (e) {
       console.error(`❌ [삭제 에러] 네트워크/서버 오류:`, e);
       // 에러 발생 시 롤백
       setKeywords(prevKeywords);
       await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords); // 로컬 스토리지 롤백
-      Alert.alert("오류", "네트워크 오류로 삭제 실패");
+      showAlert("오류", "네트워크 오류로 삭제 실패");
     }
   };
 
@@ -201,28 +224,48 @@ export default function KeywordScreen({ navigation }) {
     return <LoginPlaceholder />;
   }
 
-  const renderItem = ({ item }) => (
-    <View style={styles.registeredKeywordItem}>
-      <Text style={styles.registeredKeywordText}>#{item}</Text>
-      <TouchableOpacity onPress={() => deleteKeyword(item)}>
-        <Ionicons name="close-circle" size={20} color="#fff" />
-      </TouchableOpacity>
-    </View>
-  );
+  // [정렬 로직] 1. 학과 키워드(필터 순서) -> 2. 일반 키워드(추가된 순서)
+  const sortedKeywords = useMemo(() => {
+    const deptKeys = Object.keys(SOURCE_LABELS);
+
+    // 학과 키워드와 일반 키워드 분리
+    const deptKeywords = keywords.filter(k => SOURCE_LABELS[k]);
+    const manualKeywords = keywords.filter(k => !SOURCE_LABELS[k]);
+
+    // 학과 키워드 정렬 (labeltag.json 순서)
+    deptKeywords.sort((a, b) => {
+      return deptKeys.indexOf(a) - deptKeys.indexOf(b);
+    });
+
+    return [...deptKeywords, ...manualKeywords];
+  }, [keywords]);
+
+  const renderItem = ({ item }) => {
+    // [변경] 코드가 있으면 한글 명칭(예: 컴퓨터학부)으로 표시, 없으면 그대로 표시
+    const isDept = !!SOURCE_LABELS[item];
+    const displayName = isDept ? SOURCE_LABELS[item] : item;
+
+    // 학과 키워드(빨간색) vs 직접 등록 키워드(회색/검정) 스타일 분리
+    const itemStyle = isDept ? styles.registeredKeywordItem : styles.manualKeywordItem;
+    const textStyle = isDept ? styles.registeredKeywordText : styles.manualKeywordText;
+    const iconColor = isDept ? "rgb(219, 31, 38)" : "#555";
+
+    return (
+      <View style={itemStyle}>
+        <Text style={textStyle}>#{displayName}</Text>
+        {!isDept && (
+          <TouchableOpacity onPress={() => deleteKeyword(item)}>
+            <Ionicons name="close-circle" size={20} color={iconColor} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   const renderRecommendations = () => (
     <View style={styles.recommendContainer}>
 
-      <Text style={styles.recommendLabel}>학부</Text>
-      <View style={styles.chipWrapper}>
-        {DEPARTMENTS.map((k, i) => (
-          <TouchableOpacity key={i} style={[styles.chip, styles.deptChip]} onPress={() => addKeyword(k)}>
-            <Text style={[styles.chipText, { fontWeight: 'bold', color: '#333' }]}>+ {k.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={[styles.recommendLabel, { marginTop: 24 }]}>인기 키워드</Text>
+      <Text style={[styles.recommendLabel, { marginTop: 0 }]}>인기 키워드</Text>
       <View style={styles.chipWrapper}>
         {POPULAR_KEYWORDS.map((k, i) => (
           <TouchableOpacity key={i} style={styles.chip} onPress={() => addKeyword(k)}>
@@ -240,14 +283,14 @@ export default function KeywordScreen({ navigation }) {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>키워드 알림</Text>
-          <Text style={styles.description}>관심있는 키워드(학부 코드 포함)를 등록하면 알림을 보내드려요.</Text>
+          <Text style={styles.description}>관심있는 키워드를 등록하면 알림을 보내드려요.</Text>
         </View>
 
         {loading ? (
           <ActivityIndicator size="large" color="rgb(219, 31, 38)" style={{ marginTop: 20 }} />
         ) : (
           <FlatList
-            data={keywords}
+            data={sortedKeywords}
             keyExtractor={(item, index) => index.toString()}
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
@@ -276,21 +319,29 @@ export default function KeywordScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* 커스텀 알림창 컴포넌트 */}
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        onClose={closeAlert}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#f5f5f5', paddingBottom: 90 },
+  mainContainer: { flex: 1, backgroundColor: '#ffffff', paddingBottom: 90 },
   keyboardView: { flex: 1 },
 
   header: {
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0'
+    borderBottomColor: '#ffffff'
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   description: { fontSize: 14, color: '#666', lineHeight: 20 },
@@ -301,18 +352,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgb(219, 31, 38)',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgb(219, 31, 38)',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
     marginBottom: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2
   },
-  registeredKeywordText: { fontSize: 16, color: '#fff', fontWeight: '700' },
+  registeredKeywordText: { fontSize: 16, color: 'rgb(219, 31, 38)', fontWeight: '700' },
+
+  // [추가] 직접 등록한 키워드 스타일 (다크 그레이 톤)
+  manualKeywordItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#555', // 진한 회색 테두리
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2
+  },
+  manualKeywordText: { fontSize: 16, color: '#333', fontWeight: '700' },
 
   emptyContainer: { alignItems: 'center', marginTop: 30, marginBottom: 20 },
   emptyText: { fontSize: 16, color: '#999' },
@@ -334,7 +407,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5'
+    backgroundColor: '#ffffff'
   },
   msg: { fontSize: 16, color: '#888', marginBottom: 15 },
   btn: { backgroundColor: '#333', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },

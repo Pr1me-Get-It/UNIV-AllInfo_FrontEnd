@@ -4,7 +4,7 @@ import { AlarmContext } from '../data/Alarm';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { getToken } from '../utils/storage';
-import  SOURCE_LABELS  from '../constants/labeltag.json';
+import SOURCE_LABELS from '../constants/labeltag.json';
 
 const DEV_TOKEN = "DEV_MODE_ACCESS_TOKEN";
 const stripHtml = (text) => {
@@ -22,7 +22,8 @@ export default function DetailScreen({ route, navigation }) {
     const item = params.item || null;
     const context = useContext(AlarmContext);
     const { markAsRead, toggleBookmark, bookmarkStatus, addMockEvent } = context || {};
-    const itemId = item ? item.id : null;
+    // [수정] API 응답의 notice_id를 우선 사용
+    const itemId = item ? (item.notice_id || item.id) : null;
     const sourcePrefix = item?.source ? item.source.split('/')[0] : '';
     const displaySource = SOURCE_LABELS[sourcePrefix] || item?.source || '출처 없음';
 
@@ -42,14 +43,23 @@ export default function DetailScreen({ route, navigation }) {
     }, [item, itemId, markAsRead]);
 
     const fetchDeadline = async () => {
+        if (!itemId) return; // ID가 없으면 중단
         setLoadingDeadline(true);
         try {
-            const response = await api.get(`/notice/${item.id}/deadline`);
-            if (response.data.isExistDeadline) {
-                setDeadlineInfo(response.data.deadline);
+            // [수정] item.id 대신 itemId 사용
+            const response = await api.get(`/notice/${itemId}/deadline`);
+            console.log(`[Deadline Info] ID: ${itemId}`, response.data); // 로그 추가
+
+            // [수정] 실제 API 응답 구조에 맞춰 파싱 (response.data 자체가 객체임)
+            // 예: {"deadline": "...", "kickoff": "...", ...}
+            if (response.data && (response.data.deadline || response.data.kickoff)) {
+                setDeadlineInfo(response.data);
+            } else {
+                setDeadlineInfo(null);
             }
         } catch (e) {
             console.log("마감일 조회 실패 (없을 수 있음):", e);
+            setDeadlineInfo(null);
         } finally {
             setLoadingDeadline(false);
         }
@@ -91,6 +101,8 @@ export default function DetailScreen({ route, navigation }) {
 
         try {
             const token = await getToken();
+            console.log("[Calendar Debug] Token:", token); // 토큰 확인
+
             if (!token) {
                 Alert.alert("로그인 필요", "캘린더에 등록하려면 로그인이 필요합니다.");
                 return;
@@ -110,18 +122,20 @@ export default function DetailScreen({ route, navigation }) {
                 return;
             }
 
+            // [수정] deadlineInfo의 실제 프로퍼티(kickoff, deadline) 사용 및 날짜 포맷팅
+            const startDate = (deadlineInfo.kickoff || deadlineInfo.deadline)?.split('T')[0];
+            const endDate = (deadlineInfo.deadline || deadlineInfo.kickoff)?.split('T')[0];
+
             const event = {
                 summary: item.title,
-                description: item.link + "\n\n(UNIV-AllInfo 앱에서 등록됨)",
-                location: item.source,
+                description: `참조링크 : ${item.link}`,
                 start: {
-                    date: deadlineInfo.start || deadlineInfo.end
+                    date: startDate
                 },
                 end: {
-                    date: deadlineInfo.end || deadlineInfo.start
+                    date: endDate
                 }
             };
-
             const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
                 method: 'POST',
                 headers: {
@@ -137,15 +151,15 @@ export default function DetailScreen({ route, navigation }) {
                 Alert.alert("실패", "캘린더 등록 중 오류가 발생했습니다.");
             }
         } catch (e) {
-            console.error(e);
+            console.error("[Calendar Debug] Error:", e);
             Alert.alert("오류", "네트워크 오류가 발생했습니다.");
         }
     };
 
     if (!item) {
         return (
-            <View style={[styles.wrapper, { justifyContent: 'center' }]}>
-                <Text style={{ color: '#999' }}>데이터를 불러오는 중입니다...</Text>
+            <View style={styles.loadingContainer}>
+                <Text style={styles.guideText}>데이터를 불러오는 중입니다...</Text>
             </View>
         );
     }
@@ -155,126 +169,260 @@ export default function DetailScreen({ route, navigation }) {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <View style={styles.wrapper}>
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{displaySource}</Text>
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+            {/* 1. Header Area */}
+            <View style={styles.headerSection}>
+                <View style={styles.sourceBadge}>
+                    <Text style={styles.sourceText}>{displaySource}</Text>
                 </View>
 
                 <Text style={styles.title}>{stripHtml(item?.title) || '제목 없음'}</Text>
 
-                {/* 👇 [수정] 좋아요 숫자를 likeCount State로 표시 */}
-                <View style={styles.metaContainer}>
-                    <Text style={styles.dateText}>게시일: {item.date || '날짜 정보 없음'}</Text>
-                    <Text style={styles.metaDivider}>|</Text>
-                    <View style={styles.metaLike}>
-                        <Ionicons name="heart" size={14} color="#FF5252" />
-                        <Text style={styles.metaLikeText}>{likeCount}</Text>
+                <View style={styles.metaRow}>
+                    <Text style={styles.dateText}>{item.date || '날짜 미상'}</Text>
+                    <View style={styles.metaDivider} />
+                    <View style={styles.likeBadge}>
+                        <Ionicons name="heart" size={12} color="#fff" />
+                        <Text style={styles.likeText}>{likeCount}</Text>
                     </View>
                 </View>
+            </View>
 
-                {/* ... 마감일 및 본문 ... */}
+            {/* 2. Content & Deadline Area */}
+            <View style={styles.bodySection}>
+                {/* Deadline Card */}
                 {loadingDeadline ? (
-                    <ActivityIndicator size="small" color="rgb(219, 31, 38)" style={{ marginBottom: 10 }} />
+                    <ActivityIndicator size="small" color="#DB1F26" style={{ marginVertical: 20 }} />
                 ) : deadlineInfo && (deadlineInfo.kickoff || deadlineInfo.deadline) ? (
                     <View style={styles.deadlineCard}>
-                        <View style={styles.deadlineRow}>
-                            <Ionicons name="calendar" size={20} color="rgb(219, 31, 38)" />
-                            <Text style={styles.deadlineTitle}>신청/마감 일정</Text>
+                        <View style={styles.deadlineHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Ionicons name="time-outline" size={18} color="#DB1F26" />
+                                <Text style={styles.deadlineLabel}>마감 일정</Text>
+                            </View>
+                            <TouchableOpacity onPress={addToCalendar} style={styles.calendarIconBtn}>
+                                <Ionicons name="calendar-outline" size={18} color="#DB1F26" />
+                            </TouchableOpacity>
                         </View>
                         <Text style={styles.deadlineDate}>
                             {deadlineInfo.kickoff ? `${formatDate(deadlineInfo.kickoff)} ~ ` : ''}
-                            {formatDate(deadlineInfo.deadline) || '기한 없음'}
+                            {formatDate(deadlineInfo.deadline) || '상시 모집'}
                         </Text>
-                        <TouchableOpacity style={styles.calendarBtn} onPress={addToCalendar}>
-                            <Text style={styles.calendarBtnText}>📅 캘린더에 등록하기</Text>
+                    </View>
+                ) : null}
+
+                {/* Description Text */}
+                <Text style={styles.guideText}>
+                    상세 내용은 아래 버튼을 눌러 학교 홈페이지에서 확인하세요.
+                </Text>
+
+                {/* 3. Action Buttons */}
+                <View style={styles.actionGroup}>
+                    {/* Link Button */}
+                    {item.link && (
+                        <TouchableOpacity style={styles.primaryLinkBtn} onPress={openLink} activeOpacity={0.8}>
+                            <Text style={styles.primaryLinkText}>공지사항 원본 보기</Text>
+                            <Ionicons name="arrow-forward" size={16} color="#fff" />
                         </TouchableOpacity>
-                    </View>
-                ) : (
-                    <Text style={styles.noDeadlineText}>- 마감일 정보가 없는 공지입니다 -</Text>
-                )}
+                    )}
 
-                <View style={styles.container}>
-                    <View style={styles.contentBox}>
-                        <Text style={styles.contentText}>
-                            이 공지사항의 상세 내용은 학교 홈페이지에서 확인할 수 있습니다.
-                        </Text>
-                        {item.link && (
-                            <TouchableOpacity style={styles.linkButton} onPress={openLink}>
-                                <Text style={styles.linkButtonText}>공지사항 원본 보러가기</Text>
-                                <Ionicons name="open-outline" size={16} color="#fff" />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-
-                    {/* 👇 [수정] 버튼 클릭 시 handleLikeToggle 호출 */}
+                    {/* Bookmark Button */}
                     <TouchableOpacity
                         style={[styles.bookmarkBtn, isBookmarked && styles.bookmarkBtnActive]}
                         onPress={handleLikeToggle}
+                        activeOpacity={0.8}
                     >
                         <Ionicons
-                            name={isBookmarked ? "star" : "star-outline"}
-                            size={24}
+                            name={isBookmarked ? "bookmark" : "bookmark-outline"}
+                            size={20}
                             color={isBookmarked ? "#fff" : "#333"}
                         />
-                        <Text style={[styles.btnText, isBookmarked && { color: '#fff' }]}>
-                            {isBookmarked ? "북마크 해제" : "북마크에 추가"}
+                        <Text style={[styles.bookmarkText, isBookmarked && styles.bookmarkTextActive]}>
+                            {isBookmarked ? "저장됨" : "북마크 저장"}
                         </Text>
                     </TouchableOpacity>
-
-                    {/* ... (읽음 표시 버튼 등) ... */}
-                    <View style={{ marginTop: 20 }}>
-                        <Text style={{ color: 'green', marginBottom: 20, fontWeight: 'bold' }}>
-                            ✔ 읽음 처리되었습니다.
-                        </Text>
-                    </View>
-
-                    <Button title="다시 '안 읽음'으로 표시" onPress={handleMarkUnread} color="#888" />
                 </View>
+
+                {/* Mark Unread (Subtle) */}
+                <TouchableOpacity onPress={handleMarkUnread} style={styles.textBtn}>
+                    <Text style={styles.textBtnLabel}>다시 '안 읽음'으로 표시하기</Text>
+                </TouchableOpacity>
             </View>
         </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
+    scrollContainer: {
+        flexGrow: 1,
+        backgroundColor: '#fff',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    // Header Section
+    headerSection: {
+        paddingHorizontal: 24,
+        paddingTop: 30,
+        paddingBottom: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f3f4f6',
+    },
+    sourceBadge: {
+        alignSelf: 'flex-start',
+        backgroundColor: 'rgb(219, 31, 38)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 6,
+        marginBottom: 12,
+    },
+    sourceText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 12,
+    },
     title: {
-        fontSize: 20,         // 상세 페이지이므로 크게 설정
-        fontWeight: 'bold',   // 강조
-        color: '#333',        // 글자 색상
-        lineHeight: 30,       // 줄 간격 (제목이 길어질 때 대비)
-        marginBottom: 10,     // 아래 요소와의 간격
-        marginTop: 5,
-        marginLeft: 15,
-        marginRight: 15,        
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#111827',
+        lineHeight: 32,
+        marginBottom: 14,
     },
-    scrollContainer: { flexGrow: 1, backgroundColor: 'white' },
-    wrapper: { flex: 1, paddingTop: 20, alignItems: 'center', backgroundColor: 'white' },
-    badge: { backgroundColor: 'rgb(219, 31, 38)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginBottom: 15 },
-    badgeText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-    headerTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, color: '#333', textAlign: 'center', paddingHorizontal: 20 },
-    dateText: { fontSize: 13, color: '#888' },
-    container: { width: '100%', alignItems: 'center', paddingHorizontal: 30 },
-    contentBox: { width: '100%', padding: 10, backgroundColor: '#f9f9f9', borderRadius: 10, marginBottom: 20, alignItems: 'center' },
-    contentText: { fontSize: 16, color: '#555', lineHeight: 24, textAlign: 'center', marginBottom: 20 },
-    linkButton: { flexDirection: 'row', backgroundColor: '#333', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center', gap: 8 },
-    linkButtonText: { color: '#fff', fontWeight: '600' },
+    metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    dateText: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    metaDivider: {
+        width: 1,
+        height: 12,
+        backgroundColor: '#E5E7EB',
+        marginHorizontal: 10,
+    },
+    likeBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FF5252',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
+        gap: 4,
+    },
+    likeText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+
+    // Body Section
+    bodySection: {
+        padding: 24,
+    },
+    // Deadline Card
+    deadlineCard: {
+        backgroundColor: '#FFF5F5', // 연한 붉은 배경
+        borderWidth: 1,
+        borderColor: '#FFE5E5',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 24,
+    },
+    deadlineHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    deadlineLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#DB1F26',
+    },
+    deadlineDate: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1F2937',
+    },
+    calendarIconBtn: {
+        padding: 6,
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#fca5a5',
+    },
+
+    // Content
+    guideText: {
+        fontSize: 15,
+        color: '#4B5563',
+        lineHeight: 24,
+        marginBottom: 24,
+        textAlign: 'center',
+    },
+
+    // Actions
+    actionGroup: {
+        gap: 12,
+        marginBottom: 32,
+    },
+    primaryLinkBtn: {
+        backgroundColor: '#111827', // 검정 배경
+        paddingVertical: 16,
+        borderRadius: 14,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    primaryLinkText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
     bookmarkBtn: {
-        flexDirection: 'row', alignItems: 'center', paddingVertical: 5
-        , paddingHorizontal: 20, borderRadius: 30, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff', gap: 8, marginBottom: 5
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        paddingVertical: 16,
+        borderRadius: 14,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
     },
-    bookmarkBtnActive: { backgroundColor: '#FFD700', borderColor: '#FFD700' },
-    btnText: { fontSize: 16, fontWeight: '600', color: '#333' },
+    bookmarkBtnActive: {
+        backgroundColor: 'rgb(219, 31, 38)', // 활성 시 빨간 배경
+        borderColor: 'rgb(219, 31, 38)',
+    },
+    bookmarkText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    bookmarkTextActive: {
+        color: '#fff',
+    },
 
-    metaContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-    metaDivider: { marginHorizontal: 8, color: '#ddd' },
-    metaLike: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF0F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-    metaLikeText: { fontSize: 12, color: '#FF5252', fontWeight: 'bold', marginLeft: 4 },
-
-    deadlineCard: { width: '90%', backgroundColor: '#FFF5F5', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#FFE0E0', alignItems: 'center', marginBottom: 30 },
-    deadlineRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 },
-    deadlineTitle: { fontSize: 16, fontWeight: 'bold', color: 'rgb(219, 31, 38)' },
-    deadlineDate: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 15 },
-    calendarBtn: { backgroundColor: 'rgb(219, 31, 38)', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
-    calendarBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-    noDeadlineText: { color: '#aaa', fontSize: 13, marginBottom: 30, fontStyle: 'italic' }
+    // Subtle Button
+    textBtn: {
+        alignSelf: 'center',
+        padding: 10,
+    },
+    textBtnLabel: {
+        color: '#9CA3AF',
+        fontSize: 13,
+        textDecorationLine: 'underline',
+    },
 });

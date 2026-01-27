@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Image,
   ActivityIndicator,
   Platform,
@@ -17,8 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
 import { registerUser } from '../api/userService';
-import { registerForPushNotificationsAsync } from '../utils/notifications';
+import { registerForPushNotificationsAsync, sendTestNotification } from '../utils/notifications';
 import { useNavigation } from '@react-navigation/native';
+import CustomAlert from '../components/ui/CustomAlert';
 
 const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_PASSWORD = "1557";
@@ -42,6 +42,24 @@ export default function ProfileScreen() {
   const [nightPushOnly, setNightPushOnly] = useState(false);
   const [marketingEnabled, setMarketingEnabled] = useState(false);
 
+  // 커스텀 알림 상태
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertOnConfirm, setAlertOnConfirm] = useState<(() => void) | undefined>(undefined);
+
+  const showAlert = (title: string, message: string, onConfirm?: () => void) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertOnConfirm(() => onConfirm);
+    setAlertVisible(true);
+  };
+
+  const closeAlert = () => {
+    setAlertVisible(false);
+    setAlertOnConfirm(undefined);
+  };
+
   const appVersion = Constants.expoConfig?.version || "1.0.0";
 
   // 2. 핸들러 함수들 (기존 로직 유지)
@@ -51,43 +69,57 @@ export default function ProfileScreen() {
       setPasswordInput('');
       loginDev();
     } else {
-      Alert.alert("오류", "비밀번호가 틀렸습니다.");
+      showAlert("오류", "비밀번호가 틀렸습니다.");
     }
   };
 
   const handleLogout = () => {
     console.log("🚩 [ProfileScreen] 로그아웃 버튼 클릭됨");
-    Alert.alert("로그아웃", "로그아웃 하시겠습니까?", [
-      {
-        text: "취소",
-        style: "cancel",
-        onPress: () => console.log("🚩 [ProfileScreen] 로그아웃 취소됨")
-      },
-      {
-        text: "확인",
-        onPress: () => {
-          console.log("🚩 [ProfileScreen] 로그아웃 '확인' 누름 -> AuthContext.logout 호출");
-          logout();
-        }
-      }
-    ]);
+    // [변경] 커스텀 알림창으로 로그아웃 확인
+    showAlert("로그아웃", "로그아웃 하시겠습니까?", () => {
+      console.log("🚩 [ProfileScreen] 로그아웃 '확인' 누름 -> AuthContext.logout 호출");
+      logout();
+    });
   };
 
   const handlePushToggle = async (value) => {
     if (!isAuthenticated) {
-      Alert.alert("로그인 필요", "푸시 알림을 받으려면 로그인이 필요합니다.");
+      showAlert("로그인 필요", "푸시 알림을 받으려면 로그인이 필요합니다.");
       setPushEnabled(false);
       return;
     }
     setPushEnabled(value);
     if (value) {
       try {
+        // console.log("🚀 [PushDebug] 푸시 알림 설정 시작...");
         const token = await registerForPushNotificationsAsync();
+        // console.log("🚀 [PushDebug] 토큰 발급 결과:", token);
+
         if (token) {
-          await registerUser(userEmail, token);
-          Alert.alert("알림", "푸시 알림 설정이 완료되었습니다.");
+          // console.log("🚀 [PushDebug] 서버로 토큰 전송 시도:", userEmail);
+          try {
+            await registerUser(userEmail, token);
+            // console.log("🚀 [PushDebug] 서버 등록 완료!");
+            showAlert("알림", "푸시 알림 설정이 완료되었습니다.");
+          } catch (apiError: any) {
+            // [수정] 409 Conflict (이미 등록된 유저)는 성공으로 처리
+            if (apiError.response && apiError.response.status === 409) {
+              // console.log("🚀 [PushDebug] 이미 등록된 토큰/유저 (409) -> 성공 처리");
+              showAlert("알림", "푸시 알림 설정이 완료되었습니다."); // 사용자에게는 성공으로 표시
+            } else {
+              throw apiError; // 다른 에러는 catch 블록으로 전달
+            }
+          }
+        } else {
+          // console.log("🚀 [PushDebug] 토큰이 없어 서버 등록 스킵");
+          showAlert("오류", "푸시 토큰을 가져올 수 없습니다.");
+          setPushEnabled(false);
         }
-      } catch (e) { setPushEnabled(false); }
+      } catch (e) {
+        console.error("🚀 [PushDebug] 에러 발생:", e);
+        setPushEnabled(false);
+        showAlert("오류", "푸시 알림 설정 중 문제가 발생했습니다.");
+      }
     }
   };
 
@@ -96,7 +128,7 @@ export default function ProfileScreen() {
     <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 140 }}>
       {/* 상단 액션 바 */}
       <View style={styles.topActionBar}>
-        <TouchableOpacity onPress={() => Alert.alert('설정', '준비 중')}>
+        <TouchableOpacity onPress={() => showAlert('설정', '준비 중')}>
           <Ionicons name="settings" size={26} color="#555" />
         </TouchableOpacity>
       </View>
@@ -201,7 +233,7 @@ export default function ProfileScreen() {
       {/* 계정 섹션 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>계정</Text>
-        <TouchableOpacity style={styles.menuRow} onPress={() => Alert.alert('안내', 'Google 계정 관리는 Google 설정에서 가능합니다.')}>
+        <TouchableOpacity style={styles.menuRow} onPress={() => showAlert('안내', 'Google 계정 관리는 Google 설정에서 가능합니다.')}>
           <View>
             <Text style={styles.menuLabel}>계정 정보 수정</Text>
             <Text style={styles.menuDescription}>Google 계정 설정을 확인합니다.</Text>
@@ -222,7 +254,14 @@ export default function ProfileScreen() {
           <Text style={styles.menuLabel}>버전</Text>
           <Text style={styles.menuDescription}>v{appVersion}</Text>
         </View>
-        <TouchableOpacity style={styles.menuRow} onPress={() => Alert.alert('피드백', '준비 중')}>
+        <TouchableOpacity style={styles.menuRow} onPress={() => sendTestNotification()}>
+          <View>
+            <Text style={styles.menuLabel}>푸시 알림 테스트</Text>
+            <Text style={styles.menuDescription}>내 폰으로 테스트 알림을 보냅니다.</Text>
+          </View>
+          <Ionicons name="notifications" size={20} color="#ccc" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuRow} onPress={() => showAlert('피드백', '준비 중')}>
           <View>
             <Text style={styles.menuLabel}>피드백 보내기</Text>
             <Text style={styles.menuDescription}>버그 제보, 기능 요청 등을 전달합니다.</Text>
@@ -230,6 +269,13 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
       </View>
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        onClose={closeAlert}
+        onConfirm={alertOnConfirm}
+      />
     </ScrollView>
   );
 } // 👈 ProfileScreen 함수 끝 (여기서 닫아줘야 스타일이 적용됩니다.)
