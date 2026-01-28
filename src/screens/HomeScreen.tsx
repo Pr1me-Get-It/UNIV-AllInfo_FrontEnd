@@ -7,15 +7,19 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
-  Linking
+  Linking,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { EXTERNAL_LINKS } from '../constants/links';
 import { COLORS } from '../constants/colors';
 
-export default function HomeScreen() {
+const { width } = Dimensions.get('window');
+const CARD_SPACING = 15;
+const CARD_WIDTH = (width - 40 - CARD_SPACING) / 2; // 2 columns
 
-  const handleOpenLink = async (url) => {
+export default function HomeScreen() {
+  const handleOpenLink = async (url: string) => {
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) {
@@ -24,46 +28,55 @@ export default function HomeScreen() {
         Alert.alert('에러', '연결할 수 없는 링크입니다.');
       }
     } catch (error) {
-      console.error("An error occurred", error);
+      console.error('An error occurred', error);
     }
   };
 
   return (
     <View style={styles.page}>
-      {/* 상단 헤더 섹션 (로고 및 검색) */}
-      <View style={styles.topBar}>
-        <Image
-          source={require('../assets/cow.png')}
-          style={styles.logoIcon}
-          resizeMode="contain"
-        />
+      {/* 상단 헤더 섹션 */}
+      <View style={styles.header}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../assets/cow.png')}
+            style={styles.logoIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.appName}>KNU INFO</Text>
+        </View>
         <TouchableOpacity
           style={styles.searchButton}
           onPress={() => Alert.alert('검색', '준비 중입니다.')}
-        >
-          <Ionicons name="search" size={26} color="#555" />
+          activeOpacity={0.7}>
+          <Ionicons name="search" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* 섹션 타이틀 */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>서비스 바로가기</Text>
+          <Text style={styles.greetingText}>안녕하세요</Text>
+          <Text style={styles.sectionTitle}>자주 찾는 서비스</Text>
         </View>
 
         {/* 링크 그리드 */}
         <View style={styles.gridContainer}>
-          {EXTERNAL_LINKS.map((link) => (
+          {EXTERNAL_LINKS.map(link => (
             <TouchableOpacity
               key={link.id}
-              style={styles.linkButton}
+              style={styles.linkCard}
               onPress={() => handleOpenLink(link.url)}
-            >
-              <View style={styles.iconContainer}>
-                {/* links.js에 icon 이름이 있다면 적용, 없으면 기본 아이콘 */}
-                <Ionicons name={link.icon as any || "link-outline"} size={28} color={COLORS.primary || "#333"} />
+              activeOpacity={0.9}>
+              <View style={styles.iconWrapper}>
+                <Ionicons
+                  name={(link.icon as any) || 'link-outline'}
+                  size={24}
+                  color={COLORS.primary}
+                />
               </View>
-              <Text style={styles.linkText}>{link.title}</Text>
+              <View style={styles.textContainer}>
+                <Text style={styles.linkText}>{link.title}</Text>
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -76,66 +89,86 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingTop: 50,
-    paddingHorizontal: 20
+    paddingTop: 60, // Status bar area
   },
-  topBar: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 60,
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   logoIcon: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#fff',
+    width: 34,
+    height: 34,
+    marginRight: 8,
+  },
+  appName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    letterSpacing: 0.5,
   },
   searchButton: {
-    padding: 5,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   sectionHeader: {
-    paddingVertical: 15,
+    marginBottom: 25,
+  },
+  greetingText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 5,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#111',
   },
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingBottom: 20,
   },
-  linkButton: {
-    width: '33%', // 간격을 위해 살짝 조정
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 5,
-    paddingHorizontal: 5,
-    marginBottom: 15,
-    alignItems: 'center',
-    // 그림자 설정
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-  },
-  iconContainer: {
-    width: 50,
-    height: 50,
+  linkCard: {
+    width: CARD_WIDTH,
     backgroundColor: '#F9FAFB',
-    borderRadius: 25,
+    borderRadius: 16,
+    padding: 15,
+    marginBottom: CARD_SPACING,
+    justifyContent: 'center', // Changed from space-between to center
+    alignItems: 'flex-start', // Align items to left
+    height: 100,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  iconWrapper: {
+    width: 36, // Reduced from 44
+    height: 36, // Reduced from 44
+    borderRadius: 10,
+    backgroundColor: 'rgba(219, 31, 38, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10, // Added margin bottom to separate from text
+  },
+  textContainer: {
+    width: '100%',
   },
   linkText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4B5563',
-    textAlign: 'center',
+    fontSize: 14, // Slightly reduced
+    fontWeight: '700',
+    color: '#333',
+    lineHeight: 20,
   },
 });

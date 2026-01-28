@@ -7,9 +7,9 @@ export default function SplashScreen({ onFinish }) {
   const lottieRef = useRef(null);
   useEffect(() => {
     const timeout = setTimeout(() => {
-      console.log("🚩 스플래시 타임아웃 강제 종료");
+      console.log('🚩 스플래시 타임아웃 강제 종료');
       onFinish();
-    }, 5000); 
+    }, 5000);
 
     return () => clearTimeout(timeout);
   }, []);
@@ -18,14 +18,13 @@ export default function SplashScreen({ onFinish }) {
     <View style={styles.container}>
       <LottieView
         ref={lottieRef}
-        source={require('../assets/splash_animation.json')} 
+        source={require('../assets/splash_animation.json')}
         autoPlay
-        loop={false} 
+        loop={false}
         onAnimationFinish={() => {
-          console.log("🚩 스플래시 애니메이션 종료");
-          onFinish(); 
+          console.log('🚩 스플래시 애니메이션 종료');
+          onFinish();
         }}
-        
         style={styles.lottie}
         resizeMode="contain"
       />
@@ -41,7 +40,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   lottie: {
-    width: '80%', 
+    width: '80%',
     height: '80%',
   },
 });

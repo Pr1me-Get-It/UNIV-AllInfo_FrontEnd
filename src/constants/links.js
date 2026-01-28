@@ -22,5 +22,5 @@ export const EXTERNAL_LINKS = [
     title: '수강신청',
     url: 'https://sugang.knu.ac.kr/login.knu',
     icon: 'checkmark-done-outline',
-  }
+  },
 ];

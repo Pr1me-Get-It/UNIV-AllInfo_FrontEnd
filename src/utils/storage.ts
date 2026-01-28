@@ -15,7 +15,7 @@ export const saveToken = async (token: string | object): Promise<void> => {
     try {
       localStorage.setItem(STORAGE_KEYS.TOKEN, tokenToSave);
     } catch (e) {
-      console.error("Local storage error:", e);
+      console.error('Local storage error:', e);
     }
   } else {
     await SecureStore.setItemAsync(STORAGE_KEYS.TOKEN, tokenToSave);
@@ -62,14 +62,14 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
     try {
       localStorage.setItem(key, jsonValue);
     } catch (e) {
-      console.error("Save data error:", e);
+      console.error('Save data error:', e);
     }
   } else {
     try {
       // 대용량 데이터 캐싱을 위해 AsyncStorage 사용
       await AsyncStorage.setItem(key, jsonValue);
     } catch (e) {
-      console.error("AsyncStorage save error:", e);
+      console.error('AsyncStorage save error:', e);
     }
   }
 };
@@ -78,8 +78,8 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
  * [일반 저장소] 데이터 가져오기 - AsyncStorage로 변경
  */
 export const getData = async <T>(key: string): Promise<T | null> => {
-  if (!key || key.trim() === "") {
-    console.warn("⚠️ [Storage] 빈 키가 전달되어 조회를 중단합니다.");
+  if (!key || key.trim() === '') {
+    console.warn('⚠️ [Storage] 빈 키가 전달되어 조회를 중단합니다.');
     return null;
   }
 
@@ -91,10 +91,10 @@ export const getData = async <T>(key: string): Promise<T | null> => {
       // AsyncStorage에서 데이터 조회
       result = await AsyncStorage.getItem(key);
     }
-    
+
     return result ? JSON.parse(result) : null;
   } catch (e) {
-    console.error("Get data error:", e);
+    console.error('Get data error:', e);
     return null;
   }
 };
@@ -111,7 +111,7 @@ export const removeData = async (key: string): Promise<void> => {
     try {
       await AsyncStorage.removeItem(key);
     } catch (e) {
-      console.error("AsyncStorage remove error:", e);
+      console.error('AsyncStorage remove error:', e);
     }
   }
 };

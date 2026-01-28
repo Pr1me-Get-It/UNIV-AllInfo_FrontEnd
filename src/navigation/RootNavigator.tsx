@@ -8,12 +8,20 @@ import BookmarkScreen from '../screens/BookmarkScreen';
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-    return (
-        <Stack.Navigator id="RootStackNavigator">
-            <Stack.Screen name="MainTab" component={TabNavigator} options={{ headerShown: false }} />
-            <Stack.Screen name="Detail" component={DetailScreen} options={{ title: '상세 정보' }} />
-            <Stack.Screen name="Keyword" component={KeywordScreen} options={{ title: '뒤로가기', headerShown: true, headerTintColor: '#000' }} />
-            <Stack.Screen name="Bookmark" component={BookmarkScreen} options={{ title: '뒤로가기', headerShown: true }} />
-        </Stack.Navigator>
-    );
+  return (
+    <Stack.Navigator id="RootStackNavigator">
+      <Stack.Screen name="MainTab" component={TabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="Detail" component={DetailScreen} options={{ title: '상세 정보' }} />
+      <Stack.Screen
+        name="Keyword"
+        component={KeywordScreen}
+        options={{ title: '뒤로가기', headerShown: true, headerTintColor: '#000' }}
+      />
+      <Stack.Screen
+        name="Bookmark"
+        component={BookmarkScreen}
+        options={{ title: '뒤로가기', headerShown: true }}
+      />
+    </Stack.Navigator>
+  );
 }

@@ -10,14 +10,14 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  RefreshControl
+  RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { syncKeywords, deleteUserKeyword, getUserKeywords } from '../api/userService';
-import LoginPlaceholder from '../components/ui/LoginPlaceholder'
+import LoginPlaceholder from '../components/ui/LoginPlaceholder';
 import CustomAlert from '../components/ui/CustomAlert';
 import { getData, saveData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
@@ -27,16 +27,15 @@ import SOURCE_LABELS from '../constants/labeltag.json';
 // 데이터 그룹 분리
 // [변경] 학부 직접 추가 UI 제거됨
 
-
 const POPULAR_KEYWORDS = [
-  { label: "장학", value: "장학" },
-  { label: "공모전", value: "공모전" },
-  { label: "인턴", value: "인턴" },
-  { label: "채용", value: "채용" },
-  { label: "특강", value: "특강" },
-  { label: "휴강", value: "휴강" },
-  { label: "봉사", value: "봉사" },
-  { label: "교환학생", value: "교환학생" },
+  { label: '장학', value: '장학' },
+  { label: '공모전', value: '공모전' },
+  { label: '인턴', value: '인턴' },
+  { label: '채용', value: '채용' },
+  { label: '특강', value: '특강' },
+  { label: '휴강', value: '휴강' },
+  { label: '봉사', value: '봉사' },
+  { label: '교환학생', value: '교환학생' },
 ];
 
 export default function KeywordScreen({ navigation }) {
@@ -83,7 +82,7 @@ export default function KeywordScreen({ navigation }) {
         setKeywords([]);
       }
     } catch (error) {
-      console.error("키워드 로컬 로딩 실패", error);
+      console.error('키워드 로컬 로딩 실패', error);
     } finally {
       setLoading(false);
     }
@@ -97,7 +96,7 @@ export default function KeywordScreen({ navigation }) {
       } else {
         setKeywords([]);
       }
-    }, [isAuthenticated, userEmail, fetchKeywords])
+    }, [isAuthenticated, userEmail, fetchKeywords]),
   );
 
   const onRefresh = useCallback(() => {
@@ -109,7 +108,7 @@ export default function KeywordScreen({ navigation }) {
     }
   }, [userEmail, fetchKeywords]);
 
-  const addKeyword = async (input) => {
+  const addKeyword = async input => {
     const keywordToAdd = typeof input === 'object' ? input.value : input;
 
     if (!keywordToAdd || !keywordToAdd.trim()) return;
@@ -117,7 +116,7 @@ export default function KeywordScreen({ navigation }) {
     const trimmedKeyword = keywordToAdd.trim();
 
     if (Array.isArray(keywords) && keywords.includes(trimmedKeyword)) {
-      showAlert("알림", "이미 등록된 키워드입니다.");
+      showAlert('알림', '이미 등록된 키워드입니다.');
       return;
     }
 
@@ -136,7 +135,6 @@ export default function KeywordScreen({ navigation }) {
       console.log(`💾 [로컬 저장] 키워드 추가 후 로컬 스토리지 업데이트: ${trimmedKeyword}`);
     }
 
-
     try {
       // 2. 백그라운드에서 API 호출
       console.log(`➕ [추가 시도] ${trimmedKeyword} 추가 중... (전송될 리스트: ${newKeywords})`);
@@ -154,7 +152,7 @@ export default function KeywordScreen({ navigation }) {
           await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), serverKeywords);
         }
       } else {
-        throw new Error("Server indicated failure");
+        throw new Error('Server indicated failure');
       }
     } catch (error) {
       console.error(`❌ [추가 에러]`, error);
@@ -164,26 +162,28 @@ export default function KeywordScreen({ navigation }) {
         const safeEmail = userEmail.replace(/\./g, '_');
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords);
       }
-      showAlert("오류", "서버 문제로 키워드를 추가할 수 없습니다.");
+      showAlert('오류', '서버 문제로 키워드를 추가할 수 없습니다.');
     } finally {
       // setLoading(false);
     }
   };
 
-  const deleteKeyword = async (keywordToDelete) => {
+  const deleteKeyword = async keywordToDelete => {
     if (!userEmail) return;
 
     // [수정] 낙관적 업데이트: UI에서 하나만 제거
     // [보호 로직] 학과 코드(필터 연동)인 경우 삭제 방지
     if (SOURCE_LABELS[keywordToDelete]) {
-      showAlert("알림", "학과 키워드는 [공지사항 필터]에서 해제해주세요.");
+      showAlert('알림', '학과 키워드는 [공지사항 필터]에서 해제해주세요.');
       return;
     }
 
     const prevKeywords = [...keywords];
     const newKeywords = keywords.filter(k => k !== keywordToDelete);
 
-    console.log(`🗑 [삭제 시도] ${keywordToDelete} 삭제 중... (현재: ${prevKeywords} -> 예정: ${newKeywords})`);
+    console.log(
+      `🗑 [삭제 시도] ${keywordToDelete} 삭제 중... (현재: ${prevKeywords} -> 예정: ${newKeywords})`,
+    );
 
     setKeywords(newKeywords);
 
@@ -208,17 +208,16 @@ export default function KeywordScreen({ navigation }) {
         // 실패 시 롤백
         setKeywords(prevKeywords);
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords);
-        showAlert("오류", "키워드 삭제 실패");
+        showAlert('오류', '키워드 삭제 실패');
       }
     } catch (e) {
       console.error(`❌ [삭제 에러] 네트워크/서버 오류:`, e);
       // 에러 발생 시 롤백
       setKeywords(prevKeywords);
       await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords); // 로컬 스토리지 롤백
-      showAlert("오류", "네트워크 오류로 삭제 실패");
+      showAlert('오류', '네트워크 오류로 삭제 실패');
     }
   };
-
 
   if (!isAuthenticated) {
     return <LoginPlaceholder />;
@@ -248,7 +247,7 @@ export default function KeywordScreen({ navigation }) {
     // 학과 키워드(빨간색) vs 직접 등록 키워드(회색/검정) 스타일 분리
     const itemStyle = isDept ? styles.registeredKeywordItem : styles.manualKeywordItem;
     const textStyle = isDept ? styles.registeredKeywordText : styles.manualKeywordText;
-    const iconColor = isDept ? "rgb(219, 31, 38)" : "#555";
+    const iconColor = isDept ? 'rgb(219, 31, 38)' : '#555';
 
     return (
       <View style={itemStyle}>
@@ -264,7 +263,6 @@ export default function KeywordScreen({ navigation }) {
 
   const renderRecommendations = () => (
     <View style={styles.recommendContainer}>
-
       <Text style={[styles.recommendLabel, { marginTop: 0 }]}>인기 키워드</Text>
       <View style={styles.chipWrapper}>
         {POPULAR_KEYWORDS.map((k, i) => (
@@ -273,14 +271,14 @@ export default function KeywordScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </View>
-
     </View>
   );
 
-
   return (
     <View style={styles.mainContainer}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>키워드 알림</Text>
           <Text style={styles.description}>관심있는 키워드를 등록하면 알림을 보내드려요.</Text>
@@ -301,7 +299,11 @@ export default function KeywordScreen({ navigation }) {
             }
             ListFooterComponent={renderRecommendations}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="rgb(219, 31, 38)" />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="rgb(219, 31, 38)"
+              />
             }
           />
         )}
@@ -341,7 +343,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#ffffff'
+    borderBottomColor: '#ffffff',
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   description: { fontSize: 14, color: '#666', lineHeight: 20 },
@@ -359,11 +361,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     marginBottom: 10,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2
+    elevation: 2,
   },
   registeredKeywordText: { fontSize: 16, color: 'rgb(219, 31, 38)', fontWeight: '700' },
 
@@ -379,11 +381,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     marginBottom: 10,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2
+    elevation: 2,
   },
   manualKeywordText: { fontSize: 16, color: '#333', fontWeight: '700' },
 
@@ -391,23 +393,63 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 16, color: '#999' },
 
   recommendContainer: { marginTop: 10, marginBottom: 40 },
-  recommendLabel: { fontSize: 14, fontWeight: 'bold', color: '#888', marginBottom: 12, marginLeft: 4 },
+  recommendLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#888',
+    marginBottom: 12,
+    marginLeft: 4,
+  },
 
   chipWrapper: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB' },
+  chip: {
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
   deptChip: { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' },
   chipText: { color: '#374151', fontSize: 14, fontWeight: '500' },
 
-  inputContainer: { flexDirection: 'row', padding: 15, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff', alignItems: 'center' },
-  input: { flex: 1, backgroundColor: '#f5f5f5', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25, fontSize: 16, marginRight: 10 },
-  addButton: { backgroundColor: 'rgb(219, 31, 38)', width: 45, height: 45, borderRadius: 25, justifyContent: 'center', alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    fontSize: 16,
+    marginRight: 10,
+  },
+  addButton: {
+    backgroundColor: 'rgb(219, 31, 38)',
+    width: 45,
+    height: 45,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
 
   // 비로그인 화면 스타일 (다른 탭과 통일)
   loginContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
   },
   msg: { fontSize: 16, color: '#888', marginBottom: 15 },
   btn: { backgroundColor: '#333', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },

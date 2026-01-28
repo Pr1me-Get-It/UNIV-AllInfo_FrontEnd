@@ -10,7 +10,7 @@ import {
   Switch,
   ScrollView,
   Modal,
-  TextInput
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
@@ -19,9 +19,11 @@ import { registerUser } from '../api/userService';
 import { registerForPushNotificationsAsync, sendTestNotification } from '../utils/notifications';
 import { useNavigation } from '@react-navigation/native';
 import CustomAlert from '../components/ui/CustomAlert';
+import { saveData, getData } from '../utils/storage';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 const PRIMARY = 'rgb(219, 31, 38)';
-const DEV_PASSWORD = "1557";
+const DEV_PASSWORD = '1557';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -31,8 +33,8 @@ export default function ProfileScreen() {
     userEmail,
     isAuthenticated,
     loginWithGoogle, // 구글 로그인 함수
-    loginDev,        // 개발자 로그인 함수
-    logout
+    loginDev, // 개발자 로그인 함수
+    logout,
   } = useAuth(); //
 
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
@@ -60,7 +62,7 @@ export default function ProfileScreen() {
     setAlertOnConfirm(undefined);
   };
 
-  const appVersion = Constants.expoConfig?.version || "1.0.0";
+  const appVersion = Constants.expoConfig?.version || '1.0.0';
 
   // 2. 핸들러 함수들 (기존 로직 유지)
   const handlePasswordSubmit = () => {
@@ -69,27 +71,51 @@ export default function ProfileScreen() {
       setPasswordInput('');
       loginDev();
     } else {
-      showAlert("오류", "비밀번호가 틀렸습니다.");
+      showAlert('오류', '비밀번호가 틀렸습니다.');
     }
   };
 
   const handleLogout = () => {
-    console.log("🚩 [ProfileScreen] 로그아웃 버튼 클릭됨");
+    console.log('🚩 [ProfileScreen] 로그아웃 버튼 클릭됨');
     // [변경] 커스텀 알림창으로 로그아웃 확인
-    showAlert("로그아웃", "로그아웃 하시겠습니까?", () => {
+    showAlert('로그아웃', '로그아웃 하시겠습니까?', () => {
       console.log("🚩 [ProfileScreen] 로그아웃 '확인' 누름 -> AuthContext.logout 호출");
       setPushEnabled(false); // [수정] 로그아웃 시 푸시 알림 비활성화
       logout();
     });
   };
 
-  const handlePushToggle = async (value) => {
+  // [New] Load saved push setting
+  useEffect(() => {
+    const loadPushSetting = async () => {
+      if (userEmail) {
+        const safeEmail = userEmail.replace(/\./g, '_');
+        const savedSetting = await getData(STORAGE_KEYS.PUSH_SETTING(safeEmail));
+        if (savedSetting !== null) {
+          setPushEnabled(savedSetting === 'true');
+        }
+      } else {
+        setPushEnabled(false);
+      }
+    };
+    loadPushSetting();
+  }, [userEmail]);
+
+  const handlePushToggle = async value => {
     if (!isAuthenticated) {
-      showAlert("로그인 필요", "푸시 알림을 받으려면 로그인이 필요합니다.");
+      showAlert('로그인 필요', '푸시 알림을 받으려면 로그인이 필요합니다.');
       setPushEnabled(false);
       return;
     }
+
     setPushEnabled(value);
+
+    // [New] Save setting
+    if (userEmail) {
+      const safeEmail = userEmail.replace(/\./g, '_');
+      await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), String(value));
+    }
+
     if (value) {
       try {
         // console.log("🚀 [PushDebug] 푸시 알림 설정 시작...");
@@ -101,25 +127,35 @@ export default function ProfileScreen() {
           try {
             await registerUser(userEmail, token);
             // console.log("🚀 [PushDebug] 서버 등록 완료!");
-            showAlert("알림", "푸시 알림 설정이 완료되었습니다.");
+            showAlert('알림', '푸시 알림 설정이 완료되었습니다.');
           } catch (apiError: any) {
             // [수정] 409 Conflict (이미 등록된 유저)는 성공으로 처리
             if (apiError.response && apiError.response.status === 409) {
               // console.log("🚀 [PushDebug] 이미 등록된 토큰/유저 (409) -> 성공 처리");
-              showAlert("알림", "푸시 알림 설정이 완료되었습니다."); // 사용자에게는 성공으로 표시
+              showAlert('알림', '푸시 알림 설정이 완료되었습니다.'); // 사용자에게는 성공으로 표시
             } else {
               throw apiError; // 다른 에러는 catch 블록으로 전달
             }
           }
         } else {
           // console.log("🚀 [PushDebug] 토큰이 없어 서버 등록 스킵");
-          showAlert("오류", "푸시 토큰을 가져올 수 없습니다.");
+          showAlert('오류', '푸시 토큰을 가져올 수 없습니다.');
           setPushEnabled(false);
+          // Revert save if failed
+          if (userEmail) {
+            const safeEmail = userEmail.replace(/\./g, '_');
+            await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), 'false');
+          }
         }
       } catch (e) {
-        console.error("🚀 [PushDebug] 에러 발생:", e);
+        console.error('🚀 [PushDebug] 에러 발생:', e);
         setPushEnabled(false);
-        showAlert("오류", "푸시 알림 설정 중 문제가 발생했습니다.");
+        // Revert save if failed
+        if (userEmail) {
+          const safeEmail = userEmail.replace(/\./g, '_');
+          await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), 'false');
+        }
+        showAlert('오류', '푸시 알림 설정 중 문제가 발생했습니다.');
       }
     }
   };
@@ -135,7 +171,11 @@ export default function ProfileScreen() {
       </View>
 
       {/* 개발자 모드 비밀번호 모달 */}
-      <Modal visible={isPasswordModalVisible} transparent={true} animationType="fade" onRequestClose={() => setIsPasswordModalVisible(false)}>
+      <Modal
+        visible={isPasswordModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsPasswordModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>개발자 모드 인증</Text>
@@ -150,10 +190,17 @@ export default function ProfileScreen() {
               maxLength={4}
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalCancelBtn]} onPress={() => { setIsPasswordModalVisible(false); setPasswordInput(''); }}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalCancelBtn]}
+                onPress={() => {
+                  setIsPasswordModalVisible(false);
+                  setPasswordInput('');
+                }}>
                 <Text style={styles.modalCancelText}>취소</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalConfirmBtn]} onPress={handlePasswordSubmit}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalConfirmBtn]}
+                onPress={handlePasswordSubmit}>
                 <Text style={styles.modalConfirmText}>확인</Text>
               </TouchableOpacity>
             </View>
@@ -166,7 +213,10 @@ export default function ProfileScreen() {
         {isAuthenticated ? (
           <View style={styles.loginCardLoggedIn}>
             <View style={styles.profileInfo}>
-              <Image source={require('../assets/user.png')} style={[styles.profileImage, { backgroundColor: '#F3F4F6' }]} />
+              <Image
+                source={require('../assets/user.png')}
+                style={[styles.profileImage, { backgroundColor: '#F3F4F6' }]}
+              />
               <View>
                 <Text style={styles.welcomeText}>로그인됨</Text>
                 <Text style={styles.userNameText}>사용자 님</Text>
@@ -180,7 +230,9 @@ export default function ProfileScreen() {
         ) : (
           <View style={styles.loginCard}>
             <Text style={styles.sectionTitle}>로그인</Text>
-            <Text style={styles.sectionDescription}>학교 공지를 개인화해서 받고 캘린더를 연동하려면 로그인하세요.</Text>
+            <Text style={styles.sectionDescription}>
+              학교 공지를 개인화해서 받고 캘린더를 연동하려면 로그인하세요.
+            </Text>
             <TouchableOpacity style={styles.googleLoginButton} onPress={loginWithGoogle}>
               <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.googleLoginButtonText}>Google로 로그인</Text>
@@ -218,23 +270,43 @@ export default function ProfileScreen() {
       {/* 알림 설정 섹션 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>알림 설정</Text>
-        <SettingRow label="푸시 알림 받기" description="중요 공지, 마감 알림 등을 푸시로 받아요." value={pushEnabled} onValueChange={handlePushToggle} />
-        <SettingRow label="알림 소리" description="알림이 도착했을 때 소리를 재생합니다." value={soundEnabled} onValueChange={setSoundEnabled} />
-        <SettingRow label="야간에는 중요한 공지만" description="밤 11시 ~ 아침 7시에는 마감 임박/긴급 공지만 보내요." value={nightPushOnly} onValueChange={setNightPushOnly} />
+        <SettingRow
+          label="푸시 알림 받기"
+          description="중요 공지, 마감 알림 등을 푸시로 받아요."
+          value={pushEnabled}
+          onValueChange={handlePushToggle}
+        />
+        <SettingRow
+          label="알림 소리"
+          description="알림이 도착했을 때 소리를 재생합니다."
+          value={soundEnabled}
+          onValueChange={setSoundEnabled}
+        />
+        <SettingRow
+          label="야간에는 중요한 공지만"
+          description="밤 11시 ~ 아침 7시에는 마감 임박/긴급 공지만 보내요."
+          value={nightPushOnly}
+          onValueChange={setNightPushOnly}
+        />
       </View>
-
-
 
       {/* 공지 · 홍보 섹션 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>공지 · 홍보</Text>
-        <SettingRow label="행사/대외활동 홍보 허용" description="학교/동아리 행사, 대외활동 홍보 알림을 받습니다." value={marketingEnabled} onValueChange={setMarketingEnabled} />
+        <SettingRow
+          label="행사/대외활동 홍보 허용"
+          description="학교/동아리 행사, 대외활동 홍보 알림을 받습니다."
+          value={marketingEnabled}
+          onValueChange={setMarketingEnabled}
+        />
       </View>
 
       {/* 계정 섹션 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>계정</Text>
-        <TouchableOpacity style={styles.menuRow} onPress={() => showAlert('안내', 'Google 계정 관리는 Google 설정에서 가능합니다.')}>
+        <TouchableOpacity
+          style={styles.menuRow}
+          onPress={() => showAlert('안내', 'Google 계정 관리는 Google 설정에서 가능합니다.')}>
           <View>
             <Text style={styles.menuLabel}>계정 정보 수정</Text>
             <Text style={styles.menuDescription}>Google 계정 설정을 확인합니다.</Text>
@@ -289,7 +361,12 @@ function SettingRow({ label, description, value, onValueChange }) {
         <Text style={styles.settingLabel}>{label}</Text>
         {!!description && <Text style={styles.settingDescription}>{description}</Text>}
       </View>
-      <Switch value={value} onValueChange={onValueChange} trackColor={{ false: "#E5E7EB", true: PRIMARY }} thumbColor={"#fff"} />
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: '#E5E7EB', true: PRIMARY }}
+        thumbColor={'#fff'}
+      />
     </View>
   );
 }
@@ -301,35 +378,114 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 },
   sectionDescription: { fontSize: 13, color: '#6B7280', marginBottom: 12 },
   loginCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, elevation: 3 },
-  loginCardLoggedIn: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 3 },
+  loginCardLoggedIn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    elevation: 3,
+  },
   profileInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  profileImage: { width: 50, height: 50, borderRadius: 25, marginRight: 12, backgroundColor: '#eee' },
+  profileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+    backgroundColor: '#eee',
+  },
   welcomeText: { fontSize: 12, color: '#6B7280', marginBottom: 2 },
   userNameText: { fontSize: 16, fontWeight: '700', color: '#111827' },
   emailText: { fontSize: 12, color: '#6B7280' },
-  logoutButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB', marginLeft: 10 },
+  logoutButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    marginLeft: 10,
+  },
   logoutButtonText: { fontSize: 12, color: '#374151', fontWeight: '600' },
-  googleLoginButton: { marginTop: 8, backgroundColor: '#4285F4', paddingVertical: 12, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  googleLoginButton: {
+    marginTop: 8,
+    backgroundColor: '#4285F4',
+    paddingVertical: 12,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   googleLoginButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-  settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(229, 231, 235, 0.5)', gap: 12 },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
+    gap: 12,
+  },
   settingLabel: { fontSize: 15, fontWeight: '500', color: '#111827' },
   settingDescription: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  menuRow: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(229, 231, 235, 0.5)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  menuRowStatic: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(229, 231, 235, 0.5)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  menuRow: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  menuRowStatic: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   menuRowDanger: { paddingVertical: 14, marginTop: 10 },
   menuLabel: { fontSize: 15, fontWeight: '500', color: '#111827' },
   menuDescription: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   menuLabelDanger: { fontSize: 15, fontWeight: '600', color: '#DC2626' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '80%', backgroundColor: '#fff', padding: 24, borderRadius: 16, elevation: 5, alignItems: 'center' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    padding: 24,
+    borderRadius: 16,
+    elevation: 5,
+    alignItems: 'center',
+  },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
   modalDesc: { fontSize: 14, color: '#666', marginBottom: 20 },
-  passwordInput: { width: '100%', borderBottomWidth: 1, borderBottomColor: '#ccc', fontSize: 15, textAlign: 'center', marginBottom: 30, paddingVertical: 10, letterSpacing: 5 },
+  passwordInput: {
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 30,
+    paddingVertical: 10,
+    letterSpacing: 5,
+  },
   modalButtons: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', gap: 10 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
   modalCancelBtn: { backgroundColor: '#f0f0f0' },
   modalConfirmBtn: { backgroundColor: PRIMARY },
   modalCancelText: { color: '#333', fontWeight: '600' },
   modalConfirmText: { color: '#fff', fontWeight: '600' },
-  topActionBar: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 22, marginBottom: 15, marginTop: -10 },
+  topActionBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 22,
+    marginBottom: 15,
+    marginTop: -10,
+  },
 });

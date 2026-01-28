@@ -28,7 +28,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
     (Constants.manifest as any)?.extra?.eas?.projectId;
 
   if (!projectId) {
-    console.error("🚨 Project ID를 찾을 수 없습니다. app.config.js 설정을 확인하세요.");
+    console.error('🚨 Project ID를 찾을 수 없습니다. app.config.js 설정을 확인하세요.');
   }
 
   // 2. 안드로이드 알림 채널 설정
@@ -66,12 +66,12 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
     // 4. 엑스포 푸시 토큰 발급 시도
     try {
       const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: projectId
+        projectId: projectId,
       });
       token = tokenData.data;
       // console.log("✅ 푸시 토큰 발급 성공:", token);
     } catch (e) {
-      console.error("❌ 푸시 토큰 발급 에러:", e);
+      console.error('❌ 푸시 토큰 발급 에러:', e);
     }
   } else {
     console.log('실제 기기에서만 푸시 알림이 작동합니다.');
@@ -86,8 +86,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
 export async function sendTestNotification() {
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: "🔔 테스트알람",
-      body: "잘 가지요?",
+      title: '🔔 테스트알람',
+      body: '잘 가지요?',
       data: { data: 'test-data' },
     },
     trigger: null, // 즉시 발송

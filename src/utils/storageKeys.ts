@@ -22,7 +22,7 @@ export const STORAGE_KEYS = {
   READ: (email: string): string => {
     const safeEmail = email.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     return `read_${safeEmail}`;
-  }
+  },
 } as const;
 
 // 2. 다른 파일에서 이 구조를 타입으로 참조할 수 있도록 내보냅니다.

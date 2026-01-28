@@ -5,11 +5,7 @@ export const API_CONFIG = {
 };
 
 export const AUTH_CONFIG = {
-  DEV_TOKEN: "DEV_MODE_ACCESS_TOKEN",
-  DEV_EMAIL: "test@knu.ac.kr",
-  SCOPES: [
-    'profile', 
-    'email', 
-    'https://www.googleapis.com/auth/calendar.events'
-  ],
+  DEV_TOKEN: 'DEV_MODE_ACCESS_TOKEN',
+  DEV_EMAIL: 'test@knu.ac.kr',
+  SCOPES: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'],
 };

@@ -15,7 +15,7 @@ interface KeywordResponse {
  */
 export const registerUser = async (
   email: string,
-  expoPushToken: string | null
+  expoPushToken: string | null,
 ): Promise<AxiosResponse<any>> => {
   return await api.post('/user/register', { email, expoPushToken });
 };
@@ -27,7 +27,7 @@ export const registerUser = async (
  */
 export const syncKeywords = async (
   email: string,
-  keywords: string[] = []
+  keywords: string[] = [],
 ): Promise<AxiosResponse<KeywordResponse>> => {
   return await api.post('/user/keyword', { email, keywords });
 };
@@ -36,9 +36,7 @@ export const syncKeywords = async (
  * 키워드 조회 (덮어쓰기 방지용 GET)
  * @param email 유저 이메일
  */
-export const getUserKeywords = async (
-  email: string
-): Promise<AxiosResponse<KeywordResponse>> => {
+export const getUserKeywords = async (email: string): Promise<AxiosResponse<KeywordResponse>> => {
   return await api.get('/user/keyword', { params: { email } });
 };
 
@@ -49,9 +47,9 @@ export const getUserKeywords = async (
  */
 export const deleteUserKeyword = async (
   email: string,
-  keyword: string
+  keyword: string,
 ): Promise<AxiosResponse<KeywordResponse>> => {
   return await api.delete('/user/keyword', {
-    data: { email, keywords: [keyword] }
+    data: { email, keywords: [keyword] },
   });
 };
