@@ -1,23 +1,125 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../constants/colors';
+
+import { useNavigation } from '@react-navigation/native';
 
 export default function OthersScreen() {
+    const navigation = useNavigation();
+    const features = [
+        {
+            id: 'clocktower',
+            title: '시계탑',
+            icon: 'time-outline',
+            description: '학교 시계탑 기능',
+        },
+        {
+            id: 'tetris',
+            title: '테트리스',
+            icon: 'game-controller-outline',
+            description: '추억의 테트리스 게임',
+        },
+        {
+            id: 'dancing',
+            title: '교수님 몰래 춤추기',
+            icon: 'musical-notes-outline',
+            description: '스트레스 해소용 미니게임',
+        },
+    ];
+
+    const handlePress = (featureTitle: string) => {
+        if (featureTitle === '테트리스') {
+            (navigation as any).navigate('Tetris');
+        } else {
+            Alert.alert(featureTitle, '준비 중인 기능입니다.');
+        }
+    };
+
     return (
-        <View style={styles.container}>
-            <Text style={styles.text}>부가기능 화면 (준비중)</Text>
-        </View>
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+            <Text style={styles.headerTitle}>부가 기능</Text>
+            <View style={styles.grid}>
+                {features.map((feature) => (
+                    <TouchableOpacity
+                        key={feature.id}
+                        style={styles.card}
+                        onPress={() => handlePress(feature.title)}
+                        activeOpacity={0.8}
+                    >
+                        <View style={styles.iconContainer}>
+                            <Ionicons name={feature.icon as any} size={32} color={COLORS.primary} />
+                        </View>
+                        <View style={styles.textContainer}>
+                            <Text style={styles.cardTitle}>{feature.title}</Text>
+                            <Text style={styles.cardDescription}>{feature.description}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color="#ccc" style={styles.arrowIcon} />
+                    </TouchableOpacity>
+                ))}
+            </View>
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
         backgroundColor: '#fff',
     },
-    text: {
-        fontSize: 18,
+    contentContainer: {
+        padding: 20,
+        paddingTop: 40,
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
         color: '#333',
+        marginBottom: 20,
+    },
+    grid: {
+        flexDirection: 'column',
+        gap: 15,
+    },
+    card: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 16,
+        padding: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#F0F0F0',
+        // Shadow for iOS
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        // Elevation for Android
+        elevation: 2,
+    },
+    iconContainer: {
+        width: 50,
+        height: 50,
+        borderRadius: 12,
+        backgroundColor: 'rgba(219, 31, 38, 0.08)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 15,
+    },
+    textContainer: {
+        flex: 1,
+    },
+    cardTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 4,
+    },
+    cardDescription: {
+        fontSize: 14,
+        color: '#666',
+    },
+    arrowIcon: {
+        marginLeft: 10,
     },
 });

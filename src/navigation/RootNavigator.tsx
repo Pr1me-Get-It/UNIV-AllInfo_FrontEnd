@@ -5,6 +5,7 @@ import DetailScreen from '../screens/DetailScreen';
 import KeywordScreen from '../screens/KeywordScreen';
 import BookmarkScreen from '../screens/BookmarkScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import TetrisScreen from '../screens/TetrisScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,6 +36,11 @@ export default function RootNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{ title: '내정보', headerShown: true }}
+      />
+      <Stack.Screen
+        name="Tetris"
+        component={TetrisScreen}
+        options={{ title: '테트리스', headerShown: true }}
       />
     </Stack.Navigator>
   );
