@@ -188,8 +188,8 @@ export default function NoticeScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
-          <Ionicons name="notifications" size={28} color="#333" />
-          <Text style={styles.headerText}>알림함</Text>
+          <Ionicons name="albums" size={28} color="#333" />
+          <Text style={styles.headerText}>공지사항</Text>
         </View>
 
         <TouchableOpacity
@@ -228,13 +228,13 @@ export default function NoticeScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.filterList}>
+            <ScrollView style={styles.filterList} contentContainerStyle={{ paddingBottom: 40 }}>
               {!modalSearchQuery && (
                 <TouchableOpacity
                   style={[
                     styles.filterItem,
                     selectedSources.length === Object.keys(SOURCE_LABELS).length &&
-                      styles.filterItemActive,
+                    styles.filterItemActive,
                   ]}
                   onPress={toggleAll}>
                   <View style={styles.filterItemContent}>
@@ -285,14 +285,14 @@ export default function NoticeScreen({ navigation }: any) {
       </Modal>
 
       <View style={styles.balanceContainer}>
-        <Text style={styles.balanceLabel}>확인하지 않은 알림</Text>
+        <Text style={styles.balanceLabel}>확인하지 않은 공지사항</Text>
         <Text style={styles.balanceText}>{unreadCount} 개</Text>
       </View>
 
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#888" style={{ marginRight: 8 }} />
         <TextInput
-          placeholder="알림 제목 검색..."
+          placeholder="공지사항 검색..."
           placeholderTextColor="#999"
           value={query}
           onChangeText={setQuery}
@@ -311,7 +311,7 @@ export default function NoticeScreen({ navigation }: any) {
           style={[styles.tabButton, filterMode === 'all' && styles.tabButtonActive]}
           onPress={() => setFilterMode('all')}>
           <Text style={[styles.tabText, filterMode === 'all' && styles.tabTextActive]}>
-            전체 알림
+            전체
           </Text>
         </TouchableOpacity>
 
@@ -319,7 +319,7 @@ export default function NoticeScreen({ navigation }: any) {
           style={[styles.tabButton, filterMode === 'unread' && styles.tabButtonActive]}
           onPress={() => setFilterMode('unread')}>
           <Text style={[styles.tabText, filterMode === 'unread' && styles.tabTextActive]}>
-            미확인 알림
+            미확인
           </Text>
         </TouchableOpacity>
       </View>
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: '60%',
+    height: '70%',
     padding: 20,
   },
   sheetHeader: {

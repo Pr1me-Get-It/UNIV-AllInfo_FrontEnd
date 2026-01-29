@@ -162,13 +162,7 @@ export default function ProfileScreen() {
 
   // 3. UI 렌더링 (기존 배치 100% 유지)
   return (
-    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 140 }}>
-      {/* 상단 액션 바 */}
-      <View style={styles.topActionBar}>
-        <TouchableOpacity onPress={() => showAlert('설정', '준비 중')}>
-          <Ionicons name="settings" size={26} color="#555" />
-        </TouchableOpacity>
-      </View>
+    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 100 }}>
 
       {/* 개발자 모드 비밀번호 모달 */}
       <Modal
@@ -249,23 +243,7 @@ export default function ProfileScreen() {
       </View>
 
       {/*맞춤형 서비스 섹션*/}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>맞춤형 서비스</Text>
-        <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Keyword')}>
-          <View>
-            <Text style={styles.menuLabel}>키워드 설정</Text>
-            <Text style={styles.menuDescription}>관심있는 키워드로 개인화된 공지를 받습니다.</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#ccc" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Bookmark')}>
-          <View>
-            <Text style={styles.menuLabel}>즐겨 찾기</Text>
-            <Text style={styles.menuDescription}>내가 찜한 컨텐츠들.</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#ccc" />
-        </TouchableOpacity>
-      </View>
+
 
       {/* 알림 설정 섹션 */}
       <View style={styles.section}>
@@ -373,7 +351,7 @@ function SettingRow({ label, description, value, onValueChange }) {
 
 // 스타일 시트
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#fff', paddingTop: 60, paddingHorizontal: 20 },
+  page: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 30 },
   section: { marginBottom: 18 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 },
   sectionDescription: { fontSize: 13, color: '#6B7280', marginBottom: 12 },

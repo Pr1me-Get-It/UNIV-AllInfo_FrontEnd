@@ -18,7 +18,7 @@ const { width } = Dimensions.get('window');
 const CARD_SPACING = 15;
 const CARD_WIDTH = (width - 40 - CARD_SPACING) / 2; // 2 columns
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: any) {
   const handleOpenLink = async (url: string) => {
     try {
       const supported = await Linking.canOpenURL(url);
@@ -42,14 +42,22 @@ export default function HomeScreen() {
             style={styles.logoIcon}
             resizeMode="contain"
           />
-          <Text style={styles.appName}>KNU INFO</Text>
+          <Text style={styles.appName}>KNU</Text>
         </View>
-        <TouchableOpacity
-          style={styles.searchButton}
-          onPress={() => Alert.alert('검색', '준비 중입니다.')}
-          activeOpacity={0.7}>
-          <Ionicons name="search" size={24} color="#333" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => Alert.alert('검색', '준비 중입니다.')}
+            activeOpacity={0.7}>
+            <Ionicons name="search" size={24} color={COLORS.gray} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.7}>
+            <Ionicons name="person-circle-outline" size={28} color={COLORS.gray} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -80,6 +88,25 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* 맞춤형 서비스 섹션 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>맞춤형 서비스</Text>
+          <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Keyword')}>
+            <View>
+              <Text style={styles.menuLabel}>키워드 설정</Text>
+              <Text style={styles.menuDescription}>관심있는 키워드로 개인화된 공지를 받습니다.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Bookmark')}>
+            <View>
+              <Text style={styles.menuLabel}>즐겨 찾기</Text>
+              <Text style={styles.menuDescription}>내가 찜한 컨텐츠들.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -108,15 +135,20 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   appName: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
     letterSpacing: 0.5,
   },
-  searchButton: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconButton: {
     padding: 8,
     borderRadius: 20,
     backgroundColor: '#F5F5F5',
+    marginLeft: 8,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -171,4 +203,15 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
   },
+  section: { marginBottom: 25 },
+  menuRow: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  menuLabel: { fontSize: 16, fontWeight: '500', color: '#111827' },
+  menuDescription: { fontSize: 13, color: '#6B7280', marginTop: 2 },
 });

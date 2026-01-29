@@ -244,9 +244,21 @@ export default function CalendarScreen({ navigation }: any) {
             <Ionicons name="calendar" size={28} color="rgb(219, 31, 38)" />
             <Text style={styles.headerTitle}>캘린더</Text>
           </View>
-          <TouchableOpacity onPress={() => setFilterModalVisible(true)}>
-            <Ionicons name="options-outline" size={24} color="#333" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ marginRight: 15, alignItems: 'flex-end' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={{ fontSize: 12, color: '#666', marginRight: 6 }}>학부</Text>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgb(219, 31, 38)' }} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={{ fontSize: 12, color: '#666', marginRight: 6 }}>대학원</Text>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#333' }} />
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => setFilterModalVisible(true)}>
+              <Ionicons name="options-outline" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 

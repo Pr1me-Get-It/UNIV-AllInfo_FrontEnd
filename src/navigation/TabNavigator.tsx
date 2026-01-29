@@ -5,7 +5,8 @@ import HomeScreen from '../screens/HomeScreen';
 import NoticeScreen from '../screens/NoticeScreen';
 import MapScreen from '../screens/MapScreen';
 import CalendarScreen from '../screens/CalendarScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import OthersScreen from '../screens/OthersScreen';
+
 import { COLORS } from '../constants/colors';
 
 const Tab = createBottomTabNavigator();
@@ -70,12 +71,12 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="All"
-        component={ProfileScreen}
+        name="Others"
+        component={OthersScreen}
         options={{
-          title: '내정보',
+          title: '부가기능',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <Ionicons name="grid-outline" size={size} color={color} />
           ),
         }}
       />
