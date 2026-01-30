@@ -14,6 +14,15 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// [Debug] 알림 리스너 추가 (앱 실행 시 즉시 등록)
+Notifications.addNotificationReceivedListener(notification => {
+  console.log('🔔 [NotificationDebug] Foreground 알림 수신:', JSON.stringify(notification, null, 2));
+});
+
+Notifications.addNotificationResponseReceivedListener(response => {
+  console.log('🔔 [NotificationDebug] 알림 클릭(반응):', JSON.stringify(response, null, 2));
+});
+
 /**
  * 엑스포 푸시 토큰 등록 및 권한 요청 함수
  * @returns 발급된 푸시 토큰 문자열 또는 undefined
@@ -21,14 +30,18 @@ Notifications.setNotificationHandler({
 export async function registerForPushNotificationsAsync(): Promise<string | undefined> {
   let token: string | undefined;
 
+  console.log('🔍 [NotificationDebug] registerForPushNotificationsAsync 시작');
+
   // 1. 프로젝트 ID 확보
   // Expo Config에서 EAS 프로젝트 ID를 가져옵니다.
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ||
     (Constants.manifest as any)?.extra?.eas?.projectId;
 
+  console.log('🔍 [NotificationDebug] Project ID:', projectId);
+
   if (!projectId) {
-    console.error('🚨 Project ID를 찾을 수 없습니다. app.config.js 설정을 확인하세요.');
+    console.error('🚨 [NotificationDebug] Project ID를 찾을 수 없습니다. app.config.js 설정을 확인하세요.');
   }
 
   // 2. 안드로이드 알림 채널 설정
@@ -39,42 +52,44 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF231F7C',
     });
+    console.log('🔍 [NotificationDebug] Android 채널 설정 완료');
   }
 
   // 3. 실제 기기 여부 및 권한 체크
   if (Device.isDevice) {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    // console.log(`🚀 [PushDebug] 현재 권한 상태: ${existingStatus}`);
+    console.log(`🔍 [NotificationDebug] 초기 권한 상태: ${existingStatus}`);
 
     let finalStatus = existingStatus;
 
     // 권한이 없다면 요청
     if (existingStatus !== 'granted') {
-      // console.log("🚀 [PushDebug] 권한 요청 시도...");
+      console.log("🔍 [NotificationDebug] 권한 요청 시도...");
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
-      // console.log(`🚀 [PushDebug] 권한 요청 결과: ${finalStatus}`);
+      console.log(`🔍 [NotificationDebug] 권한 요청 결과: ${finalStatus}`);
     }
 
     // 최종적으로 권한 거부 시 알림
     if (finalStatus !== 'granted') {
-      // console.log("🚀 [PushDebug] 권한 거부됨");
+      console.log("🔍 [NotificationDebug] 최종 권한 거부됨");
       Alert.alert('알림 권한 필요', '푸시 알림을 받으려면 권한을 허용해주세요.');
       return;
     }
 
     // 4. 엑스포 푸시 토큰 발급 시도
     try {
+      console.log("🔍 [NotificationDebug] 토큰 발급 시도...");
       const tokenData = await Notifications.getExpoPushTokenAsync({
         projectId: projectId,
       });
       token = tokenData.data;
-      // console.log("✅ 푸시 토큰 발급 성공:", token);
+      console.log("✅ [NotificationDebug] 푸시 토큰 발급 성공:", token);
     } catch (e) {
-      console.error('❌ 푸시 토큰 발급 에러:', e);
+      console.error('❌ [NotificationDebug] 푸시 토큰 발급 에러:', e);
     }
   } else {
-    console.log('실제 기기에서만 푸시 알림이 작동합니다.');
+    console.log('🔍 [NotificationDebug] 실제 기기가 아닙니다 (Simulator/Emulator).');
   }
 
   return token;
@@ -87,7 +102,7 @@ export async function sendTestNotification() {
   await Notifications.scheduleNotificationAsync({
     content: {
       title: '🔔 테스트알람',
-      body: '잘 가지요?',
+      body: '빨리해',
       data: { data: 'test-data' },
     },
     trigger: null, // 즉시 발송

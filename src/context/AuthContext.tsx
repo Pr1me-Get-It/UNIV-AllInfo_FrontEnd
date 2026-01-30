@@ -49,9 +49,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let expoPushToken: string | null = null;
     try {
       expoPushToken = await registerForPushNotificationsAsync();
+      console.log(`🔍 [AuthDebug] 발급된 Expo Token: ${expoPushToken ? expoPushToken : 'NULL (발급실패)'}`);
     } catch (e) {
       console.warn('푸시 토큰 발급 실패:', e);
     }
+
+    console.log(`🔍 [AuthDebug] 백엔드 등록 시도: Email=${email}, Token=${expoPushToken}`);
 
     try {
       await registerUser(email, expoPushToken);
@@ -61,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (e.response && e.response.status === 409) {
         console.log(`📡 [Auth] 기존 유저 로그인 확인: ${email}`);
       } else {
-        console.error('❌ [Auth] 백엔드 등록 에러:', e);
+        console.error('❌ [Auth] 백엔드 등록 에러 (상세):', JSON.stringify(e.response?.data || e.message, null, 2));
         // 등록에 실패하면 키워드 동기화도 어려울 수 있으므로 중단하거나 리턴합니다.
         return;
       }
