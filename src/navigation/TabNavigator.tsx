@@ -8,6 +8,7 @@ import CalendarScreen from '../screens/CalendarScreen';
 import OthersScreen from '../screens/OthersScreen';
 
 import { COLORS } from '../constants/colors';
+import { CustomText } from '../components/ui/CustomText';
 
 const Tab = createBottomTabNavigator();
 
@@ -31,6 +32,17 @@ export default function TabNavigator() {
           position: 'absolute',
           bottom: 0,
         },
+        // 탭 라벨에 CustomText 적용
+        tabBarLabel: ({ children, focused, color }) => (
+          <CustomText style={{
+            color,
+            fontSize: 10,
+            marginBottom: 5, // 아이콘과의 간격 조절
+            fontWeight: focused ? 'bold' : 'medium', // 선택되면 Bold, 아니면 Medium
+          }}>
+            {children}
+          </CustomText>
+        ),
       }}>
       <Tab.Screen
         name="Home"

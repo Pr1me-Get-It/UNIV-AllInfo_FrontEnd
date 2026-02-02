@@ -314,7 +314,7 @@ export default function CalendarScreen({ navigation }: any) {
     </>
   );
 
-  if (!isAuthenticated) return <LoginPlaceholder />;
+  if (!isAuthenticated) return <LoginPlaceholder targetScreen="Profile" />;
 
   return (
     <View style={styles.container}>

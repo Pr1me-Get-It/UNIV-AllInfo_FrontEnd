@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { EXTERNAL_LINKS } from '../constants/links';
 import { COLORS } from '../constants/colors';
+import { CustomText } from '../components/ui/CustomText';
 
 const { width } = Dimensions.get('window');
 const CARD_SPACING = 15;
@@ -42,7 +43,7 @@ export default function HomeScreen({ navigation }: any) {
             style={styles.logoIcon}
             resizeMode="contain"
           />
-          <Text style={styles.appName}>KNU</Text>
+          <CustomText style={styles.appName}>KNU</CustomText>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -63,8 +64,8 @@ export default function HomeScreen({ navigation }: any) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* 섹션 타이틀 */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.greetingText}>안녕하세요</Text>
-          <Text style={styles.sectionTitle}>자주 찾는 서비스</Text>
+          <CustomText style={styles.greetingText}>안녕하세요</CustomText>
+          <CustomText style={styles.sectionTitle}>자주 찾는 서비스</CustomText>
         </View>
 
         {/* 링크 그리드 */}
@@ -83,7 +84,7 @@ export default function HomeScreen({ navigation }: any) {
                 />
               </View>
               <View style={styles.textContainer}>
-                <Text style={styles.linkText}>{link.title}</Text>
+                <CustomText style={styles.linkText}>{link.title}</CustomText>
               </View>
             </TouchableOpacity>
           ))}
@@ -91,18 +92,18 @@ export default function HomeScreen({ navigation }: any) {
 
         {/* 맞춤형 서비스 섹션 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>맞춤형 서비스</Text>
+          <CustomText style={styles.sectionTitle}>맞춤형 서비스</CustomText>
           <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Keyword')}>
             <View>
-              <Text style={styles.menuLabel}>키워드 설정</Text>
-              <Text style={styles.menuDescription}>관심있는 키워드로 개인화된 공지를 받습니다.</Text>
+              <CustomText style={styles.menuLabel}>키워드 설정</CustomText>
+              <CustomText style={styles.menuDescription}>관심있는 키워드로 개인화된 공지를 받습니다.</CustomText>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Bookmark')}>
             <View>
-              <Text style={styles.menuLabel}>즐겨 찾기</Text>
-              <Text style={styles.menuDescription}>내가 찜한 컨텐츠들.</Text>
+              <CustomText style={styles.menuLabel}>즐겨 찾기</CustomText>
+              <CustomText style={styles.menuDescription}>내가 찜한 컨텐츠들.</CustomText>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
