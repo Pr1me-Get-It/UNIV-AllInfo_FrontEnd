@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';  // : 하단에 아이콘들 쭉 들어가는 'BottomTabNavigator'를 만드는 것
+import { createNativeStackNavigator } from '@react-navigation/native-stack';  // : 위로 쌓였다가 뒤로 가기 가능한 '스택 네비게이션'을 만드는 것
 import { Ionicons } from '@expo/vector-icons';
 
 // 화면들 import
@@ -21,11 +21,13 @@ import ItemEditScreen from './screen/ItemEditScreen';
 // [삭제됨] 더 이상 Context를 사용하지 않으므로 ItemsProvider import 제거
 // import { ItemsProvider } from './data/ItemsContext'; 
 
-const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator(); 
+const Tab = createBottomTabNavigator();  
+const Stack = createNativeStackNavigator();  
 
-// 메인 탭 (하단 네비게이션) 설정
-function MainTab() {
+
+
+function MainTab() {      // : 하단의 5개 탭 <탭 네바게이션> 
+                          // <Tab.Navigator> 안에 <Tab.Screen> 5개가 들어있는 형대
   return (
     <Tab.Navigator
       screenOptions={{
@@ -46,11 +48,10 @@ function MainTab() {
         }
       }}
     >
-      {/* 1. 홈 */}
-      <Tab.Screen 
+      <Tab.Screen        // 하단 탭 5개들      * maintab의 첫 화면은 HomeScreen. (젤 위에 있으므로 젤 먼저 보여짐)
         name="Home" 
-        component={HomeScreen} 
-        options={{ 
+        component={HomeScreen}  // Home이라는 탭에 HomeScreen 컴포넌트를 연결함. 탭에서 이 아이콘을 누르면 해당 컴포넌트로 이동됨.
+        options={{              // 탭 이름, 아이콘 등 설정
           title: '홈',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
@@ -64,7 +65,9 @@ function MainTab() {
         component={BookmarkScreen} 
         options={{ 
           title: '북마크',
-          tabBarIcon: ({ color, size }) => ( <Ionicons name="star" size={size} color={color} /> ),
+          tabBarIcon: ({ color, size }) => ( 
+            <Ionicons name="star" size={size} color={color} /> 
+          ),
         }} 
       />
 
@@ -110,12 +113,10 @@ function MainTab() {
 // 실제 App 컴포넌트
 export default function App() {
   return (
-    <AlramProvider>
-      {/* ItemsProvider 제거: 이제 api/items.js를 통해 직접 서버와 통신합니다. */}
+    <AlramProvider> {/* Alarm.js에서 가져온 알림의 상태(읽음, 북마크상태)를  앱 전체에서 공유할 수 있음 -> useContext(AlramContext) */}
+                    {/* AlarmProvider 안에 있는 모든 화면들은 AlarmContext의 value들을 공요해서 쓸 수 있음! */}
       <NavigationContainer>
-        <Stack.Navigator>
-          
-          {/* 1. 메인 탭 화면 (기본 화면) */}
+        <Stack.Navigator>  {/* 스택 네비게이션의 틀 */}
           <Stack.Screen 
             name="MainTab" 
             component={MainTab} 
@@ -124,33 +125,11 @@ export default function App() {
 
           {/* 2. 일반 상세 화면 (기존 기능) */}
           <Stack.Screen 
-            name="Detail" 
-            component={DetailScreen}
+            name="Detail"     // => HomeScreen에서 navigation.navigate('Detail', { item }); 라고 부르면, DetailScreen을 불러와 화면 위에 쌓게 됨.
+            component={DetailScreen}    
             options={{ title: '상세 정보' }} 
           />
-
-          {/* 3. 아이템 CRUD 관련 스택 화면 */}
-          {/* 이전 단계 파일들에서 navigation.navigate('ItemDetail') 등으로 호출하므로 이름을 맞춤 */}
-          
-          <Stack.Screen 
-            name="ItemDetail" 
-            component={ItemDetailScreen} 
-            options={{ title: '상품 상세' }}
-          />
-
-          <Stack.Screen 
-            name="Create" 
-            component={ItemCreateScreen} 
-            options={{ title: '상품 등록' }}
-          />
-
-          <Stack.Screen 
-            name="Edit" 
-            component={ItemEditScreen} 
-            options={{ title: '상품 수정' }}
-          />
-
-        </Stack.Navigator>
+        </Stack.Navigator> {/* : 스택 구조를 만들 건데, 첫 화면은 maintab이고 스택 구조의 다음화면으로 DetailScreen을 띄울 수 있음. */}
       </NavigationContainer>
     </AlramProvider>
   );

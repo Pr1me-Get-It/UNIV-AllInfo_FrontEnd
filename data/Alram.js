@@ -1,8 +1,9 @@
 // data/Alram.js
 import React, { createContext, useState } from 'react';
 
-export const AlramContext = createContext({
-    readStatus: {},
+export const AlramContext = createContext({  // Context : “전역으로 공유하는 값”
+    userEmail: null,
+    readStatus: {},     // -> 읽음표시, 북마크표시 관리
     bookmarkStatus: {},     
     markAsRead: () => {}, 
     toggleBookmark: () => {},
