@@ -18,13 +18,14 @@ import SOURCE_LABELS from '../constants/labeltag.json';
 import { saveData, getData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { COLORS } from '../constants/colors';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { syncKeywords } from '../api/userService';
 import NoticeItem from '../components/NoticeItem';
 import { fetchNotices } from '../api/noticeService';
 
 export default function NoticeScreen({ navigation }: any) {
+  const queryClient = useQueryClient();
   const { readStatus } = useContext(AlarmContext) || { readStatus: {} };
   const { userEmail } = useAuth(); // 유저 이메일 가져오기
   const safeStatus = readStatus || {};
@@ -75,6 +76,16 @@ export default function NoticeScreen({ navigation }: any) {
     queryKey: ['notices', query],
     queryFn: fetchNotices,
   });
+
+  const handleClearCache = async () => {
+    console.log('Refresh button pressed. Refetching...');
+    try {
+      await refetch();
+      console.log('Refetch command sent.');
+    } catch (error) {
+      console.error('Refetch failed:', error);
+    }
+  };
 
   const handleCloseModal = () => {
     setModalSearchQuery('');
@@ -151,15 +162,15 @@ export default function NoticeScreen({ navigation }: any) {
 
   const normalizeSource = (source: string) => {
     if (!source) return null;
-    const key = source.split('/')[0].toUpperCase().trim();
+    const key = source.split(/[\/|]/)[0].toUpperCase().trim();
 
     // 1. 코드로 찾기 (예: "CSE")
     if ((SOURCE_LABELS as any)[key]) return key;
 
-    // 2. 이름으로 찾기 (예: "전기공학과공지사항" -> "전기공학과" -> "ELE")
-    const cleanName = source.replace('공지사항', '').trim();
+    // 2. 이름으로 찾기 (예: "음악학과학사공지" -> "음악학과" -> "MUS")
+    // "공지사항" 텍스트 제거에 의존하지 않고, 학과명으로 시작하는지 확인
     const foundCode = Object.keys(SOURCE_LABELS).find(
-      code => (SOURCE_LABELS as any)[code] === cleanName,
+      code => source.startsWith((SOURCE_LABELS as any)[code]),
     );
 
     return foundCode || null;
@@ -192,11 +203,18 @@ export default function NoticeScreen({ navigation }: any) {
           <Text style={styles.headerText}>공지사항</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.filterIconButton}
-          onPress={() => setFilterModalVisible(true)}>
-          <Ionicons name="filter-outline" size={24} color="#333" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity
+            style={[styles.filterIconButton, { marginRight: 10 }]}
+            onPress={handleClearCache}>
+            <Ionicons name="refresh" size={24} color="#333" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.filterIconButton}
+            onPress={() => setFilterModalVisible(true)}>
+            <Ionicons name="filter-outline" size={24} color="#333" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <Modal

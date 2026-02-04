@@ -17,7 +17,7 @@ const NoticeItem = ({ item, isRead, onPress }: NoticeItemProps) => {
 
       <View style={styles.textWrapper}>
         <Text style={styles.sourceText}>{item.displaySource}</Text>
-        <Text style={[styles.itemText, isRead && styles.readText]} numberOfLines={1}>
+        <Text style={[styles.itemText, isRead && styles.readText]} numberOfLines={2}>
           {item.title}
         </Text>
         <View style={styles.infoRow}>
