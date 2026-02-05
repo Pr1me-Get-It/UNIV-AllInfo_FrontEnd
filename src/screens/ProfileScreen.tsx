@@ -11,6 +11,7 @@ import {
   ScrollView,
   Modal,
   TextInput,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
@@ -31,14 +32,22 @@ export default function ProfileScreen() {
   // 1. 모든 훅(useState, useAuth 등)은 반드시 최상단에 모여야 합니다.
   const {
     userEmail,
+    userInfo,
+    nickname, // from Context
     isAuthenticated,
     loginWithGoogle, // 구글 로그인 함수
     loginDev, // 개발자 로그인 함수
     logout,
+    withdraw, // 회원 탈퇴
+    updateNickname, // 닉네임 업데이트 함수
   } = useAuth(); //
 
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
+
+  // 닉네임 관련 상태
+  const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState('');
   const [pushEnabled, setPushEnabled] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [nightPushOnly, setNightPushOnly] = useState(false);
@@ -69,7 +78,26 @@ export default function ProfileScreen() {
     if (passwordInput === DEV_PASSWORD) {
       setIsPasswordModalVisible(false);
       setPasswordInput('');
-      loginDev();
+
+      // 계정 선택 Alert 띄우기
+      Alert.alert(
+        '테스트 계정 선택',
+        '로그인할 테스트 계정을 선택해주세요.',
+        [
+          {
+            text: 'Test 1 (기본)',
+            onPress: () => loginDev(), // 인자 없으면 기본값(config의 DEV_EMAIL)
+          },
+          {
+            text: 'Test 2 (추가)',
+            onPress: () => loginDev('test2@knu.ac.kr'),
+          },
+          {
+            text: '취소',
+            style: 'cancel',
+          },
+        ]
+      );
     } else {
       showAlert('오류', '비밀번호가 틀렸습니다.');
     }
@@ -100,6 +128,28 @@ export default function ProfileScreen() {
     };
     loadPushSetting();
   }, [userEmail]);
+
+  // 닉네임 저장 핸들러
+  const handleNicknameSave = async () => {
+    if (!nicknameInput.trim()) {
+      showAlert('오류', '닉네임을 입력해주세요.');
+      return;
+    }
+
+    if (userEmail) {
+      await updateNickname(nicknameInput.trim());
+      setIsNicknameModalVisible(false);
+      setNicknameInput('');
+      showAlert('알림', '닉네임이 설정되었습니다.');
+    }
+  };
+
+  // 회원 탈퇴 버튼 핸들러
+  const handleWithdraw = () => {
+    showAlert('회원 탈퇴', '정말 탈퇴하시겠습니까?\n모든 데이터가 삭제됩니다.', () => {
+      withdraw();
+    });
+  };
 
   const handlePushToggle = async value => {
     if (!isAuthenticated) {
@@ -202,6 +252,42 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
+      {/* 닉네임 설정 모달 */}
+      <Modal
+        visible={isNicknameModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsNicknameModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>닉네임 설정</Text>
+            <Text style={styles.modalDesc}>사용하실 닉네임을 입력하세요.</Text>
+            <TextInput
+              style={styles.nicknameInput}
+              placeholder="닉네임 (10자 이내)"
+              value={nicknameInput}
+              onChangeText={setNicknameInput}
+              maxLength={10}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalCancelBtn]}
+                onPress={() => {
+                  setIsNicknameModalVisible(false);
+                  setNicknameInput('');
+                }}>
+                <Text style={styles.modalCancelText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalConfirmBtn]}
+                onPress={handleNicknameSave}>
+                <Text style={styles.modalConfirmText}>저장</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* 로그인/프로필 카드 */}
       <View style={styles.section}>
         {isAuthenticated ? (
@@ -213,7 +299,9 @@ export default function ProfileScreen() {
               />
               <View>
                 <Text style={styles.welcomeText}>로그인됨</Text>
-                <Text style={styles.userNameText}>사용자 님</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.userNameText}>{nickname || userInfo?.name || '사용자'} 님</Text>
+                </View>
                 <Text style={styles.emailText}>{userEmail}</Text>
               </View>
             </View>
@@ -284,18 +372,22 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>계정</Text>
         <TouchableOpacity
           style={styles.menuRow}
-          onPress={() => showAlert('안내', 'Google 계정 관리는 Google 설정에서 가능합니다.')}>
+          onPress={() => {
+            setNicknameInput(nickname || userInfo?.name || '');
+            setIsNicknameModalVisible(true);
+          }}>
           <View>
-            <Text style={styles.menuLabel}>계정 정보 수정</Text>
-            <Text style={styles.menuDescription}>Google 계정 설정을 확인합니다.</Text>
+            <Text style={styles.menuLabel}>닉네임 설정</Text>
+            <Text style={styles.menuDescription}>앱 내에서 표시될 닉네임을 설정합니다.</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          <Ionicons name="create-outline" size={20} color="#ccc" />
         </TouchableOpacity>
-        {isAuthenticated && (
-          <TouchableOpacity style={styles.menuRowDanger} onPress={handleLogout}>
-            <Text style={styles.menuLabelDanger}>로그아웃</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={styles.menuRowDanger} onPress={handleWithdraw}>
+          <View>
+            <Text style={styles.menuLabelDanger}>회원 탈퇴</Text>
+            <Text style={styles.menuDescription}>계정 정보를 삭제하고 탈퇴합니다.</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* 앱 정보 섹션 */}
@@ -451,6 +543,14 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     paddingVertical: 10,
     letterSpacing: 5,
+  },
+  nicknameInput: {
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    fontSize: 16,
+    paddingVertical: 8,
+    marginBottom: 24,
   },
   modalButtons: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', gap: 10 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },

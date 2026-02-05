@@ -9,17 +9,21 @@ import {
   ScrollView,
   Linking,
   Dimensions,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { EXTERNAL_LINKS } from '../constants/links';
 import { COLORS } from '../constants/colors';
 import { CustomText } from '../components/ui/CustomText';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const CARD_SPACING = 15;
 const CARD_WIDTH = (width - 40 - CARD_SPACING) / 2; // 2 columns
 
 export default function HomeScreen({ navigation }: any) {
+  const { nickname } = useAuth();
+
   const handleOpenLink = async (url: string) => {
     try {
       const supported = await Linking.canOpenURL(url);
@@ -37,21 +41,12 @@ export default function HomeScreen({ navigation }: any) {
     <View style={styles.page}>
       {/* 상단 헤더 섹션 */}
       <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../assets/cow.png')}
-            style={styles.logoIcon}
-            resizeMode="contain"
-          />
-          <CustomText style={styles.appName}>KNU</CustomText>
+        <View style={styles.headerTitleContainer}>
+          <CustomText style={styles.headerTitle}>
+            안녕하세요, {nickname ? ` ${nickname}님 : )` : ': )'}
+          </CustomText>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => Alert.alert('검색', '준비 중입니다.')}
-            activeOpacity={0.7}>
-            <Ionicons name="search" size={24} color={COLORS.gray} />
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => navigation.navigate('Profile')}
@@ -62,10 +57,16 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* 섹션 타이틀 */}
-        <View style={styles.sectionHeader}>
-          <CustomText style={styles.greetingText}>안녕하세요</CustomText>
-          <CustomText style={styles.sectionTitle}>자주 찾는 서비스</CustomText>
+        {/* 검색바 섹션 */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="무엇이 궁금하신가요?"
+            placeholderTextColor="#9CA3AF"
+            returnKeyType="search"
+            onSubmitEditing={() => Alert.alert('검색', '준비 중입니다.')}
+          />
         </View>
 
         {/* 링크 그리드 */}
@@ -124,22 +125,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 30,
   },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerTitleContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
-  logoIcon: {
-    width: 34,
-    height: 34,
-    marginRight: 8,
-  },
-  appName: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
-    letterSpacing: 0.5,
+    color: '#111',
   },
   headerActions: {
     flexDirection: 'row',
@@ -155,13 +150,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  sectionHeader: {
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10, // 높이를 조금 더 확보
     marginBottom: 25,
   },
-  greetingText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 5,
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#111',
+    padding: 0, // Android 텍스트 패딩 제거
   },
   sectionTitle: {
     fontSize: 26,

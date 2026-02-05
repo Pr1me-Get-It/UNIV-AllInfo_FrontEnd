@@ -59,7 +59,7 @@ export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
           }
         }
 
-        console.log(`Debug Mapping: raw=${rawSource}, dept=${deptName}, suffix=${suffix}`);
+
 
         let displaySource;
         if (deptName) {

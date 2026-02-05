@@ -11,4 +11,5 @@ export const STORAGE_KEYS = {
   NOTICE_CACHE_TIME: 'notice_cache_timestamp',
   PUSH_SETTING: safeEmail => `push_setting_${safeEmail}`,
   MAP_FILTER: safeEmail => `map_filter_${safeEmail}`,
+  NICKNAME: safeEmail => `nickname_${safeEmail}`,
 };

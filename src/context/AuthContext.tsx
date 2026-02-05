@@ -8,7 +8,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { registerUser } from '../api/userService';
+import { registerUser, withdrawUser } from '../api/userService';
 import { getToken, saveToken, removeToken, getData, saveData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
@@ -30,11 +30,14 @@ interface UserInfo {
 interface AuthContextType {
   userEmail: string | null;
   userInfo: UserInfo | null; // UI 출력을 위한 유저 정보
+  nickname: string | null; // 전역 닉네임
   isAuthenticated: boolean;
   isLoading: boolean;
   loginWithGoogle: () => Promise<void>; // 구글 로그인 로직 내장
-  loginDev: () => Promise<void>; // 개발자 로그인 로직 내장
+  loginDev: (customEmail?: string) => Promise<void>; // 개발자 로그인 로직 내장 (이메일 선택 가능)
   logout: () => Promise<void>; // 통합 로그아웃
+  withdraw: () => Promise<void>; // 회원 탈퇴
+  updateNickname: (name: string) => Promise<void>; // 닉네임 업데이트 함수
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +45,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [nickname, setNickname] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // 백엔드 동기화 로직 (유지)
@@ -90,6 +94,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) {
       console.error('❌ [Auth] 키워드 동기화 에러:', e);
     }
+
+    // D. 닉네임 불러오기
+    try {
+      const safeEmail = email.replace(/\./g, '_');
+      const savedNickname = (await getData(STORAGE_KEYS.NICKNAME(safeEmail))) as string | null;
+      if (savedNickname) {
+        setNickname(savedNickname);
+      } else {
+        setNickname(null);
+      }
+    } catch (e) {
+      console.warn("닉네임 로드 실패:", e);
+    }
   };
 
   // 초기화 및 자동 로그인 체크
@@ -116,6 +133,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           picture: 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
         });
         setIsLoading(false);
+        // 개발자 모드라도 저장된 닉네임은 불러와야 함
+        await syncUserToBackend(DEV_EMAIL);
         return;
       }
 
@@ -167,17 +186,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // 개발자 로그인 실행 함수
-  const loginDev = async () => {
+  const loginDev = async (customEmail?: string) => {
     setIsLoading(true);
+    const targetEmail = customEmail || DEV_EMAIL; // 인자가 없으면 기본값 사용
+
     try {
       await saveToken(DEV_TOKEN);
-      setUserEmail(DEV_EMAIL);
+      setUserEmail(targetEmail);
       setUserInfo({
-        name: '개발자 ',
-        email: DEV_EMAIL,
+        name: `개발자(${targetEmail.split('@')[0]})`,
+        email: targetEmail,
         picture: 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
       });
-      await syncUserToBackend(DEV_EMAIL);
+      await syncUserToBackend(targetEmail);
     } finally {
       setIsLoading(false);
     }
@@ -203,9 +224,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await removeToken();
       setUserEmail(null);
       setUserInfo(null);
+      setNickname(null); // 닉네임 상태 초기화
       setIsLoading(false);
       console.log('📡 [AuthContext] logout 완료 (상태 초기화됨)'); // 추가
     }
+  }, [userEmail]);
+
+  // 회원 탈퇴 함수
+  const withdraw = useCallback(async () => {
+    console.log('📡 [AuthContext] withdraw 함수 시작');
+    setIsLoading(true);
+    try {
+      if (userEmail && userEmail !== DEV_EMAIL) {
+        // 1. 백엔드에 회원 탈퇴 요청
+        try {
+          await withdrawUser(userEmail);
+          console.log('📡 [AuthContext] 백엔드 회원 탈퇴 성공');
+        } catch (e: any) {
+          console.error('❌ [AuthContext] 백엔드 회원 탈퇴 실패:', e);
+          // 실패하더라도 로컬 로그아웃은 진행 여부를 결정해야 하지만,
+          // 보통은 서버 실패 시 사용자에게 알리고 중단하거나, 강제 탈퇴 시 진행함.
+          // 여기서는 에러 로그만 남기고 일단 진행 (사용자 관점에서는 탈퇴 처리)
+        }
+
+        // 2. 구글 연동 해제 (선택)
+        // 로그아웃과 동일하게 구글 세션도 해제
+        try {
+          await GoogleSignin.revokeAccess();
+          await GoogleSignin.signOut();
+        } catch (e) {
+          console.warn('구글 세션 해제(revoke) 중 오류 (무시):', e);
+        }
+      }
+    } finally {
+      // 3. 로컬 데이터 클리어 및 초기화 (로그아웃 로직 재사용 가능하지만 명시적으로 수행)
+      console.log('📡 [AuthContext] 로컬 데이터 삭제 및 유저 리셋');
+      await removeToken();
+      setUserEmail(null);
+      setUserInfo(null);
+      setNickname(null); // 닉네임 상태 초기화
+      setIsLoading(false);
+      Alert.alert('알림', '회원 탈퇴가 완료되었습니다.');
+    }
+  }, [userEmail]);
+
+  // 닉네임 업데이트 함수
+  const updateNickname = useCallback(async (name: string) => {
+    if (!userEmail) return;
+    const safeEmail = userEmail.replace(/\./g, '_');
+    await saveData(STORAGE_KEYS.NICKNAME(safeEmail), name);
+    setNickname(name);
   }, [userEmail]);
 
   return (
@@ -213,11 +281,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         userEmail,
         userInfo,
+        nickname,
         isAuthenticated: !!userEmail,
         isLoading,
         loginWithGoogle,
         loginDev,
         logout,
+        withdraw,
+        updateNickname,
       }}>
       {children}
     </AuthContext.Provider>
