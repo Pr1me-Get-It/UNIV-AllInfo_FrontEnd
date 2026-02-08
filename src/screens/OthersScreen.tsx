@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-nat
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useNavigation } from '@react-navigation/native';
 
@@ -38,35 +39,42 @@ export default function OthersScreen() {
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-            <AppText style={styles.headerTitle}>부가 기능</AppText>
-            <View style={styles.grid}>
-                {features.map((feature) => (
-                    <TouchableOpacity
-                        key={feature.id}
-                        style={styles.card}
-                        onPress={() => handlePress(feature.title)}
-                        activeOpacity={0.8}
-                    >
-                        <View style={styles.iconContainer}>
-                            <Ionicons name={feature.icon as any} size={32} color={COLORS.primary} />
-                        </View>
-                        <View style={styles.textContainer}>
-                            <AppText style={styles.cardTitle}>{feature.title}</AppText>
-                            <AppText style={styles.cardDescription}>{feature.description}</AppText>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color="#ccc" style={styles.arrowIcon} />
-                    </TouchableOpacity>
-                ))}
-            </View>
-        </ScrollView>
+        <LinearGradient
+            colors={[COLORS.lightPink, COLORS.white]}
+            style={styles.container}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 0.8 }}
+        >
+            <ScrollView contentContainerStyle={styles.contentContainer}>
+                <AppText style={styles.headerTitle}>부가 기능</AppText>
+                <View style={styles.grid}>
+                    {features.map((feature) => (
+                        <TouchableOpacity
+                            key={feature.id}
+                            style={styles.card}
+                            onPress={() => handlePress(feature.title)}
+                            activeOpacity={0.8}
+                        >
+                            <View style={styles.iconContainer}>
+                                <Ionicons name={feature.icon as any} size={32} color={COLORS.primary} />
+                            </View>
+                            <View style={styles.textContainer}>
+                                <AppText style={styles.cardTitle}>{feature.title}</AppText>
+                                <AppText style={styles.cardDescription}>{feature.description}</AppText>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color="#ccc" style={styles.arrowIcon} />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </ScrollView>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        // backgroundColor: '#fff', // Removed for gradient
     },
     contentContainer: {
         padding: 20,

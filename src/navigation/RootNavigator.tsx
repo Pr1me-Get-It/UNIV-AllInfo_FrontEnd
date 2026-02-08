@@ -35,7 +35,13 @@ export default function RootNavigator() {
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: '내정보', headerShown: true }}
+        options={{
+          title: '내정보',
+          headerShown: true,
+          headerTransparent: true,
+          headerTintColor: '#333',
+          headerBackVisible: false, // 뒤로가기 버튼 숨김
+        }}
       />
       <Stack.Screen
         name="Tetris"

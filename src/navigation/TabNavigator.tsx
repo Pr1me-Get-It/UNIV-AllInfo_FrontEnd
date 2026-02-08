@@ -86,7 +86,7 @@ export default function TabNavigator() {
         name="Others"
         component={OthersScreen}
         options={{
-          title: '부가기능',
+          title: '엔터테인먼트',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),

@@ -10,6 +10,7 @@ import {
   Dimensions,
   TextInput,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { EXTERNAL_LINKS } from '../constants/links';
 import { COLORS } from '../constants/colors';
@@ -37,7 +38,12 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.page}>
+    <LinearGradient
+      colors={[COLORS.lightPink, COLORS.white]}
+      style={styles.page}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 0.8 }}
+    >
       {/* 상단 헤더 섹션 */}
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
@@ -109,14 +115,14 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#fff',
+    // backgroundColor: '#fff', // Removed for gradient
     paddingTop: 60, // Status bar area
   },
   header: {

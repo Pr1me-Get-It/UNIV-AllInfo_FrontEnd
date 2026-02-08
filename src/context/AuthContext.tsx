@@ -178,7 +178,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error: any) {
       if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
-        Alert.alert('로그인 오류', '구글 로그인에 실패했습니다.');
+        console.error('[GoogleLoginError]', error); // ADB 로그 확인용
+        throw error; // UI에서 예외 처리하도록 전파
       }
     } finally {
       setIsLoading(false);
@@ -264,7 +265,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUserInfo(null);
       setNickname(null); // 닉네임 상태 초기화
       setIsLoading(false);
-      Alert.alert('알림', '회원 탈퇴가 완료되었습니다.');
+      // Alert.alert 제거 -> ProfileScreen에서 처리
+      console.log('✅ [AuthContext] 회원 탈퇴 프로세스 완료');
     }
   }, [userEmail]);
 
