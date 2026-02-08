@@ -1,6 +1,7 @@
 // screen/BookmarkScreen.jsx
 import React, { useContext } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { AlarmContext } from '../data/Alarm';
 import { useAuth } from '../context/AuthContext';
@@ -33,7 +34,7 @@ export default function BookmarkScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <Ionicons name="star" size={28} color="#FFD700" />
-        <Text style={styles.headerText}>즐겨찾기</Text>
+        <AppText style={styles.headerText}>즐겨찾기</AppText>
       </View>
 
       <View style={styles.listContainer}>
@@ -43,7 +44,7 @@ export default function BookmarkScreen({ navigation }: any) {
           contentContainerStyle={{ paddingBottom: 20 }}
           ListEmptyComponent={
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>저장된 알림이 없습니다.</Text>
+              <AppText style={styles.emptyText}>저장된 알림이 없습니다.</AppText>
             </View>
           }
           renderItem={({ item }) => (
@@ -54,9 +55,9 @@ export default function BookmarkScreen({ navigation }: any) {
                 <Image source={item.image} style={styles.customIcon} />
               </View>
               <View style={styles.textWrapper}>
-                <Text style={styles.itemText} numberOfLines={1}>
+                <AppText style={styles.itemText} numberOfLines={1}>
                   {item.title}
-                </Text>
+                </AppText>
                 <Ionicons name="star" size={20} color="#FFD700" />
               </View>
             </TouchableOpacity>

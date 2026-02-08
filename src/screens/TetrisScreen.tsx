@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Dimensions, Alert, ScrollView } from 'react-native';
+import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -127,10 +128,10 @@ export default function TetrisScreen() {
                     {/* Game Over Overlay */}
                     {gameOver && (
                         <View style={styles.gameOverOverlay}>
-                            <Text style={styles.gameOverText}>Game Over</Text>
-                            <Text style={styles.finalScoreText}>Score: {score}</Text>
+                            <AppText style={styles.gameOverText}>Game Over</AppText>
+                            <AppText style={styles.finalScoreText}>Score: {score}</AppText>
                             <TouchableOpacity style={styles.retryButton} onPress={startGame}>
-                                <Text style={styles.retryButtonText}>Try Again</Text>
+                                <AppText style={styles.retryButtonText}>Try Again</AppText>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -144,7 +145,7 @@ export default function TetrisScreen() {
 
                     {/* Next Block Display */}
                     <View style={styles.nextBlockContainer}>
-                        <Text style={styles.nextBlockText}>Next</Text>
+                        <AppText style={styles.nextBlockText}>Next</AppText>
                         <View style={styles.nextBlockGrid}>
                             {nextTetromino.map((row, y) => (
                                 <View key={y} style={{ flexDirection: 'row' }}>
@@ -166,7 +167,7 @@ export default function TetrisScreen() {
                 {/* Start Button */}
                 {!dropTime && !gameOver ? (
                     <TouchableOpacity style={styles.startButton} onPress={startGame}>
-                        <Text style={styles.startButtonText}>게임시작</Text>
+                        <AppText style={styles.startButtonText}>게임시작</AppText>
                     </TouchableOpacity>
                 ) : (
                     <>

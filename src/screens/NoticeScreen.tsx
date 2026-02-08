@@ -3,7 +3,6 @@
 import React, { useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
-  Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
+import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { AlarmContext } from '../data/Alarm';
 import SOURCE_LABELS from '../constants/labeltag.json';
@@ -23,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { syncKeywords } from '../api/userService';
 import NoticeItem from '../components/NoticeItem';
 import { fetchNotices } from '../api/noticeService';
+import { COMMON_TAGS } from '../constants/noticeCategories';
 
 export default function NoticeScreen({ navigation }: any) {
   const queryClient = useQueryClient();
@@ -35,6 +36,8 @@ export default function NoticeScreen({ navigation }: any) {
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [isCommonExpanded, setIsCommonExpanded] = useState(true);
+  const [isDeptExpanded, setIsDeptExpanded] = useState(true);
 
   // 1. 앱 시작 시 저장된 필터 데이터 불러오기
   useEffect(() => {
@@ -200,7 +203,7 @@ export default function NoticeScreen({ navigation }: any) {
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
           <Ionicons name="albums" size={28} color="#333" />
-          <Text style={styles.headerText}>공지사항</Text>
+          <AppText style={styles.headerText}>공지사항</AppText>
         </View>
 
         <View style={{ flexDirection: 'row' }}>
@@ -225,14 +228,20 @@ export default function NoticeScreen({ navigation }: any) {
         <View style={styles.modalOverlay}>
           <View style={styles.bottomSheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>학과 필터</Text>
+              <AppText style={styles.sheetTitle}>공지 목록</AppText>
               <View style={styles.modalSearchBox}>
                 <Ionicons name="search" size={16} color="#888" />
                 <TextInput
                   style={styles.modalSearchInput}
                   placeholder="학과명 검색..."
                   value={modalSearchQuery}
-                  onChangeText={setModalSearchQuery}
+                  onChangeText={(text) => {
+                    setModalSearchQuery(text);
+                    if (text) {
+                      setIsCommonExpanded(true);
+                      setIsDeptExpanded(true);
+                    }
+                  }}
                   placeholderTextColor="#aaa"
                 />
                 {modalSearchQuery.length > 0 && (
@@ -242,7 +251,7 @@ export default function NoticeScreen({ navigation }: any) {
                 )}
               </View>
               <TouchableOpacity style={styles.saveButton} onPress={handleCloseModal}>
-                <Text style={styles.saveButtonText}>저장</Text>
+                <AppText style={styles.saveButtonText}>저장</AppText>
               </TouchableOpacity>
             </View>
 
@@ -256,7 +265,7 @@ export default function NoticeScreen({ navigation }: any) {
                   ]}
                   onPress={toggleAll}>
                   <View style={styles.filterItemContent}>
-                    <Text style={styles.filterItemText}>전체 선택</Text>
+                    <AppText style={styles.filterItemText}>전체 선택</AppText>
                     <Ionicons
                       name={
                         selectedSources.length === Object.keys(SOURCE_LABELS).length
@@ -274,37 +283,97 @@ export default function NoticeScreen({ navigation }: any) {
                 </TouchableOpacity>
               )}
 
-              {Object.entries(SOURCE_LABELS)
-                .filter(([code, name]) => (name as string).includes(modalSearchQuery))
-                .map(([code, name]) => {
-                  const isChecked = selectedSources.includes(code);
-                  return (
-                    <TouchableOpacity
-                      key={code}
-                      style={[styles.filterItem, isChecked && styles.filterItemActive]}
-                      onPress={() => toggleSource(code)}>
-                      <View style={styles.filterItemContent}>
-                        <Text
-                          style={[styles.filterItemText, isChecked && styles.filterItemTextActive]}>
-                          {name as string}
-                        </Text>
-                        <Ionicons
-                          name={isChecked ? 'checkbox' : 'square-outline'}
-                          size={22}
-                          color={isChecked ? COLORS.primary : '#ccc'}
-                        />
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+              {/* 공통 섹션 */}
+              <View>
+                <TouchableOpacity
+                  style={styles.sectionHeader}
+                  onPress={() => setIsCommonExpanded(!isCommonExpanded)}>
+                  <AppText style={styles.sectionHeaderText}>공통</AppText>
+                  <Ionicons
+                    name={isCommonExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color="#555"
+                  />
+                </TouchableOpacity>
+                {isCommonExpanded &&
+                  Object.entries(SOURCE_LABELS)
+                    .filter(([code]) => COMMON_TAGS.includes(code))
+                    .filter(([code, name]) => (name as string).includes(modalSearchQuery))
+                    .map(([code, name]) => {
+                      const isChecked = selectedSources.includes(code);
+                      return (
+                        <TouchableOpacity
+                          key={code}
+                          style={[styles.filterItem, isChecked && styles.filterItemActive]}
+                          onPress={() => toggleSource(code)}>
+                          <View style={styles.filterItemContent}>
+                            <AppText
+                              style={[
+                                styles.filterItemText,
+                                isChecked && styles.filterItemTextActive,
+                              ]}>
+                              {name as string}
+                            </AppText>
+                            <Ionicons
+                              name={isChecked ? 'checkbox' : 'square-outline'}
+                              size={22}
+                              color={isChecked ? COLORS.primary : '#ccc'}
+                            />
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+              </View>
+
+              {/* 학과 섹션 */}
+              <View>
+                <TouchableOpacity
+                  style={styles.sectionHeader}
+                  onPress={() => setIsDeptExpanded(!isDeptExpanded)}>
+                  <AppText style={styles.sectionHeaderText}>학과</AppText>
+                  <Ionicons
+                    name={isDeptExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color="#555"
+                  />
+                </TouchableOpacity>
+                {isDeptExpanded &&
+                  Object.entries(SOURCE_LABELS)
+                    .filter(([code]) => !COMMON_TAGS.includes(code))
+                    .filter(([code, name]) => (name as string).includes(modalSearchQuery))
+                    .map(([code, name]) => {
+                      const isChecked = selectedSources.includes(code);
+                      return (
+                        <TouchableOpacity
+                          key={code}
+                          style={[styles.filterItem, isChecked && styles.filterItemActive]}
+                          onPress={() => toggleSource(code)}>
+                          <View style={styles.filterItemContent}>
+                            <AppText
+                              style={[
+                                styles.filterItemText,
+                                isChecked && styles.filterItemTextActive,
+                              ]}>
+                              {name as string}
+                            </AppText>
+                            <Ionicons
+                              name={isChecked ? 'checkbox' : 'square-outline'}
+                              size={22}
+                              color={isChecked ? COLORS.primary : '#ccc'}
+                            />
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+              </View>
             </ScrollView>
           </View>
         </View>
       </Modal>
 
       <View style={styles.balanceContainer}>
-        <Text style={styles.balanceLabel}>확인하지 않은 공지사항</Text>
-        <Text style={styles.balanceText}>{unreadCount} 개</Text>
+        <AppText style={styles.balanceLabel}>확인하지 않은 공지사항</AppText>
+        <AppText style={styles.balanceText}>{unreadCount} 개</AppText>
       </View>
 
       <View style={styles.searchContainer}>
@@ -328,17 +397,17 @@ export default function NoticeScreen({ navigation }: any) {
         <TouchableOpacity
           style={[styles.tabButton, filterMode === 'all' && styles.tabButtonActive]}
           onPress={() => setFilterMode('all')}>
-          <Text style={[styles.tabText, filterMode === 'all' && styles.tabTextActive]}>
+          <AppText style={[styles.tabText, filterMode === 'all' && styles.tabTextActive]}>
             전체
-          </Text>
+          </AppText>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.tabButton, filterMode === 'unread' && styles.tabButtonActive]}
           onPress={() => setFilterMode('unread')}>
-          <Text style={[styles.tabText, filterMode === 'unread' && styles.tabTextActive]}>
+          <AppText style={[styles.tabText, filterMode === 'unread' && styles.tabTextActive]}>
             미확인
-          </Text>
+          </AppText>
         </TouchableOpacity>
       </View>
 
@@ -353,9 +422,9 @@ export default function NoticeScreen({ navigation }: any) {
           ListFooterComponent={isLoading ? <ActivityIndicator style={{ margin: 10 }} /> : null}
           ListEmptyComponent={
             !isLoading ? (
-              <Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>
+              <AppText style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>
                 데이터가 없습니다.
-              </Text>
+              </AppText>
             ) : null
           }
           renderItem={({ item }) => (
@@ -485,4 +554,15 @@ const styles = StyleSheet.create({
   },
   filterItemText: { fontSize: 16, color: '#333' },
   filterItemTextActive: { color: COLORS.primary, fontWeight: 'bold' },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 5,
+    backgroundColor: '#f8f8f8',
+    marginTop: 10,
+    borderRadius: 8,
+  },
+  sectionHeaderText: { fontSize: 16, fontWeight: 'bold', color: '#555' },
 });

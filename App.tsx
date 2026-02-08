@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Font from 'expo-font';
-import { applyGlobalFont } from './src/utils/globalFont';
-
 // 전역 폰트 적용 시도 (일부 RN 버전에서 작동)
-applyGlobalFont();
+// applyGlobalFont(); // React 19에서 defaultProps 지원 중단으로 인해 제거됨
 
 import RootNavigator from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/context/AuthContext';
@@ -20,12 +18,12 @@ export default function App() {
     async function prepare() {
       try {
         await Font.loadAsync({
-          'Pretendard-Regular': require('./src/assets/fonts/Pretendard-Regular.otf'),
-          'Pretendard-Bold': require('./src/assets/fonts/Pretendard-Bold.otf'),
-          'Pretendard-Medium': require('./src/assets/fonts/Pretendard-Medium.otf'),
-          'Pretendard-SemiBold': require('./src/assets/fonts/Pretendard-SemiBold.otf'),
+          'IBMPlexSansKR-Regular': require('./src/assets/fonts/IBMPlexSansKR-Regular.otf'),
+          'IBMPlexSansKR-Bold': require('./src/assets/fonts/IBMPlexSansKR-Bold.otf'),
+          'IBMPlexSansKR-Medium': require('./src/assets/fonts/IBMPlexSansKR-Medium.otf'),
+          'IBMPlexSansKR-SemiBold': require('./src/assets/fonts/IBMPlexSansKR-SemiBold.otf'),
         });
-        console.log('✅ 폰트 로드 완료: Pretendard');
+        console.log('✅ 폰트 로드 완료: IBM Plex Sans KR');
       } catch (e) {
         console.warn('⚠️ 폰트 로드 중 오류 발생:', e);
       } finally {

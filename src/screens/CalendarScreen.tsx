@@ -1,20 +1,17 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  TouchableOpacity,
   Modal,
   Dimensions,
-  PanResponder,
-  Animated,
+  TouchableOpacity,
 } from 'react-native';
+import AppText from '../components/AppText';
 
 const MIN_HEIGHT = 50;
 const MAX_HEIGHT = 100;
-const DRAG_THRESHOLD = 30;
 
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -25,6 +22,14 @@ import academicSchedule from '../constants/academic_schedule.json';
 import { useQuery } from '@tanstack/react-query';
 import { fetchGoogleEvents } from '../api/calendarService';
 import CalendarDay from '../components/CalendarDay';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
+import { CalendarHeightProvider } from '../context/CalendarHeightContext';
 
 // 한국어 설정
 LocaleConfig.locales['kr'] = {
@@ -72,63 +77,30 @@ export default function CalendarScreen({ navigation }: any) {
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const animatedHeight = useRef(new Animated.Value(MIN_HEIGHT)).current;
-  const textOpacity = animatedHeight.interpolate({
-    inputRange: [MIN_HEIGHT, MIN_HEIGHT + 20, MAX_HEIGHT],
-    outputRange: [0, 0, 1],
-    extrapolate: 'clamp',
-  });
+  // Reanimated Shared Value
+  const itemHeight = useSharedValue(MIN_HEIGHT);
 
   const { userEmail, isAuthenticated } = useAuth();
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderTerminationRequest: () => false,
-
-      onPanResponderMove: (_, gestureState) => {
-        const baseHeight = isExpanded ? MAX_HEIGHT : MIN_HEIGHT;
-        const APPROX_ROWS = 10;
-        let newHeight = baseHeight + gestureState.dy / APPROX_ROWS;
-
-        if (newHeight < MIN_HEIGHT) newHeight = MIN_HEIGHT;
-        if (newHeight > MAX_HEIGHT) newHeight = MAX_HEIGHT;
-
-        animatedHeight.setValue(newHeight);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        let targetHeight = MIN_HEIGHT;
-        let targetState = false;
-
-        if (isExpanded) {
-          if (gestureState.dy < -DRAG_THRESHOLD) {
-            targetHeight = MIN_HEIGHT;
-            targetState = false;
-          } else {
-            targetHeight = MAX_HEIGHT;
-            targetState = true;
-          }
-        } else {
-          if (gestureState.dy > DRAG_THRESHOLD) {
-            targetHeight = MAX_HEIGHT;
-            targetState = true;
-          } else {
-            targetHeight = MIN_HEIGHT;
-            targetState = false;
-          }
-        }
-
-        setIsExpanded(targetState);
-        Animated.spring(animatedHeight, {
-          toValue: targetHeight,
-          useNativeDriver: false,
-          friction: 12,
-          tension: 50,
-        }).start();
-      },
-    }),
-  ).current;
+  // Gesture Handler
+  const panGesture = Gesture.Pan()
+    .onChange((e) => {
+      const sensitivity = 0.2; // Slow down drag
+      let newHeight = itemHeight.value + e.changeY * sensitivity;
+      if (newHeight < MIN_HEIGHT) newHeight = MIN_HEIGHT;
+      if (newHeight > MAX_HEIGHT) newHeight = MAX_HEIGHT;
+      itemHeight.value = newHeight;
+    })
+    .onEnd(() => {
+      // Snap logic
+      if (itemHeight.value > (MIN_HEIGHT + MAX_HEIGHT) / 2) {
+        itemHeight.value = withSpring(MAX_HEIGHT, { damping: 20 });
+        runOnJS(setIsExpanded)(true);
+      } else {
+        itemHeight.value = withSpring(MIN_HEIGHT, { damping: 20 });
+        runOnJS(setIsExpanded)(false);
+      }
+    });
 
   const {
     data: googleEvents = [],
@@ -148,7 +120,7 @@ export default function CalendarScreen({ navigation }: any) {
   );
 
   const events = useMemo(() => {
-    return [...googleEvents, ...academicSchedule] as any[]; // TODO: Define strict type for academicSchedule
+    return [...googleEvents, ...academicSchedule] as any[];
   }, [googleEvents]);
 
   const getDatesInRange = (startDate: string, endDate: string) => {
@@ -222,13 +194,11 @@ export default function CalendarScreen({ navigation }: any) {
           events={dayEvents}
           isSelected={isSelected}
           onPress={setSelectedDate}
-          animatedHeight={animatedHeight}
-          textOpacity={textOpacity}
           dayWidth={dayWidth}
         />
       );
     },
-    [eventsByDate, selectedDate, animatedHeight, textOpacity],
+    [eventsByDate, selectedDate],
   );
 
   const formatTime = (dateTime: string) => {
@@ -242,16 +212,16 @@ export default function CalendarScreen({ navigation }: any) {
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
             <Ionicons name="calendar" size={28} color="rgb(219, 31, 38)" />
-            <Text style={styles.headerTitle}>캘린더</Text>
+            <AppText style={styles.headerTitle}>캘린더</AppText>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ marginRight: 15, alignItems: 'flex-end' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={{ fontSize: 12, color: '#666', marginRight: 6 }}>학부</Text>
+                <AppText style={{ fontSize: 12, color: '#666', marginRight: 6 }}>학부</AppText>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgb(219, 31, 38)' }} />
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={{ fontSize: 12, color: '#666', marginRight: 6 }}>대학원</Text>
+                <AppText style={{ fontSize: 12, color: '#666', marginRight: 6 }}>대학원</AppText>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#333' }} />
               </View>
             </View>
@@ -262,53 +232,56 @@ export default function CalendarScreen({ navigation }: any) {
         </View>
       </View>
 
-      <View>
-        <Calendar
-          current={selectedDate}
-          dayComponent={renderDay}
-          monthFormat={'yyyy년 M월'}
-          renderArrow={(direction: any) => (
-            <Ionicons
-              name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
-              size={28}
-              color="rgb(219, 31, 38)"
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={{ backgroundColor: 'white' }}>
+          <CalendarHeightProvider itemHeight={itemHeight}>
+            <Calendar
+              current={selectedDate}
+              dayComponent={renderDay}
+              monthFormat={'yyyy년 M월'}
+              renderArrow={(direction: any) => (
+                <Ionicons
+                  name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+                  size={28}
+                  color="rgb(219, 31, 38)"
+                />
+              )}
+              theme={
+                {
+                  todayTextColor: 'rgb(219, 31, 38)',
+                  'stylesheet.calendar.main': {
+                    week: {
+                      marginTop: 2,
+                      marginBottom: 2,
+                      flexDirection: 'row',
+                      justifyContent: 'space-around',
+                    },
+                  },
+                } as any
+              }
+              disableMonthChange={true} // Swiping handled by gesture
+              enableSwipeMonths={false} // Disable default swipe to avoid conflict
+              hideExtraDays={true}
             />
-          )}
-          theme={
-            {
-              todayTextColor: 'rgb(219, 31, 38)',
-              'stylesheet.calendar.main': {
-                week: {
-                  marginTop: 2,
-                  marginBottom: 2,
-                  flexDirection: 'row',
-                  justifyContent: 'space-around',
-                },
-              },
-            } as any
-          }
-          disableMonthChange={isExpanded}
-          enableSwipeMonths={!isExpanded}
-          hideExtraDays={true}
-        />
-        <View
-          style={styles.dragHandleContainer}
-          {...panResponder.panHandlers}
-          onStartShouldSetResponderCapture={() => true}>
-          <View style={styles.dragHandle} />
-          <Text style={styles.dragText}>
-            {isExpanded ? '위로 올려서 접기' : '아래로 당겨서 펼치기'}
-          </Text>
-        </View>
-      </View>
+          </CalendarHeightProvider>
+
+          {/* Drag Handle */}
+          <View style={styles.dragHandleContainer}>
+            <View style={styles.dragHandle} />
+            <AppText style={styles.dragText}>
+              {isExpanded ? '위로 올려서 접기' : '아래로 당겨서 펼치기'}
+            </AppText>
+          </View>
+        </Animated.View>
+      </GestureDetector>
 
       <View style={styles.listHeaderContainer}>
-        <Text style={styles.listHeader}>{selectedDate} 일정</Text>
+        <AppText style={styles.listHeader}>{selectedDate} 일정</AppText>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {isLoading && (
             <ActivityIndicator size="small" color="rgb(219, 31, 38)" style={{ marginRight: 8 }} />
           )}
-          <Text style={styles.eventCountText}>{daySelectedEvents.length}개</Text>
+          <AppText style={styles.eventCountText}>{daySelectedEvents.length}개</AppText>
         </View>
       </View>
     </>
@@ -317,53 +290,55 @@ export default function CalendarScreen({ navigation }: any) {
   if (!isAuthenticated) return <LoginPlaceholder targetScreen="Profile" />;
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={daySelectedEvents}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View
-              style={[
-                styles.typeIndicator,
-                { backgroundColor: item.type === 1 ? '#333' : 'rgb(219, 31, 38)' },
-              ]}
-            />
-            <View style={styles.cardContent}>
-              <Text style={styles.title}>{item.summary}</Text>
-              <Text style={styles.timeLabel}>
-                {item.start.date ? '하루 종일' : formatTime(item.start.dateTime)}
-              </Text>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <FlatList
+          data={daySelectedEvents}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View
+                style={[
+                  styles.typeIndicator,
+                  { backgroundColor: item.type === 1 ? '#333' : 'rgb(219, 31, 38)' },
+                ]}
+              />
+              <View style={styles.cardContent}>
+                <AppText style={styles.title}>{item.summary}</AppText>
+                <AppText style={styles.timeLabel}>
+                  {item.start.date ? '하루 종일' : formatTime(item.start.dateTime)}
+                </AppText>
+              </View>
             </View>
-          </View>
-        )}
-        ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={<Text style={styles.emptyText}>일정이 없습니다.</Text>}
-      />
+          )}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={<AppText style={styles.emptyText}>일정이 없습니다.</AppText>}
+        />
 
-      <Modal visible={isFilterModalVisible} transparent animationType="fade">
-        <TouchableOpacity style={styles.modalOverlay} onPress={() => setFilterModalVisible(false)}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>일정 필터</Text>
-            {['all', 'undergraduate', 'graduate'].map(m => (
-              <TouchableOpacity
-                key={m}
-                style={styles.filterOption}
-                onPress={() => {
-                  setFilterMode(m);
-                  setFilterModalVisible(false);
-                }}>
-                <Text style={filterMode === m ? styles.activeFilterText : styles.filterText}>
-                  {m === 'all' ? '전체' : m === 'undergraduate' ? '학부' : '대학원'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </View>
+        <Modal visible={isFilterModalVisible} transparent animationType="fade">
+          <TouchableOpacity style={styles.modalOverlay} onPress={() => setFilterModalVisible(false)}>
+            <View style={styles.modalContent}>
+              <AppText style={styles.modalTitle}>일정 필터</AppText>
+              {['all', 'undergraduate', 'graduate'].map(m => (
+                <TouchableOpacity
+                  key={m}
+                  style={styles.filterOption}
+                  onPress={() => {
+                    setFilterMode(m);
+                    setFilterModalVisible(false);
+                  }}>
+                  <AppText style={filterMode === m ? styles.activeFilterText : styles.filterText}>
+                    {m === 'all' ? '전체' : m === 'undergraduate' ? '학부' : '대학원'}
+                  </AppText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 

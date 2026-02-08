@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Image,
   TouchableOpacity,
@@ -12,6 +11,7 @@ import {
   ScrollView,
   Animated,
 } from 'react-native';
+import AppText from '../components/AppText';
 import { ReactNativeZoomableView } from '@dudigital/react-native-zoomable-view';
 import { Ionicons } from '@expo/vector-icons';
 import { MAP_PINS, MapPin } from '../data/mapData';
@@ -109,7 +109,7 @@ export default function MapScreen() {
       <View style={styles.headerContainer}>
         <View style={styles.headerTitleRow}>
           <Ionicons name="map" size={24} color={COLORS.primary} />
-          <Text style={styles.headerTitle}>학교지도</Text>
+          <AppText style={styles.headerTitle}>학교지도</AppText>
         </View>
 
         <View style={styles.searchContainer}>
@@ -128,7 +128,7 @@ export default function MapScreen() {
             {SUGGESTED_KEYWORDS.map((item, index) => (
               <TouchableOpacity key={index} style={styles.chip} onPress={() => setSearchText(item.label)}>
                 <Ionicons name={item.icon as any} size={16} color={item.color} style={styles.chipIcon} />
-                <Text style={styles.chipText}>{item.label}</Text>
+                <AppText style={styles.chipText}>{item.label}</AppText>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -176,7 +176,7 @@ export default function MapScreen() {
 
         {isSidebarOpen && (
           <View style={styles.sidebar}>
-            <Text style={styles.sidebarTitle}>핀 필터</Text>
+            <AppText style={styles.sidebarTitle}>핀 필터</AppText>
             {PIN_TYPES.map((type) => (
               <TouchableOpacity
                 key={type.key}
@@ -188,7 +188,7 @@ export default function MapScreen() {
                   size={20}
                   color={visibleTypes.includes(type.key) ? COLORS.primary : "#999"}
                 />
-                <Text style={styles.filterLabel}>{type.label}</Text>
+                <AppText style={styles.filterLabel}>{type.label}</AppText>
               </TouchableOpacity>
             ))}
           </View>
@@ -205,15 +205,15 @@ export default function MapScreen() {
           >
             <View style={styles.sheetHeader}>
               <View style={styles.sheetHeaderTitleRow}>
-                <Text style={styles.sheetTitle}>{selectedPin.name}</Text>
-                <Text style={styles.infoType}>{selectedPin.type === 'facility' ? '시설' : selectedPin.type === 'administrative' ? '행정' : '기타'}</Text>
+                <AppText style={styles.sheetTitle}>{selectedPin.name}</AppText>
+                <AppText style={styles.infoType}>{selectedPin.type === 'facility' ? '시설' : selectedPin.type === 'administrative' ? '행정' : '기타'}</AppText>
               </View>
               <TouchableOpacity onPress={closeBottomSheet}>
                 <Ionicons name="close-circle" size={30} color="#ccc" />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.sheetContent}>
-              <Text style={styles.infoDesc}>{selectedPin.description}</Text>
+              <AppText style={styles.infoDesc}>{selectedPin.description}</AppText>
               <View style={{ height: 20 }} />
             </ScrollView>
           </Animated.View>

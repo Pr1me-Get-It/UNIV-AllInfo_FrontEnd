@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 
@@ -38,7 +39,7 @@ export default function OthersScreen() {
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-            <Text style={styles.headerTitle}>부가 기능</Text>
+            <AppText style={styles.headerTitle}>부가 기능</AppText>
             <View style={styles.grid}>
                 {features.map((feature) => (
                     <TouchableOpacity
@@ -51,8 +52,8 @@ export default function OthersScreen() {
                             <Ionicons name={feature.icon as any} size={32} color={COLORS.primary} />
                         </View>
                         <View style={styles.textContainer}>
-                            <Text style={styles.cardTitle}>{feature.title}</Text>
-                            <Text style={styles.cardDescription}>{feature.description}</Text>
+                            <AppText style={styles.cardTitle}>{feature.title}</AppText>
+                            <AppText style={styles.cardDescription}>{feature.description}</AppText>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#ccc" style={styles.arrowIcon} />
                     </TouchableOpacity>

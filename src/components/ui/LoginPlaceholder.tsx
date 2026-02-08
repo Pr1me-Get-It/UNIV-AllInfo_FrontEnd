@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import AppText from '../AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -13,9 +14,9 @@ const LoginPlaceholder = ({
   return (
     <View style={styles.container}>
       <Ionicons name={icon} size={60} color="#ccc" style={styles.icon} />
-      <Text style={styles.msg}>{msg}</Text>
+      <AppText style={styles.msg}>{msg}</AppText>
       <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate(targetScreen)}>
-        <Text style={styles.btnText}>로그인 하러 가기</Text>
+        <AppText style={styles.btnText}>로그인 하러 가기</AppText>
       </TouchableOpacity>
     </View>
   );

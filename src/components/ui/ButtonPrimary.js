@@ -1,11 +1,12 @@
-import { Pressable, Text, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import AppText from '../AppText';
 
 export default function ButtonPrimary({ title, onPress, style }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.btn, pressed && { opacity: 0.7 }, style]}>
-      <Text style={styles.txt}>{title}</Text>
+      <AppText style={styles.txt}>{title}</AppText>
     </Pressable>
   );
 }

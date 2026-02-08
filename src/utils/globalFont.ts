@@ -21,12 +21,12 @@ export const applyGlobalFont = () => {
     if (TextWithDefault.defaultProps == null) {
         TextWithDefault.defaultProps = {};
     }
-    TextWithDefault.defaultProps.style = [{ fontFamily: 'Pretendard-Regular' }];
+    TextWithDefault.defaultProps.style = [{ fontFamily: 'IBMPlexSansKR-Regular' }];
 
     if (TextInputWithDefault.defaultProps == null) {
         TextInputWithDefault.defaultProps = {};
     }
-    TextInputWithDefault.defaultProps.style = [{ fontFamily: 'Pretendard-Regular' }];
+    TextInputWithDefault.defaultProps.style = [{ fontFamily: 'IBMPlexSansKR-Regular' }];
 
     // 주의: React Native 최신 버전에서는 defaultProps가 함수형 컴포넌트에서 동작하지 않을 수 있음.
     // 확실한 방법은 커스텀 컴포넌트(CustomText)를 사용하는 것입니다.

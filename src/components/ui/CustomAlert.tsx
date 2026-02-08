@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { Modal, View, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import AppText from '../AppText';
 
 /**
  * 커스텀 알림창 컴포넌트
@@ -8,15 +9,22 @@ import { Modal, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'rea
  * @param {string} message - 알림 내용
  * @param {function} onClose - 닫기 버튼 눌렀을 때 실행될 함수
  */
+interface AlertButton {
+  text: string;
+  onPress?: () => void;
+  style?: 'default' | 'cancel' | 'destructive';
+}
+
 interface CustomAlertProps {
   visible: boolean;
   title: string;
   message: string;
   onClose: () => void;
   onConfirm?: () => void; // [추가] 확인 버튼 콜백 (있으면 2버튼 모드)
+  buttons?: AlertButton[]; // [추가] 커스텀 버튼 배열 (3개 이상 버튼 대응)
 }
 
-const CustomAlert = ({ visible, title, message, onClose, onConfirm }: CustomAlertProps) => {
+const CustomAlert = ({ visible, title, message, onClose, onConfirm, buttons }: CustomAlertProps) => {
   return (
     <Modal
       transparent={true} // 배경을 투명하게 해서 뒤가 비치도록 설정
@@ -27,19 +35,42 @@ const CustomAlert = ({ visible, title, message, onClose, onConfirm }: CustomAler
       <View style={styles.overlay}>
         <View style={styles.alertBox}>
           {/* 제목 영역 */}
-          <Text style={styles.title}>{title}</Text>
+          <AppText style={styles.title}>{title}</AppText>
 
           {/* 내용 영역 */}
-          <Text style={styles.message}>{message}</Text>
+          <AppText style={styles.message}>{message}</AppText>
 
           {/* 버튼 영역 */}
-          {onConfirm ? (
+          {buttons && buttons.length > 0 ? (
+            <View style={styles.verticalButtonContainer}>
+              {buttons.map((btn, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.verticalButton,
+                    btn.style === 'cancel' ? styles.cancelButton : styles.confirmButton,
+                    btn.style === 'destructive' ? { backgroundColor: '#DC2626' } : {},
+                    index < buttons.length - 1 ? { marginBottom: 8 } : {}
+                  ]}
+                  onPress={() => {
+                    if (btn.onPress) btn.onPress();
+                    onClose();
+                  }}
+                  activeOpacity={0.8}>
+                  <AppText style={[
+                    styles.buttonText,
+                    btn.style === 'cancel' ? { color: '#666' } : {}
+                  ]}>{btn.text}</AppText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : onConfirm ? (
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={onClose}
                 activeOpacity={0.8}>
-                <Text style={styles.cancelButtonText}>취소</Text>
+                <AppText style={styles.cancelButtonText}>취소</AppText>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.button, styles.confirmButton]}
@@ -48,7 +79,7 @@ const CustomAlert = ({ visible, title, message, onClose, onConfirm }: CustomAler
                   onClose();
                 }}
                 activeOpacity={0.8}>
-                <Text style={styles.buttonText}>확인</Text>
+                <AppText style={styles.buttonText}>확인</AppText>
               </TouchableOpacity>
             </View>
           ) : (
@@ -57,7 +88,7 @@ const CustomAlert = ({ visible, title, message, onClose, onConfirm }: CustomAler
               onPress={onClose}
               activeOpacity={0.8} // 버튼 눌렀을 때 투명도
             >
-              <Text style={styles.buttonText}>확인</Text>
+              <AppText style={styles.buttonText}>확인</AppText>
             </TouchableOpacity>
           )}
         </View>
@@ -147,6 +178,15 @@ const styles = StyleSheet.create({
     color: '#ffffff', // 글씨 색상 (흰색)
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  verticalButtonContainer: {
+    width: '100%',
+  },
+  verticalButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
   },
 });
 

@@ -1,7 +1,15 @@
 import React, { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import AppText from './AppText';
+import Animated, {
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { useCalendarHeight } from '../context/CalendarHeightContext';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+// AppText is already usable within Animated views if wrapped, but here we animate structure.
 
 interface DayEvent {
   id: string;
@@ -20,8 +28,6 @@ interface CalendarDayProps {
   events: DayEvent[];
   isSelected: boolean;
   onPress: (dateString: string) => void;
-  animatedHeight: any;
-  textOpacity: any;
   dayWidth: number;
 }
 
@@ -31,27 +37,67 @@ const CalendarDay = ({
   events,
   isSelected,
   onPress,
-  animatedHeight,
-  textOpacity,
   dayWidth,
 }: CalendarDayProps) => {
+  const { itemHeight } = useCalendarHeight();
   const isToday = state === 'today';
   const maxEvents = 4;
+
+  // Animated styles
+  const rDayStyle = useAnimatedStyle(() => {
+    return {
+      height: itemHeight.value,
+    };
+  });
+
+  const rTextStyle = useAnimatedStyle(() => {
+    // Height range: ~50 (collapsed) to ~100 (expanded)
+    // Opacity: 0 when < 70, 1 when > 90
+    const opacity = interpolate(
+      itemHeight.value,
+      [60, 90],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    return {
+      opacity: opacity,
+    };
+  });
+
+  const rDotStyle = useAnimatedStyle(() => {
+    // Inverse opacity for dots
+    const opacity = interpolate(
+      itemHeight.value,
+      [50, 80],
+      [1, 0],
+      Extrapolation.CLAMP
+    );
+    return {
+      opacity: opacity,
+    };
+  });
 
   return (
     <AnimatedTouchableOpacity
       style={[
         styles.dayBox,
-        { width: dayWidth, height: animatedHeight },
+        { width: dayWidth },
+        rDayStyle,
         isSelected && styles.selectedDayBox,
       ]}
       onPress={() => onPress(date.dateString)}
       activeOpacity={0.7}>
-      <Text
-        style={[styles.dayText, isToday && styles.todayText, isSelected && styles.selectedDayText]}>
+      <AppText
+        style={[
+          styles.dayText,
+          isToday && styles.todayText,
+          isSelected && styles.selectedDayText,
+        ]}>
         {date.day}
-      </Text>
-      <View style={styles.eventContainer}>
+      </AppText>
+
+      {/* Expanded View: List of Events */}
+      <Animated.View style={[styles.eventContainer, rTextStyle]}>
         {events.slice(0, maxEvents).map((ev, i) => {
           let slicedText = '';
           if (ev.displayText && ev.displayText[ev.dayIndex]) {
@@ -84,12 +130,11 @@ const CalendarDay = ({
                 },
               ]}>
               {slicedText.length > 0 && (
-                <Animated.Text
+                <AppText
                   style={[
                     styles.eventTitle,
                     {
                       color: ev.textColor,
-                      opacity: textOpacity,
                       textAlign:
                         ev.isStart && ev.isEnd
                           ? 'center'
@@ -104,28 +149,63 @@ const CalendarDay = ({
                   ]}
                   numberOfLines={1}>
                   {slicedText}
-                </Animated.Text>
+                </AppText>
               )}
             </View>
           );
         })}
         {events.length > maxEvents && (
-          <Text style={{ fontSize: 8, color: '#999', marginTop: 1 }}>
+          <AppText style={{ fontSize: 8, color: '#999', marginTop: 1 }}>
             +{events.length - maxEvents}
-          </Text>
+          </AppText>
         )}
-      </View>
+      </Animated.View>
+
+      {/* Collapsed View: Dots */}
+      <Animated.View style={[styles.dotContainer, rDotStyle]}>
+        {events.length > 0 &&
+          events.slice(0, 3).map((ev, i) => (
+            <View
+              key={`dot-${i}`}
+              style={[
+                styles.dot,
+                { backgroundColor: ev.color === '#FEE2E2' ? 'rgb(219, 31, 38)' : '#333' },
+              ]}
+            />
+          ))}
+        {events.length > 3 && <View style={[styles.dot, { backgroundColor: '#999' }]} />}
+      </Animated.View>
     </AnimatedTouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  dayBox: { alignItems: 'center', paddingTop: 5, overflow: 'visible' },
+  dayBox: { alignItems: 'center', paddingTop: 5, overflow: 'hidden' },
   selectedDayBox: { backgroundColor: 'rgba(219, 31, 38, 0.05)', borderRadius: 8 },
   dayText: { fontSize: 14, color: '#333', marginBottom: 2 },
   todayText: { color: 'rgb(219, 31, 38)', fontWeight: 'bold' },
   selectedDayText: { fontWeight: 'bold' },
-  eventContainer: { width: '100%', marginTop: 2, paddingHorizontal: 1, overflow: 'visible' },
+  eventContainer: {
+    width: '100%',
+    marginTop: 2,
+    paddingHorizontal: 1,
+    position: 'absolute',
+    top: 25, // Align below date
+    left: 0,
+  },
+  dotContainer: {
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: 5,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginHorizontal: 1,
+  },
   block: { marginBottom: 1 },
   eventTitle: { fontSize: 10, fontWeight: 'bold', marginLeft: 2 },
 });

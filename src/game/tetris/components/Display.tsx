@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import AppText from '../../../components/AppText';
 
 interface Props {
     gameOver?: boolean;
@@ -8,7 +9,7 @@ interface Props {
 
 const Display: React.FC<Props> = ({ gameOver, text }) => (
     <View style={[styles.display, { borderColor: gameOver ? 'red' : '#333' }]}>
-        <Text style={[styles.text, { color: gameOver ? 'red' : '#999' }]}>{text}</Text>
+        <AppText style={[styles.text, { color: gameOver ? 'red' : '#999' }]}>{text}</AppText>
     </View>
 );
 

@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Button,
   TouchableOpacity,
@@ -10,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import AppText from '../components/AppText';
 import { AlarmContext } from '../data/Alarm';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
@@ -172,7 +172,7 @@ export default function DetailScreen({ route, navigation }) {
   if (!item) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.guideText}>데이터를 불러오는 중입니다...</Text>
+        <AppText style={styles.guideText}>데이터를 불러오는 중입니다...</AppText>
       </View>
     );
   }
@@ -186,17 +186,17 @@ export default function DetailScreen({ route, navigation }) {
       {/* 1. Header Area */}
       <View style={styles.headerSection}>
         <View style={styles.sourceBadge}>
-          <Text style={styles.sourceText}>{displaySource}</Text>
+          <AppText style={styles.sourceText}>{displaySource}</AppText>
         </View>
 
-        <Text style={styles.title}>{stripHtml(item?.title) || '제목 없음'}</Text>
+        <AppText style={styles.title}>{stripHtml(item?.title) || '제목 없음'}</AppText>
 
         <View style={styles.metaRow}>
-          <Text style={styles.dateText}>{item.date || '날짜 미상'}</Text>
+          <AppText style={styles.dateText}>{item.date || '날짜 미상'}</AppText>
           <View style={styles.metaDivider} />
           <View style={styles.likeBadge}>
             <Ionicons name="heart" size={12} color="#fff" />
-            <Text style={styles.likeText}>{likeCount}</Text>
+            <AppText style={styles.likeText}>{likeCount}</AppText>
           </View>
         </View>
       </View>
@@ -211,30 +211,30 @@ export default function DetailScreen({ route, navigation }) {
             <View style={styles.deadlineHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Ionicons name="time-outline" size={18} color="#DB1F26" />
-                <Text style={styles.deadlineLabel}>마감 일정</Text>
+                <AppText style={styles.deadlineLabel}>마감 일정</AppText>
               </View>
               <TouchableOpacity onPress={addToCalendar} style={styles.calendarIconBtn}>
                 <Ionicons name="calendar-outline" size={18} color="#DB1F26" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.deadlineDate}>
+            <AppText style={styles.deadlineDate}>
               {deadlineInfo.kickoff ? `${formatDate(deadlineInfo.kickoff)} ~ ` : ''}
               {formatDate(deadlineInfo.deadline) || '상시 모집'}
-            </Text>
+            </AppText>
           </View>
         ) : null}
 
         {/* Description Text */}
-        <Text style={styles.guideText}>
+        <AppText style={styles.guideText}>
           상세 내용은 아래 버튼을 눌러 학교 홈페이지에서 확인하세요.
-        </Text>
+        </AppText>
 
         {/* 3. Action Buttons */}
         <View style={styles.actionGroup}>
           {/* Link Button */}
           {item.link && (
             <TouchableOpacity style={styles.primaryLinkBtn} onPress={openLink} activeOpacity={0.8}>
-              <Text style={styles.primaryLinkText}>공지사항 원본 보기</Text>
+              <AppText style={styles.primaryLinkText}>공지사항 원본 보기</AppText>
               <Ionicons name="arrow-forward" size={16} color="#fff" />
             </TouchableOpacity>
           )}
@@ -249,15 +249,15 @@ export default function DetailScreen({ route, navigation }) {
               size={20}
               color={isBookmarked ? '#fff' : '#333'}
             />
-            <Text style={[styles.bookmarkText, isBookmarked && styles.bookmarkTextActive]}>
+            <AppText style={[styles.bookmarkText, isBookmarked && styles.bookmarkTextActive]}>
               {isBookmarked ? '저장됨' : '북마크 저장'}
-            </Text>
+            </AppText>
           </TouchableOpacity>
         </View>
 
         {/* Mark Unread (Subtle) */}
         <TouchableOpacity onPress={handleMarkUnread} style={styles.textBtn}>
-          <Text style={styles.textBtnLabel}>다시 '안 읽음'으로 표시하기</Text>
+          <AppText style={styles.textBtnLabel}>다시 '안 읽음'으로 표시하기</AppText>
         </TouchableOpacity>
       </View>
     </ScrollView>

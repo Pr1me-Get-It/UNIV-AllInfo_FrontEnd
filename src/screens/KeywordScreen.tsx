@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   FlatList,
@@ -12,6 +11,7 @@ import {
   Platform,
   RefreshControl,
 } from 'react-native';
+import AppText from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
@@ -251,7 +251,7 @@ export default function KeywordScreen({ navigation }) {
 
     return (
       <View style={itemStyle}>
-        <Text style={textStyle}>#{displayName}</Text>
+        <AppText style={textStyle}>#{displayName}</AppText>
         {!isDept && (
           <TouchableOpacity onPress={() => deleteKeyword(item)}>
             <Ionicons name="close-circle" size={20} color={iconColor} />
@@ -263,11 +263,11 @@ export default function KeywordScreen({ navigation }) {
 
   const renderRecommendations = () => (
     <View style={styles.recommendContainer}>
-      <Text style={[styles.recommendLabel, { marginTop: 0 }]}>인기 키워드</Text>
+      <AppText style={[styles.recommendLabel, { marginTop: 0 }]}>인기 키워드</AppText>
       <View style={styles.chipWrapper}>
         {POPULAR_KEYWORDS.map((k, i) => (
           <TouchableOpacity key={i} style={styles.chip} onPress={() => addKeyword(k)}>
-            <Text style={styles.chipText}>+ {k.label}</Text>
+            <AppText style={styles.chipText}>+ {k.label}</AppText>
           </TouchableOpacity>
         ))}
       </View>
@@ -280,8 +280,8 @@ export default function KeywordScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>키워드 알림</Text>
-          <Text style={styles.description}>관심있는 키워드를 등록하면 알림을 보내드려요.</Text>
+          <AppText style={styles.headerTitle}>키워드 알림</AppText>
+          <AppText style={styles.description}>관심있는 키워드를 등록하면 알림을 보내드려요.</AppText>
         </View>
 
         {loading ? (
@@ -294,7 +294,7 @@ export default function KeywordScreen({ navigation }) {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>등록된 키워드가 없습니다.</Text>
+                <AppText style={styles.emptyText}>등록된 키워드가 없습니다.</AppText>
               </View>
             }
             ListFooterComponent={renderRecommendations}

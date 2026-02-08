@@ -1,18 +1,19 @@
-import { Modal, View, Text, StyleSheet, Pressable } from 'react-native';
+import { Modal, View, StyleSheet, Pressable } from 'react-native';
+import AppText from '../AppText';
 
 export default function ConfirmModal({ visible, title = '확인', message, onCancel, onConfirm }) {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>{title}</Text>
-          {!!message && <Text style={styles.msg}>{message}</Text>}
+          <AppText style={styles.title}>{title}</AppText>
+          {!!message && <AppText style={styles.msg}>{message}</AppText>}
           <View style={styles.row}>
             <Pressable style={[styles.btn, styles.cancel]} onPress={onCancel}>
-              <Text>취소</Text>
+              <AppText>취소</AppText>
             </Pressable>
             <Pressable style={[styles.btn, styles.danger]} onPress={onConfirm}>
-              <Text style={{ color: '#fff' }}>삭제</Text>
+              <AppText style={{ color: '#fff' }}>삭제</AppText>
             </Pressable>
           </View>
         </View>

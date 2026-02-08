@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Image,
@@ -13,6 +12,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
@@ -52,23 +52,28 @@ export default function ProfileScreen() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [nightPushOnly, setNightPushOnly] = useState(false);
   const [marketingEnabled, setMarketingEnabled] = useState(false);
+  const [devClickCount, setDevClickCount] = useState(0); // 개발자 모드 진입을 위한 클릭 카운트
 
+  // 커스텀 알림 상태
   // 커스텀 알림 상태
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const [alertOnConfirm, setAlertOnConfirm] = useState<(() => void) | undefined>(undefined);
+  const [alertButtons, setAlertButtons] = useState<any[] | undefined>(undefined);
 
-  const showAlert = (title: string, message: string, onConfirm?: () => void) => {
+  const showAlert = (title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
     setAlertTitle(title);
     setAlertMessage(message);
     setAlertOnConfirm(() => onConfirm);
+    setAlertButtons(buttons);
     setAlertVisible(true);
   };
 
   const closeAlert = () => {
     setAlertVisible(false);
     setAlertOnConfirm(undefined);
+    setAlertButtons(undefined);
   };
 
   const appVersion = Constants.expoConfig?.version || '1.0.0';
@@ -80,17 +85,21 @@ export default function ProfileScreen() {
       setPasswordInput('');
 
       // 계정 선택 Alert 띄우기
-      Alert.alert(
+      // 계정 선택 Alert 띄우기 (커스텀 알림으로 변경)
+      showAlert(
         '테스트 계정 선택',
         '로그인할 테스트 계정을 선택해주세요.',
+        undefined,
         [
           {
             text: 'Test 1 (기본)',
-            onPress: () => loginDev(), // 인자 없으면 기본값(config의 DEV_EMAIL)
+            onPress: () => loginDev(),
+            style: 'default',
           },
           {
             text: 'Test 2 (추가)',
             onPress: () => loginDev('test2@knu.ac.kr'),
+            style: 'default',
           },
           {
             text: '취소',
@@ -222,8 +231,8 @@ export default function ProfileScreen() {
         onRequestClose={() => setIsPasswordModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>개발자 모드 인증</Text>
-            <Text style={styles.modalDesc}>비밀번호를 입력하세요.</Text>
+            <AppText style={styles.modalTitle}>개발자 모드 인증</AppText>
+            <AppText style={styles.modalDesc}>비밀번호를 입력하세요.</AppText>
             <TextInput
               style={styles.passwordInput}
               secureTextEntry
@@ -240,12 +249,12 @@ export default function ProfileScreen() {
                   setIsPasswordModalVisible(false);
                   setPasswordInput('');
                 }}>
-                <Text style={styles.modalCancelText}>취소</Text>
+                <AppText style={styles.modalCancelText}>취소</AppText>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalConfirmBtn]}
                 onPress={handlePasswordSubmit}>
-                <Text style={styles.modalConfirmText}>확인</Text>
+                <AppText style={styles.modalConfirmText}>확인</AppText>
               </TouchableOpacity>
             </View>
           </View>
@@ -260,8 +269,8 @@ export default function ProfileScreen() {
         onRequestClose={() => setIsNicknameModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>닉네임 설정</Text>
-            <Text style={styles.modalDesc}>사용하실 닉네임을 입력하세요.</Text>
+            <AppText style={styles.modalTitle}>닉네임 설정</AppText>
+            <AppText style={styles.modalDesc}>사용하실 닉네임을 입력하세요.</AppText>
             <TextInput
               style={styles.nicknameInput}
               placeholder="닉네임 (10자 이내)"
@@ -276,12 +285,12 @@ export default function ProfileScreen() {
                   setIsNicknameModalVisible(false);
                   setNicknameInput('');
                 }}>
-                <Text style={styles.modalCancelText}>취소</Text>
+                <AppText style={styles.modalCancelText}>취소</AppText>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalConfirmBtn]}
                 onPress={handleNicknameSave}>
-                <Text style={styles.modalConfirmText}>저장</Text>
+                <AppText style={styles.modalConfirmText}>저장</AppText>
               </TouchableOpacity>
             </View>
           </View>
@@ -298,34 +307,45 @@ export default function ProfileScreen() {
                 style={[styles.profileImage, { backgroundColor: '#F3F4F6' }]}
               />
               <View>
-                <Text style={styles.welcomeText}>로그인됨</Text>
+                <AppText style={styles.welcomeText}>로그인됨</AppText>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.userNameText}>{nickname || userInfo?.name || '사용자'} 님</Text>
+                  <AppText style={styles.userNameText}>{nickname || userInfo?.name || '사용자'} 님</AppText>
                 </View>
-                <Text style={styles.emailText}>{userEmail}</Text>
+                <AppText style={styles.emailText}>{userEmail}</AppText>
               </View>
             </View>
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Text style={styles.logoutButtonText}>로그아웃</Text>
+              <AppText style={styles.logoutButtonText}>로그아웃</AppText>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.loginCard}>
-            <Text style={styles.sectionTitle}>로그인</Text>
-            <Text style={styles.sectionDescription}>
+            <AppText style={styles.sectionTitle}>로그인</AppText>
+            <AppText style={styles.sectionDescription}>
               학교 공지를 개인화해서 받고 캘린더를 연동하려면 로그인하세요.
-            </Text>
-            <TouchableOpacity style={styles.googleLoginButton} onPress={loginWithGoogle}>
-              <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.googleLoginButtonText}>Google로 로그인</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.googleLoginButton, { backgroundColor: '#333', marginTop: 10 }]}
-              onPress={() => setIsPasswordModalVisible(true)} // 👈 비밀번호 모달을 띄우도록 수정
-            >
-              <Ionicons name="code-slash" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.googleLoginButtonText}>개발자 로그인 (Test)</Text>
-            </TouchableOpacity>
+            </AppText>
+            <View style={styles.loginButtonsContainer}>
+              {/* Google */}
+              <TouchableOpacity style={[styles.snsIconBtn, { backgroundColor: '#fff', borderColor: '#ddd', borderWidth: 1 }]} onPress={loginWithGoogle}>
+                <Ionicons name="logo-google" size={24} color="#000" />
+              </TouchableOpacity>
+
+              {/* Apple (Placeholder) */}
+              <TouchableOpacity
+                style={[styles.snsIconBtn, { backgroundColor: '#000' }]}
+                onPress={() => showAlert('알림', 'Apple 로그인은 준비 중입니다.')}
+              >
+                <Ionicons name="logo-apple" size={24} color="#fff" />
+              </TouchableOpacity>
+
+              {/* Developer (Hidden) */}
+              {/* <TouchableOpacity
+                style={[styles.snsIconBtn, { backgroundColor: '#333' }]}
+                onPress={() => setIsPasswordModalVisible(true)}
+              >
+                <Ionicons name="code-slash" size={24} color="#fff" />
+              </TouchableOpacity> */}
+            </View>
           </View>
         )}
       </View>
@@ -335,7 +355,7 @@ export default function ProfileScreen() {
 
       {/* 알림 설정 섹션 */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>알림 설정</Text>
+        <AppText style={styles.sectionTitle}>알림 설정</AppText>
         <SettingRow
           label="푸시 알림 받기"
           description="중요 공지, 마감 알림 등을 푸시로 받아요."
@@ -358,7 +378,7 @@ export default function ProfileScreen() {
 
       {/* 공지 · 홍보 섹션 */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>공지 · 홍보</Text>
+        <AppText style={styles.sectionTitle}>공지 · 홍보</AppText>
         <SettingRow
           label="행사/대외활동 홍보 허용"
           description="학교/동아리 행사, 대외활동 홍보 알림을 받습니다."
@@ -369,7 +389,7 @@ export default function ProfileScreen() {
 
       {/* 계정 섹션 */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>계정</Text>
+        <AppText style={styles.sectionTitle}>계정</AppText>
         <TouchableOpacity
           style={styles.menuRow}
           onPress={() => {
@@ -377,37 +397,49 @@ export default function ProfileScreen() {
             setIsNicknameModalVisible(true);
           }}>
           <View>
-            <Text style={styles.menuLabel}>닉네임 설정</Text>
-            <Text style={styles.menuDescription}>앱 내에서 표시될 닉네임을 설정합니다.</Text>
+            <AppText style={styles.menuLabel}>닉네임 설정</AppText>
+            <AppText style={styles.menuDescription}>앱 내에서 표시될 닉네임을 설정합니다.</AppText>
           </View>
           <Ionicons name="create-outline" size={20} color="#ccc" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuRowDanger} onPress={handleWithdraw}>
           <View>
-            <Text style={styles.menuLabelDanger}>회원 탈퇴</Text>
-            <Text style={styles.menuDescription}>계정 정보를 삭제하고 탈퇴합니다.</Text>
+            <AppText style={styles.menuLabelDanger}>회원 탈퇴</AppText>
+            <AppText style={styles.menuDescription}>계정 정보를 삭제하고 탈퇴합니다.</AppText>
           </View>
         </TouchableOpacity>
       </View>
 
       {/* 앱 정보 섹션 */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>앱 정보</Text>
-        <View style={styles.menuRowStatic}>
-          <Text style={styles.menuLabel}>버전</Text>
-          <Text style={styles.menuDescription}>v{appVersion}</Text>
-        </View>
+        <AppText style={styles.sectionTitle}>앱 정보</AppText>
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.menuRowStatic}
+          onPress={() => {
+            setDevClickCount((prev) => {
+              const newCount = prev + 1;
+              if (newCount >= 7) {
+                setIsPasswordModalVisible(true);
+                return 0;
+              }
+              return newCount;
+            });
+          }}>
+          <AppText style={styles.menuLabel}>버전</AppText>
+          <AppText style={styles.menuDescription}>v{appVersion}</AppText>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.menuRow} onPress={() => sendTestNotification()}>
           <View>
-            <Text style={styles.menuLabel}>푸시 알림 테스트</Text>
-            <Text style={styles.menuDescription}>내 폰으로 테스트 알림을 보냅니다.</Text>
+            <AppText style={styles.menuLabel}>푸시 알림 테스트</AppText>
+            <AppText style={styles.menuDescription}>내 폰으로 테스트 알림을 보냅니다.</AppText>
           </View>
           <Ionicons name="notifications" size={20} color="#ccc" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuRow} onPress={() => showAlert('피드백', '준비 중')}>
           <View>
-            <Text style={styles.menuLabel}>피드백 보내기</Text>
-            <Text style={styles.menuDescription}>버그 제보, 기능 요청 등을 전달합니다.</Text>
+            <AppText style={styles.menuLabel}>피드백 보내기</AppText>
+            <AppText style={styles.menuDescription}>버그 제보, 기능 요청 등을 전달합니다.</AppText>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
@@ -418,6 +450,7 @@ export default function ProfileScreen() {
         message={alertMessage}
         onClose={closeAlert}
         onConfirm={alertOnConfirm}
+        buttons={alertButtons}
       />
     </ScrollView>
   );
@@ -428,8 +461,8 @@ function SettingRow({ label, description, value, onValueChange }) {
   return (
     <View style={styles.settingRow}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.settingLabel}>{label}</Text>
-        {!!description && <Text style={styles.settingDescription}>{description}</Text>}
+        <AppText style={styles.settingLabel}>{label}</AppText>
+        {!!description && <AppText style={styles.settingDescription}>{description}</AppText>}
       </View>
       <Switch
         value={value}
@@ -478,16 +511,20 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   logoutButtonText: { fontSize: 12, color: '#374151', fontWeight: '600' },
-  googleLoginButton: {
-    marginTop: 8,
-    backgroundColor: '#4285F4',
-    paddingVertical: 12,
-    borderRadius: 999,
-    flexDirection: 'row',
-    alignItems: 'center',
+  snsIconBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 8,
   },
-  googleLoginButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  loginButtonsContainer: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',

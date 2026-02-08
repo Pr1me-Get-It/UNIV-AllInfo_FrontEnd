@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { COLORS } from '../constants/colors';
+import AppText from './AppText';
 
 interface NoticeItemProps {
   item: any;
@@ -16,16 +17,16 @@ const NoticeItem = ({ item, isRead, onPress }: NoticeItemProps) => {
       </View>
 
       <View style={styles.textWrapper}>
-        <Text style={styles.sourceText}>{item.displaySource}</Text>
-        <Text style={[styles.itemText, isRead && styles.readText]} numberOfLines={2}>
+        <AppText style={styles.sourceText}>{item.displaySource}</AppText>
+        <AppText style={[styles.itemText, isRead && styles.readText]} numberOfLines={2}>
           {item.title}
-        </Text>
+        </AppText>
         <View style={styles.infoRow}>
-          <Text style={styles.dateText}>{item.date}</Text>
+          <AppText style={styles.dateText}>{item.date}</AppText>
           {isRead ? (
-            <Text style={styles.readLabel}>읽음</Text>
+            <AppText style={styles.readLabel}>읽음</AppText>
           ) : (
-            <Text style={styles.unreadLabel}>NEW</Text>
+            <AppText style={styles.unreadLabel}>NEW</AppText>
           )}
         </View>
       </View>
