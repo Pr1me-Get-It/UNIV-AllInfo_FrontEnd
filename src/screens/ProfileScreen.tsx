@@ -322,7 +322,7 @@ export default function ProfileScreen() {
             <View style={styles.loginCardLoggedIn}>
               <View style={styles.profileInfo}>
                 <Image
-                  source={require('../assets/user.png')}
+                  source={require('../assets/user.webp')}
                   style={[styles.profileImage, { backgroundColor: '#F3F4F6' }]}
                 />
                 <View>

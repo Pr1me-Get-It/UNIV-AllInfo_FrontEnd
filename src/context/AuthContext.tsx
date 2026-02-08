@@ -150,7 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await syncUserToBackend(user.email);
         }
       } catch (e) {
-        console.log('❌ [Auth] 세션 복구 실패, 로그아웃 처리');
+        console.error('❌ [Auth] 세션 복구 실패 (상세):', e);
         await logout();
       } finally {
         setIsLoading(false);

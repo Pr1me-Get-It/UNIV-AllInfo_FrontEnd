@@ -48,7 +48,7 @@ export default function HomeScreen({ navigation }: any) {
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
           <CustomText style={styles.headerTitle}>
-            안녕하세요, {nickname ? ` ${nickname}님 : )` : ': )'}
+            안녕하세요 {nickname ? ` ${nickname}님 : )` : ': )'}
           </CustomText>
         </View>
         <View style={styles.headerActions}>
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#111',
   },
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     padding: 0, // Android 텍스트 패딩 제거
   },
   sectionTitle: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#111',
   },

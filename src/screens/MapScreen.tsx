@@ -146,7 +146,7 @@ export default function MapScreen() {
         >
           <View style={styles.mapContainer}>
             <Image
-              source={require('../assets/map.png')}
+              source={require('../assets/map.webp')}
               style={styles.mapImage}
               resizeMode="contain"
             />

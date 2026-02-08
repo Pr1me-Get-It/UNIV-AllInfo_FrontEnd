@@ -1,7 +1,7 @@
 import { api } from './client';
 import SOURCE_LABELS from '../constants/labeltag.json';
 
-const DEFAULT_IMAGE = require('../assets/knu.png');
+const DEFAULT_IMAGE = require('../assets/knu.webp');
 
 export interface Notice {
   id: number;
