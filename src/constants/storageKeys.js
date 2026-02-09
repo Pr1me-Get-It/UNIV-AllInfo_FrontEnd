@@ -12,4 +12,5 @@ export const STORAGE_KEYS = {
   PUSH_SETTING: safeEmail => `push_setting_${safeEmail}`,
   MAP_FILTER: safeEmail => `map_filter_${safeEmail}`,
   NICKNAME: safeEmail => `nickname_${safeEmail}`,
+  FILTER_MODE: safeEmail => `cal_filter_${safeEmail}`,
 };

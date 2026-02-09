@@ -333,8 +333,14 @@ export default function ProfileScreen() {
                   <AppText style={styles.emailText}>{userEmail}</AppText>
                 </View>
               </View>
-              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <AppText style={styles.logoutButtonText}>로그아웃</AppText>
+              <TouchableOpacity
+                style={[styles.logoutButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }]}
+                onPress={() => {
+                  setNicknameInput(nickname || userInfo?.name || '');
+                  setIsNicknameModalVisible(true);
+                }}>
+                <Ionicons name="pencil" size={14} color="#374151" />
+                <AppText style={styles.logoutButtonText}>수정</AppText>
               </TouchableOpacity>
             </View>
           ) : (
@@ -406,28 +412,7 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* 계정 섹션 */}
-        <View style={styles.section}>
-          <AppText style={styles.sectionTitle}>계정</AppText>
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => {
-              setNicknameInput(nickname || userInfo?.name || '');
-              setIsNicknameModalVisible(true);
-            }}>
-            <View>
-              <AppText style={styles.menuLabel}>닉네임 설정</AppText>
-              <AppText style={styles.menuDescription}>앱 내에서 표시될 닉네임을 설정합니다.</AppText>
-            </View>
-            <Ionicons name="create-outline" size={20} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuRowDanger} onPress={handleWithdraw}>
-            <View>
-              <AppText style={styles.menuLabelDanger}>회원 탈퇴</AppText>
-              <AppText style={styles.menuDescription}>계정 정보를 삭제하고 탈퇴합니다.</AppText>
-            </View>
-          </TouchableOpacity>
-        </View>
+
 
         {/* 앱 정보 섹션 */}
         <View style={styles.section}>
@@ -463,6 +448,27 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
         </View>
+
+        {/* 회원 탈퇴 (최하단) */}
+        {isAuthenticated && (
+          <View style={styles.section}>
+            <AppText style={styles.sectionTitle}>기타</AppText>
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={handleLogout}>
+              <View>
+                <AppText style={styles.menuLabel}>로그아웃</AppText>
+                <AppText style={styles.menuDescription}>계정에서 로그아웃합니다.</AppText>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuRow} onPress={handleWithdraw}>
+              <View>
+                <AppText style={styles.menuLabel}>회원 탈퇴</AppText>
+                <AppText style={styles.menuDescription}>계정 정보를 삭제하고 탈퇴합니다.</AppText>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
         <CustomAlert
           visible={alertVisible}
           title={alertTitle}
@@ -472,7 +478,7 @@ export default function ProfileScreen() {
           buttons={alertButtons}
         />
       </ScrollView>
-    </LinearGradient>
+    </LinearGradient >
   );
 } // 👈 ProfileScreen 함수 끝 (여기서 닫아줘야 스타일이 적용됩니다.)
 

@@ -36,8 +36,8 @@ export default function NoticeScreen({ navigation }: any) {
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
-  const [isCommonExpanded, setIsCommonExpanded] = useState(true);
-  const [isDeptExpanded, setIsDeptExpanded] = useState(true);
+  const [isCommonExpanded, setIsCommonExpanded] = useState(false);
+  const [isDeptExpanded, setIsDeptExpanded] = useState(false);
 
   // 1. 앱 시작 시 저장된 필터 데이터 불러오기
   useEffect(() => {
@@ -49,11 +49,11 @@ export default function NoticeScreen({ navigation }: any) {
         if (saved && Array.isArray(saved) && saved.length > 0) {
           setSelectedSources(saved as string[]);
         } else {
-          setSelectedSources(Object.keys(SOURCE_LABELS));
+          setSelectedSources([]);
         }
       } catch (e) {
         console.error('필터 로딩 에러:', e);
-        setSelectedSources(Object.keys(SOURCE_LABELS));
+        setSelectedSources([]);
       }
     };
     initFilters();
@@ -197,6 +197,10 @@ export default function NoticeScreen({ navigation }: any) {
       return matchesSourceFilter && matchesReadFilter;
     });
   }, [allNotices, selectedSources, safeStatus, filterMode]);
+
+  const handleNoticePress = useCallback((item: any) => {
+    navigation.navigate('Detail', { item });
+  }, [navigation]);
 
   return (
     <View style={styles.container}>
@@ -419,11 +423,15 @@ export default function NoticeScreen({ navigation }: any) {
           contentContainerStyle={{ paddingBottom: 20 }}
           onRefresh={onRefresh}
           refreshing={isRefetching}
+          initialNumToRender={10}
+          windowSize={5}
+          maxToRenderPerBatch={10}
+          removeClippedSubviews={true}
           ListFooterComponent={isLoading ? <ActivityIndicator style={{ margin: 10 }} /> : null}
           ListEmptyComponent={
             !isLoading ? (
               <AppText style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>
-                데이터가 없습니다.
+                우상단 필터 버튼을 눌러 공지를 선택해주세요!.
               </AppText>
             ) : null
           }
@@ -431,7 +439,7 @@ export default function NoticeScreen({ navigation }: any) {
             <NoticeItem
               item={item}
               isRead={safeStatus[item.id] === true}
-              onPress={() => navigation.navigate('Detail', { item })}
+              onPress={handleNoticePress}
             />
           )}
         />

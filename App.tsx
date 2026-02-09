@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Font from 'expo-font';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 // 전역 폰트 적용 시도 (일부 RN 버전에서 작동)
 // applyGlobalFont(); // React 19에서 defaultProps 지원 중단으로 인해 제거됨
 
@@ -41,7 +42,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <View style={{ flex: 1 }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
           <AlarmProvider>
             <NavigationContainer>
@@ -49,7 +50,7 @@ export default function App() {
             </NavigationContainer>
           </AlarmProvider>
         </AuthProvider>
-      </View>
+      </GestureHandlerRootView>
     </QueryClientProvider>
   );
 }

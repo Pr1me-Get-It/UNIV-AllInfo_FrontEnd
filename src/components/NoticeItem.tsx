@@ -6,12 +6,12 @@ import AppText from './AppText';
 interface NoticeItemProps {
   item: any;
   isRead: boolean;
-  onPress: () => void;
+  onPress: (item: any) => void;
 }
 
 const NoticeItem = ({ item, isRead, onPress }: NoticeItemProps) => {
   return (
-    <TouchableOpacity style={styles.itemRow} onPress={onPress}>
+    <TouchableOpacity style={styles.itemRow} onPress={() => onPress(item)}>
       <View style={styles.iconBackground}>
         <Image source={item.image} style={styles.customIcon} />
       </View>

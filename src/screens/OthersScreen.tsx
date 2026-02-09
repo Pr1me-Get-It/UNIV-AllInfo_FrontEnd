@@ -23,6 +23,12 @@ export default function OthersScreen() {
             description: '추억의 테트리스 게임',
         },
         {
+            id: 'applegame',
+            title: '사과 게임',
+            icon: 'grid-outline',
+            description: '합이 10이 되도록 사과를 드래그하세요!',
+        },
+        {
             id: 'dancing',
             title: '교수님 몰래 춤추기',
             icon: 'musical-notes-outline',
@@ -33,6 +39,8 @@ export default function OthersScreen() {
     const handlePress = (featureTitle: string) => {
         if (featureTitle === '테트리스') {
             (navigation as any).navigate('Tetris');
+        } else if (featureTitle === '사과 게임') {
+            (navigation as any).navigate('AppleGame');
         } else {
             Alert.alert(featureTitle, '준비 중인 기능입니다.');
         }

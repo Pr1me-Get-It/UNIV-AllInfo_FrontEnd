@@ -30,6 +30,9 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { CalendarHeightProvider } from '../context/CalendarHeightContext';
+import { processCalendarEvents, LayedOutEvent } from '../utils/calendarLayout';
+import { getData, saveData } from '../utils/storage';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 // 한국어 설정
 LocaleConfig.locales['kr'] = {
@@ -94,10 +97,10 @@ export default function CalendarScreen({ navigation }: any) {
     .onEnd(() => {
       // Snap logic
       if (itemHeight.value > (MIN_HEIGHT + MAX_HEIGHT) / 2) {
-        itemHeight.value = withSpring(MAX_HEIGHT, { damping: 20 });
+        itemHeight.value = withSpring(MAX_HEIGHT, { damping: 70 });
         runOnJS(setIsExpanded)(true);
       } else {
-        itemHeight.value = withSpring(MIN_HEIGHT, { damping: 20 });
+        itemHeight.value = withSpring(MIN_HEIGHT, { damping: 70 });
         runOnJS(setIsExpanded)(false);
       }
     });
@@ -123,6 +126,10 @@ export default function CalendarScreen({ navigation }: any) {
     return [...googleEvents, ...academicSchedule] as any[];
   }, [googleEvents]);
 
+
+
+
+
   const getDatesInRange = (startDate: string, endDate: string) => {
     const dates = [];
     let curr = new Date(startDate);
@@ -142,6 +149,16 @@ export default function CalendarScreen({ navigation }: any) {
     });
   }, [events, filterMode]);
 
+  // 1. Process events for Calendar Layout (Month View)
+  const [currentMonth, setCurrentMonth] = useState(TODAY_STR);
+
+  const processedEvents = useMemo(() => {
+    // We pass 'visibleEvents' which are already filtered by type (Undergrad/Grad)
+    // Use currentMonth substring(0, 7) instead of selectedDate
+    return processCalendarEvents(visibleEvents, currentMonth.substring(0, 7));
+  }, [visibleEvents, currentMonth]); // Re-calc only when events change or month changes
+
+  // 2. Events for the List View (Selected Date) - Keep existing logic
   const daySelectedEvents = useMemo(() => {
     return visibleEvents.filter((e: any) => {
       const s = e.start.date || e.start.dateTime?.split('T')[0];
@@ -150,41 +167,11 @@ export default function CalendarScreen({ navigation }: any) {
     });
   }, [visibleEvents, selectedDate]);
 
-  const eventsByDate = useMemo(() => {
-    const map: any = {};
-    const sorted = [...visibleEvents].sort((a: any, b: any) => a.id.localeCompare(b.id));
-
-    sorted.forEach((event: any) => {
-      const start = event.start.date || event.start.dateTime?.split('T')[0];
-      const end = event.end?.date || event.end?.dateTime?.split('T')[0] || start;
-      if (start) {
-        const range = getDatesInRange(start, end);
-        const totalDays = range.length;
-        range.forEach((date, index) => {
-          if (!map[date]) map[date] = [];
-          const type = event.hasOwnProperty('type') ? event.type : -1;
-          const summary = event.summary || '일정';
-          map[date].push({
-            id: event.id,
-            summary: summary,
-            displayText: event.displayText,
-            color: type === 1 ? '#F3F4F6' : type === 0 ? '#FEE2E2' : '#E3F2FD',
-            textColor: type === 1 ? '#111827' : type === 0 ? '#b91c1c' : '#0284c7',
-            isStart: index === 0,
-            isEnd: index === totalDays - 1,
-            dayIndex: index,
-            totalDays: totalDays,
-          });
-        });
-      }
-    });
-    return map;
-  }, [visibleEvents]);
-
   const renderDay = useCallback(
     ({ date, state }: any) => {
       const dateStr = date.dateString;
-      const dayEvents = eventsByDate[dateStr] || [];
+      // Get the layout chunks starting on this day
+      const dayEvents = processedEvents[dateStr] || [];
       const isSelected = dateStr === selectedDate;
 
       return (
@@ -193,12 +180,17 @@ export default function CalendarScreen({ navigation }: any) {
           state={state}
           events={dayEvents}
           isSelected={isSelected}
-          onPress={setSelectedDate}
+          onPress={(d) => {
+            setSelectedDate(d);
+            // Optional: If user selects a date, ensure currentMonth is synced if it somehow drifted
+            // But usually onMonthChange handles the drift.
+            // If we really want to force sync, we can do it here, but let's stick to standard behavior.
+          }}
           dayWidth={dayWidth}
         />
       );
     },
-    [eventsByDate, selectedDate],
+    [processedEvents, selectedDate],
   );
 
   const formatTime = (dateTime: string) => {
@@ -236,7 +228,8 @@ export default function CalendarScreen({ navigation }: any) {
         <Animated.View style={{ backgroundColor: 'white' }}>
           <CalendarHeightProvider itemHeight={itemHeight}>
             <Calendar
-              current={selectedDate}
+              current={currentMonth}
+              onMonthChange={(month: any) => setCurrentMonth(month.dateString)}
               dayComponent={renderDay}
               monthFormat={'yyyy년 M월'}
               renderArrow={(direction: any) => (
@@ -248,11 +241,15 @@ export default function CalendarScreen({ navigation }: any) {
               )}
               theme={
                 {
+                  textMonthFontWeight: 'bold',
+                  textMonthFontSize: 18,
+                  arrowColor: 'rgb(219, 31, 38)',
+                  monthTextColor: '#000',
+                  textDayHeaderFontWeight: 'bold',
                   todayTextColor: 'rgb(219, 31, 38)',
-                  'stylesheet.calendar.main': {
+                  'stylesheet.calendar.header': {
                     week: {
-                      marginTop: 2,
-                      marginBottom: 2,
+                      marginTop: 5,
                       flexDirection: 'row',
                       justifyContent: 'space-around',
                     },
@@ -286,6 +283,27 @@ export default function CalendarScreen({ navigation }: any) {
       </View>
     </>
   );
+
+  // 0. Load saved filter mode on mount
+  React.useEffect(() => {
+    const loadFilter = async () => {
+      if (userEmail && isAuthenticated) {
+        const safeEmail = userEmail.replace(/\./g, '_');
+        const savedFilter = (await getData(STORAGE_KEYS.FILTER_MODE(safeEmail))) as string;
+        if (savedFilter) setFilterMode(savedFilter);
+      }
+    };
+    loadFilter();
+  }, [userEmail, isAuthenticated]);
+
+  const handleFilterSelect = async (m: string) => {
+    setFilterMode(m);
+    setFilterModalVisible(false);
+    if (userEmail) {
+      const safeEmail = userEmail.replace(/\./g, '_');
+      await saveData(STORAGE_KEYS.FILTER_MODE(safeEmail), m);
+    }
+  };
 
   if (!isAuthenticated) return <LoginPlaceholder targetScreen="Profile" />;
 
@@ -325,10 +343,7 @@ export default function CalendarScreen({ navigation }: any) {
                 <TouchableOpacity
                   key={m}
                   style={styles.filterOption}
-                  onPress={() => {
-                    setFilterMode(m);
-                    setFilterModalVisible(false);
-                  }}>
+                  onPress={() => handleFilterSelect(m)}>
                   <AppText style={filterMode === m ? styles.activeFilterText : styles.filterText}>
                     {m === 'all' ? '전체' : m === 'undergraduate' ? '학부' : '대학원'}
                   </AppText>

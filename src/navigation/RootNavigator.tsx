@@ -6,6 +6,7 @@ import KeywordScreen from '../screens/KeywordScreen';
 import BookmarkScreen from '../screens/BookmarkScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TetrisScreen from '../screens/TetrisScreen';
+import AppleGameScreen from '../screens/AppleGameScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +48,11 @@ export default function RootNavigator() {
         name="Tetris"
         component={TetrisScreen}
         options={{ title: '테트리스', headerShown: true }}
+      />
+      <Stack.Screen
+        name="AppleGame"
+        component={AppleGameScreen}
+        options={{ title: '사과 게임', headerShown: true, headerBackTitle: '뒤로' }}
       />
     </Stack.Navigator>
   );
