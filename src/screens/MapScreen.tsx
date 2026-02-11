@@ -5,12 +5,12 @@ import {
   TouchableOpacity,
   Dimensions,
   TextInput,
-  Platform,
+  Image,
   ScrollView,
   Animated,
 } from 'react-native';
 import AppText from '../components/AppText';
-import { NaverMapView, NaverMapMarkerOverlay } from '@mj-studio/react-native-naver-map';
+import { ReactNativeZoomableView } from '@dudigital/react-native-zoomable-view';
 import { Ionicons } from '@expo/vector-icons';
 import { MAP_PINS, MapPin } from '../data/mapData';
 import { COLORS } from '../constants/colors';
@@ -100,13 +100,6 @@ export default function MapScreen() {
 
   const filteredPins = MAP_PINS.filter((pin) => visibleTypes.includes(pin.type));
 
-  const initialRegion = {
-    latitude: 37.5509,
-    longitude: 127.0755,
-    latitudeDelta: 0.005,
-    longitudeDelta: 0.005,
-  };
-
   return (
     <View style={styles.page}>
       <View style={styles.headerContainer}>
@@ -139,34 +132,27 @@ export default function MapScreen() {
       </View>
 
       <View style={styles.mapArea}>
-        <NaverMapView
-          style={{ flex: 1 }}
-          initialRegion={initialRegion}
-          mapType="Basic"
-          layerGroups={{
-            BUILDING: true,
-            TRANSIT: true,
-            BICYCLE: false,
-            TRAFFIC: false,
-            CADASTRAL: false,
-            MOUNTAIN: false,
-          }}
+        <ReactNativeZoomableView
+          maxZoom={2.0}
+          minZoom={0.5}
+          zoomStep={0.1}
+          initialZoom={1}
+          bindToBorders={true}
+          style={styles.mapContainer}
         >
-          {filteredPins.map((pin) => (
-            <NaverMapMarkerOverlay
-              key={pin.id}
-              latitude={pin.latitude}
-              longitude={pin.longitude}
-              caption={{ text: pin.name }}
-              tintColor={
-                pin.type === 'facility' ? '#4CAF50' :
-                  pin.type === 'administrative' ? '#FF9800' :
-                    '#9E9E9E'
-              }
-              onTap={() => setSelectedPin(pin)}
+          <View style={styles.mapContainer}>
+            <Image
+              source={require('../assets/map.webp')}
+              style={styles.mapImage}
+              resizeMode="contain"
             />
-          ))}
-        </NaverMapView>
+            {/* 
+               // Pins are currently hidden in this static view as they rely on absolute positioning 
+               // that matched a specific aspect ratio. 
+               // Future TODO: Re-implement pin positioning for static map if needed.
+               */}
+          </View>
+        </ReactNativeZoomableView>
 
         <TouchableOpacity
           style={[styles.sidebarToggle, isSidebarOpen ? styles.sidebarToggleOpen : null]}
@@ -308,6 +294,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     overflow: 'hidden',
+  },
+  mapContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  mapImage: {
+    width: '100%',
+    height: '100%',
   },
   sidebarToggle: {
     position: 'absolute',

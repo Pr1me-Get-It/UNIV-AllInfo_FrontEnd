@@ -9,6 +9,7 @@ import {
   Linking,
   Dimensions,
   TextInput,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,17 @@ const CARD_WIDTH = (width - 40 - CARD_SPACING) / 2; // 2 columns
 
 export default function HomeScreen({ navigation }: any) {
   const { nickname } = useAuth();
+
+  // Animation for greeting
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000, // 1 second fade-in
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
 
   const handleOpenLink = async (url: string) => {
     try {
@@ -48,9 +60,11 @@ export default function HomeScreen({ navigation }: any) {
       {/* 상단 헤더 섹션 */}
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
-          <CustomText style={styles.headerTitle}>
-            안녕하세요 {nickname ? ` ${nickname}님 : )` : ': )'}
-          </CustomText>
+          <Animated.View style={{ opacity: fadeAnim }}>
+            <CustomText style={styles.headerTitle}>
+              안녕하세요 {nickname ? ` ${nickname}님 : )` : ': )'}
+            </CustomText>
+          </Animated.View>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity

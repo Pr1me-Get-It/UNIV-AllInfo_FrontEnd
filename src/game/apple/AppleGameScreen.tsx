@@ -33,6 +33,7 @@ const AppleGameScreen = () => {
     const [grid, setGrid] = useState<Apple[]>([]);
     const [score, setScore] = useState(0);
     const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
+    const [gameState, setGameState] = useState<'MENU' | 'PLAYING'>('MENU');
     const [isPlaying, setIsPlaying] = useState(false);
     const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
 
@@ -61,12 +62,14 @@ const AppleGameScreen = () => {
     }, [insets.top, insets.bottom]);
 
     useEffect(() => {
-        if (rows > 0) initGame();
-    }, [rows]);
+        if (gameState === 'PLAYING' && rows > 0 && grid.length === 0) {
+            initGame();
+        }
+    }, [gameState, rows]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (isPlaying && timeLeft > 0) {
+        if (gameState === 'PLAYING' && isPlaying && timeLeft > 0) {
             interval = setInterval(() => {
                 setTimeLeft((prev) => {
                     if (prev <= 1) {
@@ -79,7 +82,7 @@ const AppleGameScreen = () => {
             }, 1000);
         }
         return () => clearInterval(interval);
-    }, [isPlaying, timeLeft]);
+    }, [gameState, isPlaying, timeLeft]);
 
     const initGame = () => {
         const newGrid = Array.from({ length: COLS * rows }, (_, i) => ({
@@ -94,13 +97,18 @@ const AppleGameScreen = () => {
         setSelectedIndices([]);
     };
 
+    const startGame = () => {
+        setGameState('PLAYING');
+        initGame();
+    };
+
     const endGame = () => {
         setIsPlaying(false);
         setAlertVisible(true);
     };
 
     const handleCellPress = (index: number) => {
-        if (!isPlaying) return;
+        if (!isPlaying || gameState !== 'PLAYING') return;
 
         if (firstSelection === null) {
             // 첫 번째 터치
@@ -170,13 +178,48 @@ const AppleGameScreen = () => {
         }
     };
 
+    if (gameState === 'MENU') {
+        return (
+            <View style={[styles.container, styles.menuContainer]}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.menuBackButton, { top: insets.top + 10 }]}>
+                    <Ionicons name="chevron-back" size={28} color="#333" />
+                </TouchableOpacity>
+                <View style={styles.menuHeader}>
+                    <AppText style={styles.menuTitle}>두쫀쿠 게임!</AppText>
+                </View>
+
+                <View style={styles.menuContent}>
+                    <TouchableOpacity style={styles.menuButton} onPress={startGame}>
+                        <AppText style={styles.menuButtonText}>게임 시작</AppText>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.menuButtonSecondary} onPress={() => CustomAlert({ visible: true, title: '게임 방법', message: '드래그하여 합이 10이 되는 두쫀쿠들을 선택하세요!', onClose: () => { }, buttons: [{ text: '확인', onPress: () => { } }] })}>
+                        {/* Note: CustomAlert usage here is tricky with hook, simpler alert for now or modal state needed. Using simple alert for now */}
+                        <AppText style={styles.menuButtonTextSecondary}>게임 방법</AppText>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.menuButtonSecondary} onPress={() => setAlertVisible(true)}>
+                        {/* Placeholder for ranking. Reusing alert for now or implement separate ranking modal */}
+                        <AppText style={styles.menuButtonTextSecondary}>랭킹 보기</AppText>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Reusing CustomAlert for ranking placeholder for now if triggered */}
+                <CustomAlert
+                    visible={alertVisible}
+                    title="랭킹"
+                    message="준비 중인 기능입니다."
+                    onClose={() => setAlertVisible(false)}
+                    buttons={[{ text: '닫기', onPress: () => setAlertVisible(false), style: 'cancel' }]}
+                />
+            </View>
+        );
+    }
 
 
     return (
         <View style={[styles.container, { paddingBottom: insets.bottom }]}>
             <View style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 0) }]}>
-                {/* Back Button */}
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                {/* Back Button -> Go to Menu */}
+                <TouchableOpacity onPress={() => setGameState('MENU')} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={28} color="#333" />
                 </TouchableOpacity>
 
@@ -208,8 +251,8 @@ const AppleGameScreen = () => {
                             style={[
                                 styles.cell,
                                 { width: CELL_SIZE, height: CELL_SIZE },
-                                isSelected && styles.selectedCell, // 선택된 셀 스타일 적용
-                                isFirstSelection && { borderColor: 'blue', borderWidth: 2 }, // 첫 터치 강조
+                                // isSelected && styles.selectedCell, // Removed background color change
+                                // isFirstSelection && { borderColor: 'blue', borderWidth: 2 }, // Removed blue border
                                 apple.removed && styles.removedCell,
                             ]}
                         >
@@ -220,11 +263,14 @@ const AppleGameScreen = () => {
                                         style={[
                                             styles.appleImage,
                                             { width: CELL_SIZE - 2, height: CELL_SIZE - 2 },
-                                            isSelected && styles.selectedImage
                                         ]}
                                         resizeMode="contain"
                                     />
-                                    <AppText style={[styles.appleText, isSelected && styles.selectedText]}>
+                                    {/* White Overlay for Selection */}
+                                    {(isSelected || isFirstSelection) && (
+                                        <View style={styles.selectionOverlay} />
+                                    )}
+                                    <AppText style={[styles.appleText, (isSelected || isFirstSelection) && styles.selectedText]}>
                                         {apple.value}
                                     </AppText>
                                 </>
@@ -255,8 +301,11 @@ const AppleGameScreen = () => {
                         }
                     },
                     {
-                        text: '닫기',
-                        onPress: () => setAlertVisible(false),
+                        text: '메뉴로',
+                        onPress: () => {
+                            setAlertVisible(false);
+                            setGameState('MENU');
+                        },
                         style: 'cancel'
                     }
                 ]}
@@ -340,7 +389,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: 'bold',
         color: '#ffffff', // White text on red apple
-        zIndex: 1,
+        zIndex: 10, // Increased zIndex to be above overlay
         // textAlign: 'center', 
         paddingTop: 0,
     },
@@ -363,6 +412,75 @@ const styles = StyleSheet.create({
     buttonText: {
         color: 'white',
         marginLeft: 8,
+        fontWeight: 'bold',
+    },
+    selectionOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'white',
+        opacity: 0.5,
+        borderRadius: 8,
+        zIndex: 5,
+    },
+    menuContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    menuBackButton: {
+        position: 'absolute',
+        top: 60, // Fallback for fixed position if needed, but insets logic will override via inline style ideally
+        left: 20,
+        zIndex: 10,
+        padding: 8, // Increase touch area slightly
+    },
+    menuHeader: {
+        marginTop: 60,
+        marginBottom: 80,
+        alignItems: 'center',
+    },
+    menuTitle: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: COLORS.PRIMARY,
+    },
+    menuContent: {
+        width: '100%',
+        alignItems: 'center',
+        gap: 20,
+    },
+    menuButton: {
+        width: '60%',
+        backgroundColor: COLORS.PRIMARY,
+        paddingVertical: 14,
+        borderRadius: 16,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 6,
+    },
+    menuButtonText: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    menuButtonSecondary: {
+        width: '60%',
+        backgroundColor: 'white',
+        borderWidth: 2,
+        borderColor: COLORS.PRIMARY,
+        paddingVertical: 12,
+        borderRadius: 16,
+        alignItems: 'center',
+    },
+    menuButtonTextSecondary: {
+        color: COLORS.PRIMARY,
+        fontSize: 16,
         fontWeight: 'bold',
     },
 });

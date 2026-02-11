@@ -25,9 +25,9 @@ export default function OthersScreen() {
         },
         {
             id: 'applegame',
-            title: '사과 게임',
+            title: '두쫀쿠 게임',
             icon: 'grid-outline',
-            description: '합이 10이 되도록 사과를 드래그하세요!',
+            description: '합이 10이 되도록 두쫀쿠를 터치하세요!',
         },
         {
             id: 'dancing',
@@ -40,7 +40,7 @@ export default function OthersScreen() {
     const handlePress = (featureTitle: string) => {
         if (featureTitle === '테트리스') {
             (navigation as any).navigate('Tetris');
-        } else if (featureTitle === '사과 게임') {
+        } else if (featureTitle === '두쫀쿠 게임') {
             (navigation as any).navigate('AppleGame');
         } else {
             Alert.alert(featureTitle, '준비 중인 기능입니다.');
