@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import LoginPlaceholder from '../components/ui/LoginPlaceholder';
 import academicSchedule from '../constants/academic_schedule.json';
+import { moderateScale } from '../utils/responsive';
 import { useQuery } from '@tanstack/react-query';
 import { fetchGoogleEvents } from '../api/calendarService';
 import CalendarDay from '../components/CalendarDay';
@@ -33,6 +34,7 @@ import { CalendarHeightProvider } from '../context/CalendarHeightContext';
 import { processCalendarEvents, LayedOutEvent } from '../utils/calendarLayout';
 import { getData, saveData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // 한국어 설정
 LocaleConfig.locales['kr'] = {
@@ -197,6 +199,8 @@ export default function CalendarScreen({ navigation }: any) {
     if (!dateTime) return '종일';
     return new Date(dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
+
+  const insets = useSafeAreaInsets();
 
   const renderHeader = () => (
     <>
@@ -402,8 +406,19 @@ const styles = StyleSheet.create({
   },
   typeIndicator: { width: 4, height: 20, borderRadius: 2, marginRight: 10 },
   cardContent: { flex: 1 },
-  title: { fontSize: 16, color: '#333', fontWeight: '500' },
-  timeLabel: { fontSize: 12, color: '#999', marginTop: 2 },
+  title: {
+    fontSize: moderateScale(16, 0.3),
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 2,
+    includeFontPadding: false,
+  },
+  timeLabel: {
+    fontSize: moderateScale(12, 0.3),
+    color: '#999',
+    includeFontPadding: false,
+    lineHeight: moderateScale(16, 0.3),
+  },
   emptyText: { color: '#999', textAlign: 'center', marginTop: 20 },
   modalOverlay: {
     flex: 1,

@@ -6,7 +6,7 @@ import KeywordScreen from '../screens/KeywordScreen';
 import BookmarkScreen from '../screens/BookmarkScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TetrisScreen from '../screens/TetrisScreen';
-import AppleGameScreen from '../screens/AppleGameScreen';
+import AppleGameScreen from '../game/apple/AppleGameScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,11 +37,7 @@ export default function RootNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: '내정보',
-          headerShown: true,
-          headerTransparent: true,
-          headerTintColor: '#333',
-          headerBackVisible: false, // 뒤로가기 버튼 숨김
+          headerShown: false, // 헤더 숨김
         }}
       />
       <Stack.Screen
@@ -52,7 +48,7 @@ export default function RootNavigator() {
       <Stack.Screen
         name="AppleGame"
         component={AppleGameScreen}
-        options={{ title: '사과 게임', headerShown: true, headerBackTitle: '뒤로' }}
+        options={{ title: '사과 게임', headerShown: false }}
       />
     </Stack.Navigator>
   );

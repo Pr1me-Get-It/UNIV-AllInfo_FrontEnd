@@ -13,6 +13,7 @@ import { useGameStatus } from '../game/tetris/hooks/useGameStatus';
 // Components
 import Cell from '../game/tetris/components/Cell';
 import Display from '../game/tetris/components/Display';
+import CustomAlert from '../components/ui/CustomAlert';
 
 // Helpers
 import { createStage, checkCollision } from '../game/tetris/gameHelpers';
@@ -33,6 +34,7 @@ export default function TetrisScreen() {
     const insets = useSafeAreaInsets();
     const [dropTime, setDropTime] = useState<number | null>(null);
     const [gameOver, setGameOver] = useState(false);
+    const [alertVisible, setAlertVisible] = useState(false);
 
     const { player, updatePlayerPos, resetPlayer, playerRotate, setPlayer, nextTetromino } = usePlayer();
     const { stage, setStage, rowsCleared } = useStage(player, resetPlayer);
@@ -70,7 +72,7 @@ export default function TetrisScreen() {
             if (player.pos.y < 1) {
                 setGameOver(true);
                 setDropTime(null);
-                Alert.alert("Game Over!", `Score: ${score}`);
+                setAlertVisible(true);
             }
             updatePlayerPos({ x: 0, y: 0, collided: true });
         }
@@ -207,6 +209,27 @@ export default function TetrisScreen() {
                     </>
                 )}
             </View>
+
+            <CustomAlert
+                visible={alertVisible}
+                title="Game Over!"
+                message={`Score: ${score}`}
+                onClose={() => setAlertVisible(false)}
+                buttons={[
+                    {
+                        text: '다시 하기',
+                        onPress: () => {
+                            setAlertVisible(false);
+                            startGame();
+                        }
+                    },
+                    {
+                        text: '닫기',
+                        onPress: () => setAlertVisible(false),
+                        style: 'cancel'
+                    }
+                ]}
+            />
         </ScrollView>
     );
 }

@@ -98,10 +98,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // D. 닉네임 불러오기
     try {
       const safeEmail = email.replace(/\./g, '_');
+      console.log(`🔍 [AuthDebug] 닉네임 로드 시도: Key=${STORAGE_KEYS.NICKNAME(safeEmail)}`);
       const savedNickname = (await getData(STORAGE_KEYS.NICKNAME(safeEmail))) as string | null;
+      console.log(`🔍 [AuthDebug] 로드된 닉네임: ${savedNickname}`);
+
       if (savedNickname) {
         setNickname(savedNickname);
       } else {
+        console.log(`🔍 [AuthDebug] 저장된 닉네임이 없어 userInfo.name 사용 예정`);
         setNickname(null);
       }
     } catch (e) {
@@ -272,10 +276,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 닉네임 업데이트 함수
   const updateNickname = useCallback(async (name: string) => {
-    if (!userEmail) return;
+    if (!userEmail) {
+      console.error("❌ [AuthDebug] 닉네임 업데이트 실패: userEmail is null");
+      return;
+    }
     const safeEmail = userEmail.replace(/\./g, '_');
-    await saveData(STORAGE_KEYS.NICKNAME(safeEmail), name);
-    setNickname(name);
+    console.log(`💾 [AuthDebug] 닉네임 저장 시도: ${name} (Key=${STORAGE_KEYS.NICKNAME(safeEmail)})`);
+    try {
+      await saveData(STORAGE_KEYS.NICKNAME(safeEmail), name);
+      console.log(`✅ [AuthDebug] 닉네임 저장 완료`);
+      setNickname(name);
+    } catch (e) {
+      console.error("❌ [AuthDebug] 닉네임 저장 중 에러:", e);
+    }
   }, [userEmail]);
 
   return (

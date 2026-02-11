@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { COLORS } from '../constants/colors';
 import AppText from './AppText';
+import { moderateScale } from '../utils/responsive';
 
 interface NoticeItemProps {
   item: any;
@@ -38,31 +39,40 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 4,
+    paddingVertical: moderateScale(8, 0.3),
+    paddingHorizontal: moderateScale(4, 0.3),
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(238, 238, 238, 1)',
   },
   iconBackground: {
-    width: 30,
-    height: 30,
+    width: moderateScale(30, 0.3),
+    height: moderateScale(30, 0.3),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: moderateScale(8, 0.3),
   },
-  customIcon: { width: 30, height: 30, resizeMode: 'contain' },
+  customIcon: { width: moderateScale(28, 0.3), height: moderateScale(28, 0.3), resizeMode: 'contain' },
   textWrapper: { flex: 1 },
   sourceText: {
-    fontSize: 10,
+    fontSize: moderateScale(10, 0.3),
     color: COLORS.primary,
     fontWeight: 'bold',
-    marginBottom: 2,
+    marginBottom: moderateScale(1, 0.3),
+    includeFontPadding: false,
   },
-  itemText: { fontSize: 14, color: '#333', fontWeight: '500', marginBottom: 4 },
+  itemText: {
+    fontSize: moderateScale(14, 0.3),
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: moderateScale(2, 0.3),
+    includeFontPadding: false,
+    lineHeight: moderateScale(18, 0.3),
+  },
   readText: { color: '#aaa' },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  dateText: { fontSize: 12, color: '#888' },
-  unreadLabel: { fontSize: 12, color: COLORS.primary, fontWeight: 'bold' },
-  readLabel: { fontSize: 12, color: '#bbb', fontWeight: 'normal' },
+  dateText: { fontSize: moderateScale(11, 0.3), color: '#888', includeFontPadding: false },
+  unreadLabel: { fontSize: moderateScale(11, 0.3), color: COLORS.primary, fontWeight: 'bold', includeFontPadding: false },
+  readLabel: { fontSize: moderateScale(11, 0.3), color: '#bbb', fontWeight: 'normal', includeFontPadding: false },
 });
 
 export default memo(NoticeItem);

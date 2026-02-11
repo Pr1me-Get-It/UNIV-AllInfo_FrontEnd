@@ -24,6 +24,7 @@ import { syncKeywords } from '../api/userService';
 import NoticeItem from '../components/NoticeItem';
 import { fetchNotices } from '../api/noticeService';
 import { COMMON_TAGS } from '../constants/noticeCategories';
+import { moderateScale } from '../utils/responsive';
 
 export default function NoticeScreen({ navigation }: any) {
   const queryClient = useQueryClient();
@@ -463,26 +464,36 @@ const styles = StyleSheet.create({
   balanceContainer: {
     backgroundColor: COLORS.primary,
     marginHorizontal: 20,
-    marginBottom: 15,
-    padding: 10,
-    borderRadius: 15,
+    marginBottom: moderateScale(10, 0.3),
+    padding: moderateScale(10, 0.3),
+    borderRadius: moderateScale(12, 0.3),
     alignItems: 'center',
   },
-  balanceLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 5 },
-  balanceText: { color: 'white', fontSize: 28, fontWeight: 'bold' },
+  balanceLabel: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: moderateScale(12, 0.3),
+    marginBottom: moderateScale(2, 0.3),
+    includeFontPadding: false,
+  },
+  balanceText: {
+    color: 'white',
+    fontSize: moderateScale(24, 0.3),
+    fontWeight: 'bold',
+    includeFontPadding: false,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     marginHorizontal: 20,
-    marginBottom: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 3,
-    borderRadius: 12,
+    marginBottom: moderateScale(8, 0.3),
+    paddingHorizontal: moderateScale(15, 0.3),
+    paddingVertical: moderateScale(2, 0.3),
+    borderRadius: moderateScale(10, 0.3),
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  searchInput: { flex: 1, fontSize: 16, color: '#333' },
+  searchInput: { flex: 1, fontSize: moderateScale(14, 0.3), color: '#333', includeFontPadding: false },
   listContainer: {
     flex: 1,
     backgroundColor: 'white',
@@ -494,10 +505,10 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    marginBottom: 10,
+    marginBottom: moderateScale(8, 0.3),
     backgroundColor: '#fff',
     borderRadius: 999,
-    padding: 4,
+    padding: moderateScale(3, 0.3),
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
@@ -505,7 +516,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: moderateScale(4, 0.3),
     borderRadius: 999,
   },
   tabButtonActive: { backgroundColor: 'rgba(219, 31, 38, 0.08)' },

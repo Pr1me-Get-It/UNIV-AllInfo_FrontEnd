@@ -4,6 +4,7 @@ import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import { moderateScale } from '../utils/responsive';
 
 import { useNavigation } from '@react-navigation/native';
 
@@ -127,14 +128,17 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     cardTitle: {
-        fontSize: 18,
+        fontSize: moderateScale(18, 0.3),
         fontWeight: 'bold',
         color: '#333',
-        marginBottom: 4,
+        marginBottom: 2,
+        includeFontPadding: false,
     },
     cardDescription: {
-        fontSize: 14,
+        fontSize: moderateScale(14, 0.3),
         color: '#666',
+        includeFontPadding: false,
+        lineHeight: moderateScale(20, 0.3),
     },
     arrowIcon: {
         marginLeft: 10,

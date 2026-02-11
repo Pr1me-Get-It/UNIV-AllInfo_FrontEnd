@@ -24,6 +24,8 @@ import CustomAlert from '../components/ui/CustomAlert';
 import { saveData, getData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { COLORS } from '../constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { moderateScale } from '../utils/responsive';
 
 const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_PASSWORD = '1557';
@@ -57,7 +59,6 @@ export default function ProfileScreen() {
   const [devClickCount, setDevClickCount] = useState(0); // 개발자 모드 진입을 위한 클릭 카운트
 
   // 커스텀 알림 상태
-  // 커스텀 알림 상태
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
@@ -78,6 +79,35 @@ export default function ProfileScreen() {
     setAlertButtons(undefined);
   };
 
+  // 피드백 관련 상태
+  const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
+  const [feedbackInput, setFeedbackInput] = useState('');
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+
+  // 피드백 전송 핸들러
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackInput.trim()) {
+      showAlert('알림', '내용을 입력해주세요.');
+      return;
+    }
+
+    setIsSendingFeedback(true);
+    try {
+      // Mock API 호출
+      const { sendFeedback } = require('../api/feedbackService');
+      await sendFeedback(userEmail, feedbackInput);
+
+      setIsFeedbackModalVisible(false);
+      setFeedbackInput('');
+      showAlert('감사합니다', '소중한 의견이 전달되었습니다. 🙇‍♂️');
+    } catch (error) {
+      console.error('Feedback Error:', error);
+      showAlert('전송 실패', '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsSendingFeedback(false);
+    }
+  };
+
   const appVersion = Constants.expoConfig?.version || '1.0.0';
 
   // 2. 핸들러 함수들 (기존 로직 유지)
@@ -87,7 +117,6 @@ export default function ProfileScreen() {
       setPasswordInput('');
 
       // 계정 선택 Alert 띄우기
-      // 계정 선택 Alert 띄우기 (커스텀 알림으로 변경)
       showAlert(
         '테스트 계정 선택',
         '로그인할 테스트 계정을 선택해주세요.',
@@ -233,6 +262,8 @@ export default function ProfileScreen() {
   };
 
   // 3. UI 렌더링 (기존 배치 100% 유지)
+  const insets = useSafeAreaInsets();
+
   return (
     <LinearGradient
       colors={[COLORS.lightPink, COLORS.white]}
@@ -240,7 +271,7 @@ export default function ProfileScreen() {
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 0.8 }}
     >
-      <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}>
 
         {/* 개발자 모드 비밀번호 모달 */}
         <Modal
@@ -316,6 +347,51 @@ export default function ProfileScreen() {
           </View>
         </Modal>
 
+        {/* 피드백 모달 */}
+        <Modal
+          visible={isFeedbackModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsFeedbackModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { width: '85%' }]}>
+              <AppText style={styles.modalTitle}>피드백 보내기 📮</AppText>
+              <AppText style={styles.modalDesc}>버그 제보, 기능 건의 등 자유롭게 남겨주세요.</AppText>
+
+              <TextInput
+                style={[styles.feedbackInput, { height: 120, textAlignVertical: 'top' }]}
+                multiline
+                placeholder="여기에 내용을 입력하세요..."
+                value={feedbackInput}
+                onChangeText={setFeedbackInput}
+                maxLength={500}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalCancelBtn]}
+                  onPress={() => {
+                    setIsFeedbackModalVisible(false);
+                    setFeedbackInput('');
+                  }}
+                  disabled={isSendingFeedback}>
+                  <AppText style={styles.modalCancelText}>취소</AppText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalConfirmBtn, isSendingFeedback && { opacity: 0.7 }]}
+                  onPress={handleFeedbackSubmit}
+                  disabled={isSendingFeedback}>
+                  {isSendingFeedback ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <AppText style={styles.modalConfirmText}>보내기</AppText>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {/* 로그인/프로필 카드 */}
         <View style={styles.section}>
           {isAuthenticated ? (
@@ -351,8 +427,8 @@ export default function ProfileScreen() {
               </AppText>
               <View style={styles.loginButtonsContainer}>
                 {/* Google */}
-                <TouchableOpacity style={[styles.snsIconBtn, { backgroundColor: '#fff', borderColor: '#ddd', borderWidth: 1 }]} onPress={handleGoogleLogin}>
-                  <Ionicons name="logo-google" size={24} color="#000" />
+                <TouchableOpacity style={[styles.snsIconBtn, { backgroundColor: '#4285F4' }]} onPress={handleGoogleLogin}>
+                  <Ionicons name="logo-google" size={24} color="#fff" />
                 </TouchableOpacity>
 
                 {/* Apple (Placeholder) */}
@@ -362,21 +438,10 @@ export default function ProfileScreen() {
                 >
                   <Ionicons name="logo-apple" size={24} color="#fff" />
                 </TouchableOpacity>
-
-                {/* Developer (Hidden) */}
-                {/* <TouchableOpacity
-                  style={[styles.snsIconBtn, { backgroundColor: '#333' }]}
-                  onPress={() => setIsPasswordModalVisible(true)}
-                >
-                  <Ionicons name="code-slash" size={24} color="#fff" />
-                </TouchableOpacity> */}
               </View>
             </View>
           )}
         </View>
-
-        {/*맞춤형 서비스 섹션*/}
-
 
         {/* 알림 설정 섹션 */}
         <View style={styles.section}>
@@ -412,8 +477,6 @@ export default function ProfileScreen() {
           />
         </View>
 
-
-
         {/* 앱 정보 섹션 */}
         <View style={styles.section}>
           <AppText style={styles.sectionTitle}>앱 정보</AppText>
@@ -440,19 +503,20 @@ export default function ProfileScreen() {
             </View>
             <Ionicons name="notifications" size={20} color="#ccc" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuRow} onPress={() => showAlert('피드백', '준비 중')}>
-            <View>
-              <AppText style={styles.menuLabel}>피드백 보내기</AppText>
-              <AppText style={styles.menuDescription}>버그 제보, 기능 요청 등을 전달합니다.</AppText>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
+
         </View>
 
         {/* 회원 탈퇴 (최하단) */}
         {isAuthenticated && (
           <View style={styles.section}>
             <AppText style={styles.sectionTitle}>기타</AppText>
+            <TouchableOpacity style={styles.menuRow} onPress={() => setIsFeedbackModalVisible(true)}>
+              <View>
+                <AppText style={styles.menuLabel}>피드백 보내기</AppText>
+                <AppText style={styles.menuDescription}>버그 제보, 기능 요청 등을 전달합니다.</AppText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuRow}
               onPress={handleLogout}>
@@ -504,8 +568,20 @@ function SettingRow({ label, description, value, onValueChange }) {
 const styles = StyleSheet.create({
   page: { flex: 1, paddingHorizontal: 20, paddingTop: 100 },
   section: { marginBottom: 18 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 },
-  sectionDescription: { fontSize: 13, color: '#6B7280', marginBottom: 12 },
+  sectionTitle: {
+    fontSize: moderateScale(18, 0.3),
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+    includeFontPadding: false,
+  },
+  sectionDescription: {
+    fontSize: moderateScale(13, 0.3),
+    color: '#6B7280',
+    marginBottom: 6,
+    includeFontPadding: false,
+    lineHeight: moderateScale(18, 0.3),
+  },
   loginCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, elevation: 3 },
   loginCardLoggedIn: {
     backgroundColor: '#FFFFFF',
@@ -546,7 +622,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   loginButtonsContainer: {
-    marginTop: 20,
+    marginTop: 10,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -559,8 +635,19 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(229, 231, 235, 0.5)',
     gap: 12,
   },
-  settingLabel: { fontSize: 15, fontWeight: '500', color: '#111827' },
-  settingDescription: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  settingLabel: {
+    fontSize: moderateScale(15, 0.3),
+    fontWeight: '500',
+    color: '#111827',
+    marginBottom: 2,
+    includeFontPadding: false,
+  },
+  settingDescription: {
+    fontSize: moderateScale(12, 0.3),
+    color: '#6B7280',
+    includeFontPadding: false,
+    lineHeight: moderateScale(16, 0.3),
+  },
   menuRow: {
     paddingVertical: 14,
     borderBottomWidth: 1,
@@ -578,8 +665,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   menuRowDanger: { paddingVertical: 14, marginTop: 10 },
-  menuLabel: { fontSize: 15, fontWeight: '500', color: '#111827' },
-  menuDescription: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  menuLabel: {
+    fontSize: moderateScale(16, 0.3),
+    fontWeight: '500',
+    color: '#111827',
+    marginBottom: 2,
+    includeFontPadding: false,
+  },
+  menuDescription: {
+    fontSize: moderateScale(13, 0.3),
+    color: '#6B7280',
+    includeFontPadding: false,
+    lineHeight: moderateScale(18, 0.3),
+  },
   menuLabelDanger: { fontSize: 15, fontWeight: '600', color: '#DC2626' },
   modalOverlay: {
     flex: 1,
@@ -614,6 +712,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 8,
     marginBottom: 24,
+  },
+  feedbackInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    fontSize: 15,
+    backgroundColor: '#f9fafb',
+    color: '#111',
   },
   modalButtons: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', gap: 10 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },

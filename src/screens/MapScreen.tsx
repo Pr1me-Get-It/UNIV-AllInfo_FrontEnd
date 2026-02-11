@@ -2,17 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
-  Image,
   TouchableOpacity,
   Dimensions,
   TextInput,
   Platform,
-  SafeAreaView,
   ScrollView,
   Animated,
 } from 'react-native';
 import AppText from '../components/AppText';
-import { ReactNativeZoomableView } from '@dudigital/react-native-zoomable-view';
+import { NaverMapView, NaverMapMarkerOverlay } from '@mj-studio/react-native-naver-map';
 import { Ionicons } from '@expo/vector-icons';
 import { MAP_PINS, MapPin } from '../data/mapData';
 import { COLORS } from '../constants/colors';
@@ -46,8 +44,6 @@ export default function MapScreen() {
 
   // Animation value for bottom sheet
   const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
-
-  // ... (previous useEffect for animation)
 
   useEffect(() => {
     if (selectedPin) {
@@ -104,6 +100,13 @@ export default function MapScreen() {
 
   const filteredPins = MAP_PINS.filter((pin) => visibleTypes.includes(pin.type));
 
+  const initialRegion = {
+    latitude: 37.5509,
+    longitude: 127.0755,
+    latitudeDelta: 0.005,
+    longitudeDelta: 0.005,
+  };
+
   return (
     <View style={styles.page}>
       <View style={styles.headerContainer}>
@@ -136,36 +139,34 @@ export default function MapScreen() {
       </View>
 
       <View style={styles.mapArea}>
-        <ReactNativeZoomableView
-          maxZoom={3.0}
-          minZoom={1.0}
-          zoomStep={0.5}
-          initialZoom={1.0}
-          bindToBorders={true}
-          style={styles.zoomableView}
+        <NaverMapView
+          style={{ flex: 1 }}
+          initialRegion={initialRegion}
+          mapType="Basic"
+          layerGroups={{
+            BUILDING: true,
+            TRANSIT: true,
+            BICYCLE: false,
+            TRAFFIC: false,
+            CADASTRAL: false,
+            MOUNTAIN: false,
+          }}
         >
-          <View style={styles.mapContainer}>
-            <Image
-              source={require('../assets/map.webp')}
-              style={styles.mapImage}
-              resizeMode="contain"
+          {filteredPins.map((pin) => (
+            <NaverMapMarkerOverlay
+              key={pin.id}
+              latitude={pin.latitude}
+              longitude={pin.longitude}
+              caption={{ text: pin.name }}
+              tintColor={
+                pin.type === 'facility' ? '#4CAF50' :
+                  pin.type === 'administrative' ? '#FF9800' :
+                    '#9E9E9E'
+              }
+              onTap={() => setSelectedPin(pin)}
             />
-            {filteredPins.map((pin) => (
-              <TouchableOpacity
-                key={pin.id}
-                style={[
-                  styles.pinContainer,
-                  { left: `${pin.x}%`, top: `${pin.y}%` }
-                ]}
-                onPress={() => setSelectedPin(pin)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="location" size={32} color={COLORS.primary} />
-                <View style={styles.pinShadow} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ReactNativeZoomableView>
+          ))}
+        </NaverMapView>
 
         <TouchableOpacity
           style={[styles.sidebarToggle, isSidebarOpen ? styles.sidebarToggleOpen : null]}
@@ -307,32 +308,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     overflow: 'hidden',
-  },
-  zoomableView: {
-    backgroundColor: '#ffffff',
-  },
-  mapContainer: {
-    width: '100%',
-    height: '100%',
-    position: 'relative',
-  },
-  mapImage: {
-    width: '100%',
-    height: '100%',
-  },
-  pinContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -32,
-    marginLeft: -16,
-  },
-  pinShadow: {
-    width: 10,
-    height: 4,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 5,
-    marginTop: -4,
   },
   sidebarToggle: {
     position: 'absolute',

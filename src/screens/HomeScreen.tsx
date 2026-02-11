@@ -16,6 +16,7 @@ import { EXTERNAL_LINKS } from '../constants/links';
 import { COLORS } from '../constants/colors';
 import { CustomText } from '../components/ui/CustomText';
 import { useAuth } from '../context/AuthContext';
+import { moderateScale } from '../utils/responsive';
 
 const { width } = Dimensions.get('window');
 const CARD_SPACING = 15;
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: moderateScale(26, 0.3),
     fontWeight: 'bold',
     color: '#111',
   },
@@ -148,7 +149,9 @@ const styles = StyleSheet.create({
   iconButton: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     marginLeft: 8,
   },
   scrollContent: {
@@ -158,10 +161,12 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB', // Add subtle border for visibility on white background
     paddingHorizontal: 12,
-    paddingVertical: 10, // 높이를 조금 더 확보
+    paddingVertical: 10,
     marginBottom: 25,
   },
   searchIcon: {
@@ -169,12 +174,12 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: moderateScale(15, 0.3),
     color: '#111',
     padding: 0, // Android 텍스트 패딩 제거
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: moderateScale(22, 0.3),
     fontWeight: 'bold',
     color: '#111',
   },
@@ -197,8 +202,8 @@ const styles = StyleSheet.create({
     borderColor: '#F0F0F0',
   },
   iconWrapper: {
-    width: 36, // Reduced from 44
-    height: 36, // Reduced from 44
+    width: moderateScale(36, 0.3),
+    height: moderateScale(36, 0.3),
     borderRadius: 10,
     backgroundColor: 'rgba(219, 31, 38, 0.08)',
     justifyContent: 'center',
@@ -209,10 +214,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   linkText: {
-    fontSize: 14, // Slightly reduced
+    fontSize: moderateScale(14, 0.3), // Slightly reduced
     fontWeight: '700',
     color: '#333',
-    lineHeight: 20,
+    lineHeight: moderateScale(20, 0.3),
   },
   section: { marginBottom: 25 },
   menuRow: {
@@ -223,6 +228,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  menuLabel: { fontSize: 16, fontWeight: '500', color: '#111827' },
-  menuDescription: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  menuLabel: {
+    fontSize: moderateScale(16, 0.3),
+    fontWeight: '500',
+    color: '#111827',
+    marginBottom: 2,
+    includeFontPadding: false, // Android excess padding removal
+  },
+  menuDescription: {
+    fontSize: moderateScale(13, 0.3),
+    color: '#6B7280',
+    includeFontPadding: false, // Android excess padding removal
+    lineHeight: moderateScale(18, 0.3),
+  },
 });

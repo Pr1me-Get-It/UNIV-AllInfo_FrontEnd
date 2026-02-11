@@ -28,7 +28,17 @@ export default {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-web-browser', 'expo-secure-store', '@react-native-google-signin/google-signin'],
+    plugins: [
+      'expo-web-browser',
+      'expo-secure-store',
+      '@react-native-google-signin/google-signin',
+      [
+        '@mj-studio/react-native-naver-map',
+        {
+          client_id: 't6jcujdihj', // TODO: 교체 필요
+        },
+      ],
+    ],
     // [중요] 웹 푸시 설정을 여기에 추가합니다.
     notification: {
       vapidPublicKey:
@@ -39,6 +49,7 @@ export default {
       eas: {
         projectId: '6120be3f-b18d-4531-af3f-af3f6db51bca',
       },
+      naverMapClientId: 't6jcujdihj', // 코드에서 참조할 경우를 대비
     },
   },
 };
