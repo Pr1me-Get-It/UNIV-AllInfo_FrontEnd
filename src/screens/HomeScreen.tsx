@@ -2,20 +2,19 @@ import React from 'react';
 import {
   View,
   StyleSheet,
-  Image,
+  TextInput,
   TouchableOpacity,
   Alert,
   ScrollView,
   Linking,
   Dimensions,
-  TextInput,
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { EXTERNAL_LINKS } from '../constants/links';
 import { COLORS } from '../constants/colors';
-import { CustomText } from '../components/ui/CustomText';
+import AppText from '../components/AppText';
 import { useAuth } from '../context/AuthContext';
 import { moderateScale } from '../utils/responsive';
 
@@ -46,7 +45,7 @@ export default function HomeScreen({ navigation }: any) {
         Alert.alert('에러', '연결할 수 없는 링크입니다.');
       }
     } catch (error) {
-      console.error('An error occurred', error);
+      if (__DEV__) console.error('An error occurred', error);
     }
   };
 
@@ -61,9 +60,9 @@ export default function HomeScreen({ navigation }: any) {
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
           <Animated.View style={{ opacity: fadeAnim }}>
-            <CustomText style={styles.headerTitle}>
+            <AppText style={styles.headerTitle}>
               안녕하세요 {nickname ? ` ${nickname}님 : )` : ': )'}
-            </CustomText>
+            </AppText>
           </Animated.View>
         </View>
         <View style={styles.headerActions}>
@@ -89,6 +88,38 @@ export default function HomeScreen({ navigation }: any) {
           />
         </View>
 
+        {/* 바로가기 메뉴 섹션 (Pill-shaped) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.shortcutScrollContent}
+          style={styles.shortcutScroll}
+        >
+          <TouchableOpacity
+            style={styles.pillButton}
+            onPress={() => navigation.navigate('MainTab', { screen: 'Map' })}
+            activeOpacity={0.8}>
+            <Ionicons name="map" size={16} color="#0284C7" style={{ marginRight: 6 }} />
+            <AppText style={styles.pillText}>학교 지도</AppText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.pillButton}
+            onPress={() => navigation.navigate('AppleGame')}
+            activeOpacity={0.8}>
+            <Ionicons name="nutrition" size={16} color="#16A34A" style={{ marginRight: 6 }} />
+            <AppText style={styles.pillText}>두쫀쿠게임</AppText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.pillButton}
+            onPress={() => navigation.navigate('FlappyBird')}
+            activeOpacity={0.8}>
+            <Ionicons name="rocket" size={16} color="#D97706" style={{ marginRight: 6 }} />
+            <AppText style={styles.pillText}>플래피 버드</AppText>
+          </TouchableOpacity>
+        </ScrollView>
+
         {/* 링크 그리드 */}
         <View style={styles.gridContainer}>
           {EXTERNAL_LINKS.map(link => (
@@ -105,7 +136,7 @@ export default function HomeScreen({ navigation }: any) {
                 />
               </View>
               <View style={styles.textContainer}>
-                <CustomText style={styles.linkText}>{link.title}</CustomText>
+                <AppText style={styles.linkText}>{link.title}</AppText>
               </View>
             </TouchableOpacity>
           ))}
@@ -113,18 +144,18 @@ export default function HomeScreen({ navigation }: any) {
 
         {/* 맞춤형 서비스 섹션 */}
         <View style={styles.section}>
-          <CustomText style={styles.sectionTitle}>맞춤형 서비스</CustomText>
+          <AppText style={styles.sectionTitle}>맞춤형 서비스</AppText>
           <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Keyword')}>
             <View>
-              <CustomText style={styles.menuLabel}>키워드 설정</CustomText>
-              <CustomText style={styles.menuDescription}>관심있는 키워드로 개인화된 공지를 받습니다.</CustomText>
+              <AppText style={styles.menuLabel}>키워드 설정</AppText>
+              <AppText style={styles.menuDescription}>관심있는 키워드로 개인화된 공지를 받습니다.</AppText>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Bookmark')}>
             <View>
-              <CustomText style={styles.menuLabel}>즐겨 찾기</CustomText>
-              <CustomText style={styles.menuDescription}>내가 찜한 컨텐츠들.</CustomText>
+              <AppText style={styles.menuLabel}>즐겨 찾기</AppText>
+              <AppText style={styles.menuDescription}>내가 찜한 컨텐츠들.</AppText>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
@@ -181,7 +212,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB', // Add subtle border for visibility on white background
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 25,
+    marginBottom: 15, // Reduced from 20
   },
   searchIcon: {
     marginRight: 8,
@@ -232,6 +263,37 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333',
     lineHeight: moderateScale(20, 0.3),
+  },
+  shortcutScroll: {
+    marginBottom: 20, // Reduced from 25
+    maxHeight: 40, // Reduced height
+  },
+  shortcutScrollContent: {
+    paddingHorizontal: 0, // Align with left edge
+    alignItems: 'center',
+  },
+  pillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12, // Reduced from 16
+    paddingVertical: 6,   // Reduced from 10
+    borderRadius: 999, // Pill shape
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginRight: 8,       // Reduced from 10
+    // Shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  pillText: {
+    fontSize: moderateScale(13, 0.3), // Reduced from 14
+    fontWeight: '600',
+    color: '#333',
+    includeFontPadding: false,
   },
   section: { marginBottom: 25 },
   menuRow: {

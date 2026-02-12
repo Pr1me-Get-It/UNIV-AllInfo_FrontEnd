@@ -53,22 +53,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let expoPushToken: string | null = null;
     try {
       expoPushToken = await registerForPushNotificationsAsync();
-      console.log(`🔍 [AuthDebug] 발급된 Expo Token: ${expoPushToken ? expoPushToken : 'NULL (발급실패)'}`);
+      if (__DEV__) console.log(`🔍 [AuthDebug] 발급된 Expo Token: ${expoPushToken ? expoPushToken : 'NULL (발급실패)'}`);
     } catch (e) {
-      console.warn('푸시 토큰 발급 실패:', e);
+      if (__DEV__) console.warn('푸시 토큰 발급 실패:', e);
     }
 
-    console.log(`🔍 [AuthDebug] 백엔드 등록 시도: Email=${email}, Token=${expoPushToken}`);
+    if (__DEV__) console.log(`🔍 [AuthDebug] 백엔드 등록 시도: Email=${email}, Token=${expoPushToken}`);
 
     try {
       await registerUser(email, expoPushToken);
-      console.log(`📡 [Auth] 백엔드 신규 등록 성공: ${email}`);
+      if (__DEV__) console.log(`📡 [Auth] 백엔드 신규 등록 성공: ${email}`);
     } catch (e: any) {
       // 409 에러는 이미 가입된 유저이므로 에러가 아닌 '성공'의 범주로 처리합니다.
       if (e.response && e.response.status === 409) {
-        console.log(`📡 [Auth] 기존 유저 로그인 확인: ${email}`);
+        if (__DEV__) console.log(`📡 [Auth] 기존 유저 로그인 확인: ${email}`);
       } else {
-        console.error('❌ [Auth] 백엔드 등록 에러 (상세):', JSON.stringify(e.response?.data || e.message, null, 2));
+        if (__DEV__) console.error('❌ [Auth] 백엔드 등록 에러 (상세):', JSON.stringify(e.response?.data || e.message, null, 2));
         // 등록에 실패하면 키워드 동기화도 어려울 수 있으므로 중단하거나 리턴합니다.
         return;
       }
@@ -89,27 +89,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const serverKeywords = response.data.keywords;
         // 4. 서버 응답 데이터로 로컬 캐시 업데이트
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), serverKeywords);
-        console.log(`📡 [Auth] 키워드 동기화 완료:`, serverKeywords);
+        if (__DEV__) console.log(`📡 [Auth] 키워드 동기화 완료:`, serverKeywords);
       }
     } catch (e) {
-      console.error('❌ [Auth] 키워드 동기화 에러:', e);
+      if (__DEV__) console.error('❌ [Auth] 키워드 동기화 에러:', e);
     }
 
     // D. 닉네임 불러오기
     try {
       const safeEmail = email.replace(/\./g, '_');
-      console.log(`🔍 [AuthDebug] 닉네임 로드 시도: Key=${STORAGE_KEYS.NICKNAME(safeEmail)}`);
+      if (__DEV__) console.log(`🔍 [AuthDebug] 닉네임 로드 시도: Key=${STORAGE_KEYS.NICKNAME(safeEmail)}`);
       const savedNickname = (await getData(STORAGE_KEYS.NICKNAME(safeEmail))) as string | null;
-      console.log(`🔍 [AuthDebug] 로드된 닉네임: ${savedNickname}`);
+      if (__DEV__) console.log(`🔍 [AuthDebug] 로드된 닉네임: ${savedNickname}`);
 
       if (savedNickname) {
         setNickname(savedNickname);
       } else {
-        console.log(`🔍 [AuthDebug] 저장된 닉네임이 없어 userInfo.name 사용 예정`);
+        if (__DEV__) console.log(`🔍 [AuthDebug] 저장된 닉네임이 없어 userInfo.name 사용 예정`);
         setNickname(null);
       }
     } catch (e) {
-      console.warn("닉네임 로드 실패:", e);
+      if (__DEV__) console.warn("닉네임 로드 실패:", e);
     }
   };
 
@@ -154,7 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await syncUserToBackend(user.email);
         }
       } catch (e) {
-        console.error('❌ [Auth] 세션 복구 실패 (상세):', e);
+        if (__DEV__) console.error('❌ [Auth] 세션 복구 실패 (상세):', e);
         await logout();
       } finally {
         setIsLoading(false);
@@ -211,27 +211,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 통합 로그아웃 함수
   const logout = useCallback(async () => {
-    console.log('📡 [AuthContext] logout 함수 시작'); // 추가
+    if (__DEV__) console.log('📡 [AuthContext] logout 함수 시작'); // 추가
     setIsLoading(true);
     try {
       if (userEmail && userEmail !== DEV_EMAIL) {
-        console.log('📡 [AuthContext] 구글 세션 해제 시도 중...'); // 추가
+        if (__DEV__) console.log('📡 [AuthContext] 구글 세션 해제 시도 중...'); // 추가
         try {
           await GoogleSignin.revokeAccess();
           await GoogleSignin.signOut();
-          console.log('📡 [AuthContext] 구글 세션 해제 완료'); // 추가
+          if (__DEV__) console.log('📡 [AuthContext] 구글 세션 해제 완료'); // 추가
         } catch (e) {
-          console.warn('구글 세션 해제 중 오류 (무시):', e);
+          if (__DEV__) console.warn('구글 세션 해제 중 오류 (무시):', e);
         }
       }
     } finally {
-      console.log('📡 [AuthContext] 로컬 토큰 삭제 및 상태 초기화 시작'); // 추가
+      if (__DEV__) console.log('📡 [AuthContext] 로컬 토큰 삭제 및 상태 초기화 시작'); // 추가
       await removeToken();
       setUserEmail(null);
       setUserInfo(null);
       setNickname(null); // 닉네임 상태 초기화
       setIsLoading(false);
-      console.log('📡 [AuthContext] logout 완료 (상태 초기화됨)'); // 추가
+      if (__DEV__) console.log('📡 [AuthContext] logout 완료 (상태 초기화됨)'); // 추가
     }
   }, [userEmail]);
 
@@ -277,17 +277,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // 닉네임 업데이트 함수
   const updateNickname = useCallback(async (name: string) => {
     if (!userEmail) {
-      console.error("❌ [AuthDebug] 닉네임 업데이트 실패: userEmail is null");
+      if (__DEV__) console.error("❌ [AuthDebug] 닉네임 업데이트 실패: userEmail is null");
       return;
     }
     const safeEmail = userEmail.replace(/\./g, '_');
-    console.log(`💾 [AuthDebug] 닉네임 저장 시도: ${name} (Key=${STORAGE_KEYS.NICKNAME(safeEmail)})`);
+    if (__DEV__) console.log(`💾 [AuthDebug] 닉네임 저장 시도: ${name} (Key=${STORAGE_KEYS.NICKNAME(safeEmail)})`);
     try {
       await saveData(STORAGE_KEYS.NICKNAME(safeEmail), name);
-      console.log(`✅ [AuthDebug] 닉네임 저장 완료`);
+      if (__DEV__) console.log(`✅ [AuthDebug] 닉네임 저장 완료`);
       setNickname(name);
     } catch (e) {
-      console.error("❌ [AuthDebug] 닉네임 저장 중 에러:", e);
+      if (__DEV__) console.error("❌ [AuthDebug] 닉네임 저장 중 에러:", e);
     }
   }, [userEmail]);
 

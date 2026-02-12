@@ -41,7 +41,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        console.log('🔄 토큰 만료됨. 자동으로 갱신을 시도합니다...');
+        if (__DEV__) console.log('🔄 토큰 만료됨. 자동으로 갱신을 시도합니다...');
 
         // 1. 구글 Silent Sign-in으로 세션 갱신
         await GoogleSignin.signInSilently();
@@ -61,7 +61,7 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         // 갱신 실패 시 로그아웃 처리
-        console.error('❌ 토큰 갱신 실패:', refreshError);
+        if (__DEV__) console.error('❌ 토큰 갱신 실패:', refreshError);
         await removeToken();
         Alert.alert('알림', '세션이 만료되었습니다. 다시 로그인해 주세요.');
       }

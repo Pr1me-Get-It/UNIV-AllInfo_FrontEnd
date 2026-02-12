@@ -17,13 +17,21 @@ export interface Notice {
 
 export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
   console.log('Using fetchNotices...');
-  const [_, keyword] = queryKey;
+  const [_, keyword, dateRange = '1m', sortOrder = 'DESC'] = queryKey;
 
   let pageNum = 1;
   let allFetchedData: Notice[] = [];
   let shouldContinue = true;
-  const oneMonthAgo = new Date();
-  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+  const cutoffDate = new Date();
+  if (dateRange === '1w') {
+    cutoffDate.setDate(cutoffDate.getDate() - 7);
+  } else if (dateRange === '3m') {
+    cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+  } else {
+    // Default 1 month
+    cutoffDate.setMonth(cutoffDate.getMonth() - 1);
+  }
 
   while (shouldContinue) {
     const params: any = { p: pageNum, order: 'DESC', limit: 20 };
@@ -96,10 +104,10 @@ export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
 
       allFetchedData = [...allFetchedData, ...processedBatch];
 
-      // 마지막 데이터가 한 달 전보다 오래됐으면 중단
+      // 마지막 데이터가 지정된 기간보다 오래됐으면 중단
       if (safeNotices.length > 0) {
         const oldestInBatch = new Date(safeNotices[safeNotices.length - 1].posted_at);
-        if (oldestInBatch < oneMonthAgo || safeNotices.length < 20) {
+        if (oldestInBatch < cutoffDate || safeNotices.length < 20) {
           shouldContinue = false;
         } else {
           pageNum++;
@@ -111,6 +119,11 @@ export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
       console.error('Fetch notices error:', e);
       shouldContinue = false;
     }
+  }
+
+  // Client-side sorting for 'ASC' (Oldest first)
+  if (sortOrder === 'ASC') {
+    allFetchedData.sort((a, b) => new Date(a.posted_at).getTime() - new Date(b.posted_at).getTime());
   }
 
   return allFetchedData;

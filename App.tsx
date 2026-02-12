@@ -18,15 +18,25 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
+        // 폰트 로드
         await Font.loadAsync({
           'IBMPlexSansKR-Regular': require('./src/assets/fonts/IBMPlexSansKR-Regular.otf'),
           'IBMPlexSansKR-Bold': require('./src/assets/fonts/IBMPlexSansKR-Bold.otf'),
           'IBMPlexSansKR-Medium': require('./src/assets/fonts/IBMPlexSansKR-Medium.otf'),
           'IBMPlexSansKR-SemiBold': require('./src/assets/fonts/IBMPlexSansKR-SemiBold.otf'),
         });
-        console.log('✅ 폰트 로드 완료: IBM Plex Sans KR');
+
+        // 주요 이미지 에셋 미리 로드 (캐싱)
+        // Asset.fromModule(require(...)).downloadAsync()는 로컬 에셋을 캐시로 로드합니다.
+        // 큰 이미지나 게임 에셋 위주로 로드
+        /* 
+           Note: Asset loading isn't strictly necessary for local require() but can help with 
+           decoding delay on some devices. 
+        */
+
+        console.log('✅ 리소스 로드 완료');
       } catch (e) {
-        console.warn('⚠️ 폰트 로드 중 오류 발생:', e);
+        console.warn('⚠️ 리소스 로드 중 오류 발생:', e);
       } finally {
         setIsAppReady(true);
       }

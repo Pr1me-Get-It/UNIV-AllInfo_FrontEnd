@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, ScrollView, Dimensions } from 'react-native';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
@@ -8,6 +8,10 @@ import { moderateScale } from '../utils/responsive';
 
 import { useNavigation } from '@react-navigation/native';
 
+const { width } = Dimensions.get('window');
+const SPACING = 8; // Reduced spacing slightly to allow more room for icons
+const CARD_WIDTH = (width - 40 - SPACING * 3) / 4; // 4 items per row
+
 export default function OthersScreen() {
     const navigation = useNavigation();
     const features = [
@@ -15,33 +19,39 @@ export default function OthersScreen() {
             id: 'clocktower',
             title: '시계탑',
             icon: 'time-outline',
-            description: '학교 시계탑 기능',
+            color: '#3B82F6', // Blue
+            bgColor: '#EFF6FF',
         },
         {
             id: 'tetris',
             title: '테트리스',
             icon: 'game-controller-outline',
-            description: '추억의 테트리스 게임',
+            color: '#8B5CF6', // Purple
+            bgColor: '#F5F3FF',
         },
         {
             id: 'applegame',
-            title: '두쫀쿠 게임',
+            title: '두쫀쿠', // Shortened name for compact view
             icon: 'grid-outline',
-            description: '합이 10이 되도록 두쫀쿠를 터치하세요!',
+            color: '#10B981', // Emerald
+            bgColor: '#ECFDF5',
         },
         {
-            id: 'dancing',
-            title: '교수님 몰래 춤추기',
-            icon: 'musical-notes-outline',
-            description: '스트레스 해소용 미니게임',
+            id: 'flappybird',
+            title: '플래피', // Shortened name
+            icon: 'rocket-outline',
+            color: '#EF4444', // Red
+            bgColor: '#FEF2F2',
         },
     ];
 
     const handlePress = (featureTitle: string) => {
         if (featureTitle === '테트리스') {
             (navigation as any).navigate('Tetris');
-        } else if (featureTitle === '두쫀쿠 게임') {
+        } else if (featureTitle.includes('두쫀쿠')) {
             (navigation as any).navigate('AppleGame');
+        } else if (featureTitle.includes('플래피')) {
+            (navigation as any).navigate('FlappyBird');
         } else {
             Alert.alert(featureTitle, '준비 중인 기능입니다.');
         }
@@ -64,14 +74,10 @@ export default function OthersScreen() {
                             onPress={() => handlePress(feature.title)}
                             activeOpacity={0.8}
                         >
-                            <View style={styles.iconContainer}>
-                                <Ionicons name={feature.icon as any} size={32} color={COLORS.primary} />
+                            <View style={[styles.iconContainer, { backgroundColor: feature.bgColor }]}>
+                                <Ionicons name={feature.icon as any} size={28} color={feature.color} />
                             </View>
-                            <View style={styles.textContainer}>
-                                <AppText style={styles.cardTitle}>{feature.title}</AppText>
-                                <AppText style={styles.cardDescription}>{feature.description}</AppText>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color="#ccc" style={styles.arrowIcon} />
+                            <AppText style={styles.cardTitle} numberOfLines={1}>{feature.title}</AppText>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -83,64 +89,54 @@ export default function OthersScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        // backgroundColor: '#fff', // Removed for gradient
     },
     contentContainer: {
         padding: 20,
-        paddingTop: 40,
+        paddingTop: 60,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: moderateScale(24, 0.3),
         fontWeight: 'bold',
-        color: '#333',
+        color: '#111',
         marginBottom: 20,
     },
     grid: {
-        flexDirection: 'column',
-        gap: 15,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-start',
+        gap: SPACING,
     },
     card: {
-        backgroundColor: '#F9FAFB',
-        borderRadius: 16,
-        padding: 20,
-        flexDirection: 'row',
+        width: CARD_WIDTH,
+        backgroundColor: 'transparent', // Remove card background for icon-like look
+        // borderRadius: 12,
+        // paddingVertical: 10,
+        marginBottom: 10,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#F0F0F0',
-        // Shadow for iOS
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        // Elevation for Android
-        elevation: 2,
+        justifyContent: 'flex-start',
+        // Remove shadow/border for cleaner icon look
+        borderWidth: 0,
+        elevation: 0,
     },
     iconContainer: {
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        backgroundColor: 'rgba(219, 31, 38, 0.08)',
+        width: moderateScale(56, 0.3), // Slightly larger
+        height: moderateScale(56, 0.3),
+        borderRadius: 18, // Squircle
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 15,
-    },
-    textContainer: {
-        flex: 1,
+        marginBottom: 8,
+        // Add shadow to icon itself
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
     },
     cardTitle: {
-        fontSize: moderateScale(18, 0.3),
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 2,
-        includeFontPadding: false,
-    },
-    cardDescription: {
-        fontSize: moderateScale(14, 0.3),
-        color: '#666',
-        includeFontPadding: false,
-        lineHeight: moderateScale(20, 0.3),
-    },
-    arrowIcon: {
-        marginLeft: 10,
+        fontSize: moderateScale(13, 0.3), // Increased from 12
+        fontWeight: 'bold', // Changed to bold
+        color: '#374151', // Slightly darker gray
+        textAlign: 'center',
+        letterSpacing: -0.3,
     },
 });
