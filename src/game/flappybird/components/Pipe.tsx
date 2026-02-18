@@ -57,6 +57,7 @@ const Pipe = (props: any) => {
                 height: height,
                 overflow: 'hidden',
                 flexDirection: 'column',
+                justifyContent: props.isTop ? 'flex-end' : 'flex-start',
             }}>
             {props.isTop && (
                 <>

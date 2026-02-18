@@ -2,13 +2,11 @@ import React from 'react';
 import { Image } from 'react-native';
 import { Images } from '../assets/images';
 
-const Bird = (props: any) => {
+const Missile = (props: any) => {
     const width = props.body.bounds.max.x - props.body.bounds.min.x;
     const height = props.body.bounds.max.y - props.body.bounds.min.y;
     const x = props.body.position.x - width / 2;
     const y = props.body.position.y - height / 2;
-
-    const image = Images.bird1;
 
     return (
         <Image
@@ -18,12 +16,11 @@ const Bird = (props: any) => {
                 top: y,
                 width: width,
                 height: height,
-                transform: [{ rotate: `${props.angle}deg` }]
             }}
-            resizeMode="stretch"
-            source={image}
+            resizeMode="contain"
+            source={Images.rocket}
         />
     );
 };
 
-export default Bird;
+export default Missile;

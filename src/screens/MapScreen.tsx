@@ -10,7 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import AppText from '../components/AppText';
-import { ReactNativeZoomableView } from '@dudigital/react-native-zoomable-view';
+import { NaverMapView, NaverMapMarkerOverlay } from '@mj-studio/react-native-naver-map';
 import { Ionicons } from '@expo/vector-icons';
 import { MAP_PINS, MapPin } from '../data/mapData';
 import { COLORS } from '../constants/colors';
@@ -20,8 +20,21 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 
 const { width } = Dimensions.get('window');
 
+// Define default camera position (first pin or center of campus)
+const INITIAL_REGION = {
+  latitude: 37.5509,
+  longitude: 127.0755,
+  zoom: 16,
+};
+
 export default function MapScreen() {
   const { userEmail } = useAuth();
+
+  useEffect(() => {
+    console.log('MapScreen: Mounted');
+    return () => console.log('MapScreen: Unmounted');
+  }, []);
+
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
   const [searchText, setSearchText] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -100,6 +113,11 @@ export default function MapScreen() {
 
   const filteredPins = MAP_PINS.filter((pin) => visibleTypes.includes(pin.type));
 
+  // Handle marker click
+  const handleMarkerClick = (pin: MapPin) => {
+    setSelectedPin(pin);
+  };
+
   return (
     <View style={styles.page}>
       <View style={styles.headerContainer}>
@@ -132,27 +150,37 @@ export default function MapScreen() {
       </View>
 
       <View style={styles.mapArea}>
-        <ReactNativeZoomableView
-          maxZoom={2.0}
-          minZoom={0.5}
-          zoomStep={0.1}
-          initialZoom={1}
-          bindToBorders={true}
+        <NaverMapView
           style={styles.mapContainer}
+          initialCamera={INITIAL_REGION}
+          mapType="Basic"
+          layerGroups={{
+            BUILDING: true,
+            TRANSIT: true,
+            TRAFFIC: false,
+            BICYCLE: false,
+            MOUNTAIN: false,
+            CADASTRAL: false,
+          }}
+          onInitialized={() => console.log('NaverMap: Initialized')}
+          onCameraChanged={(args) => console.log('NaverMap: Camera Changed', args)}
+          onTapMap={(args) => console.log('NaverMap: Tap', args)}
         >
-          <View style={styles.mapContainer}>
-            <Image
-              source={require('../assets/map.webp')}
-              style={styles.mapImage}
-              resizeMode="contain"
+          {filteredPins.map((pin) => (
+            <NaverMapMarkerOverlay
+              key={pin.id}
+              latitude={pin.latitude}
+              longitude={pin.longitude}
+              caption={{ text: pin.name }}
+              onTap={() => {
+                console.log('NaverMap: Marker Tapped', pin.name);
+                handleMarkerClick(pin);
+              }}
+              width={30}
+              height={40}
             />
-            {/* 
-               // Pins are currently hidden in this static view as they rely on absolute positioning 
-               // that matched a specific aspect ratio. 
-               // Future TODO: Re-implement pin positioning for static map if needed.
-               */}
-          </View>
-        </ReactNativeZoomableView>
+          ))}
+        </NaverMapView>
 
         <TouchableOpacity
           style={[styles.sidebarToggle, isSidebarOpen ? styles.sidebarToggleOpen : null]}
@@ -300,10 +328,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  mapImage: {
-    width: '100%',
-    height: '100%',
-  },
+  // removed mapImage style
   sidebarToggle: {
     position: 'absolute',
     right: 0,

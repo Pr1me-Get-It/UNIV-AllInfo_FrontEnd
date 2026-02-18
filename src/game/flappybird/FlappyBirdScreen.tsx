@@ -12,6 +12,7 @@ const systems = [Physics];
 
 const FlappyBirdScreen = () => {
     const [running, setRunning] = useState(false);
+    const [gameStarted, setGameStarted] = useState(false);
     const gameEngineRef = React.useRef<any>(null);
     const [currentPoints, setCurrentPoints] = useState(0);
     const navigation = useNavigation();
@@ -28,6 +29,8 @@ const FlappyBirdScreen = () => {
             // Alert or Modal for game over
         } else if (e.type === 'score') {
             setCurrentPoints(prev => prev + 1);
+        } else if (e.type === 'game_start') {
+            setGameStarted(true);
         }
     }, []);
 
@@ -36,6 +39,7 @@ const FlappyBirdScreen = () => {
             gameEngineRef.current.swap(Entities());
         }
         setRunning(true);
+        setGameStarted(false);
         setCurrentPoints(0);
     };
 
@@ -53,6 +57,15 @@ const FlappyBirdScreen = () => {
                 <StatusBar hidden={true} />
             </SimpleGameEngine>
 
+            {!gameStarted && running && (
+                <View style={styles.fullScreenButton} pointerEvents="none">
+                    <View style={styles.scoreContainer}>
+                        <AppText style={styles.gameOverText}>Ready</AppText>
+                        <AppText style={styles.gameOverSubText}>Touch to Start</AppText>
+                    </View>
+                </View>
+            )}
+
             {!running && (
                 <View style={styles.fullScreenButton}>
                     <TouchableOpacity style={styles.fullScreenButton} onPress={resetGame}>
@@ -64,8 +77,12 @@ const FlappyBirdScreen = () => {
                 </View>
             )}
 
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <View style={styles.header} pointerEvents="box-none">
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    style={styles.backButton}
+                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
                     <Ionicons name="chevron-back" size={28} color="#333" />
                 </TouchableOpacity>
                 <AppText style={styles.scoreText}>{currentPoints}</AppText>
@@ -132,12 +149,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        zIndex: 5,
+        zIndex: 50,
+        elevation: 50, // Android를 위한 높이 설정
     },
     backButton: {
         padding: 5,
         backgroundColor: 'rgba(255, 255, 255, 0.7)',
         borderRadius: 20,
+        zIndex: 100,
+        elevation: 100,
     },
     scoreText: {
         fontSize: 40,
