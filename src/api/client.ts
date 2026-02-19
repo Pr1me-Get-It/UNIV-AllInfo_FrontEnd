@@ -68,7 +68,10 @@ api.interceptors.response.use(
     }
 
     // 서버 오류 처리 (500번대)
-    if (error.response?.status && error.response.status >= 500) {
+    // 단, /gamescore/best 엔드포인트는 점수 없음(500)을 0점으로 처리하므로 알림 제외
+    const isGameScoreBest = originalRequest.url?.includes('/gamescore/best');
+
+    if (error.response?.status && error.response.status >= 500 && !isGameScoreBest) {
       Alert.alert('서버 오류', '서버와의 연결이 원활하지 않습니다.');
     }
 

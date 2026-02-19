@@ -11,6 +11,7 @@ const ProfileScreen = React.lazy(() => import('../screens/ProfileScreen'));
 const TetrisScreen = React.lazy(() => import('../screens/TetrisScreen'));
 const AppleGameScreen = React.lazy(() => import('../game/apple/AppleGameScreen'));
 const FlappyBirdScreen = React.lazy(() => import('../game/flappybird/FlappyBirdScreen'));
+const RankingScreen = React.lazy(() => import('../screens/RankingScreen'));
 
 const Stack = createNativeStackNavigator();
 
@@ -65,6 +66,11 @@ export default function RootNavigator() {
           name="FlappyBird"
           component={FlappyBirdScreen}
           options={{ title: '플래피 버드', headerShown: false }}
+        />
+        <Stack.Screen
+          name="Ranking"
+          component={RankingScreen}
+          options={{ title: '게임 랭킹', headerShown: true }}
         />
       </Stack.Navigator>
     </Suspense>

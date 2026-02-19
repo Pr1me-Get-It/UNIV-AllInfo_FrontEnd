@@ -7,32 +7,54 @@ import { Physics } from './systems/Physics';
 import Entities from './entities';
 import { Images } from './assets/images';
 import AppText from '../../components/AppText'; // Adjust path if needed
+import { useAuth } from '../../context/AuthContext';
+import { saveScore, getBestScore } from '../../api/gameScore';
 
 const systems = [Physics];
+const GAME_ID = 1; // Flappy Bird Game ID
 
 const FlappyBirdScreen = () => {
     const [running, setRunning] = useState(false);
     const [gameStarted, setGameStarted] = useState(false);
     const gameEngineRef = React.useRef<any>(null);
     const [currentPoints, setCurrentPoints] = useState(0);
+    const scoreRef = React.useRef(0); // Use ref to track score without stale closures
+    const [myBestScore, setMyBestScore] = useState(0); // State to store best score
     const navigation = useNavigation();
+    const { userEmail, nickname, gameBestScores, updateGameBestScore } = useAuth(); // Get gameBestScores and update function
 
     const initialEntities = React.useMemo(() => Entities(), []);
 
     useEffect(() => {
         setRunning(true);
-    }, []);
+        // Load best score from Context
+        if (gameBestScores && typeof gameBestScores[GAME_ID] === 'number') {
+            setMyBestScore(gameBestScores[GAME_ID]);
+        }
+    }, [gameBestScores]);
 
     const onEvent = React.useCallback((e: any) => {
         if (e.type === 'game_over') {
             setRunning(false);
-            // Alert or Modal for game over
+            const finalScore = scoreRef.current; // Read from ref
+
+            // Context를 통해 로컬/서버 동시 업데이트
+            updateGameBestScore(GAME_ID, finalScore);
+
+            // 로컬 상태 업데이트 (화면 표시용) - Context가 업데이트되면 useEffect에서 반영되지만 즉각 반응을 위해
+            if (finalScore > myBestScore) {
+                setMyBestScore(finalScore);
+            }
+
         } else if (e.type === 'score') {
-            setCurrentPoints(prev => prev + 1);
+            scoreRef.current += 1; // Update ref directly
+            setCurrentPoints(scoreRef.current);
         } else if (e.type === 'game_start') {
             setGameStarted(true);
+            scoreRef.current = 0; // Reset ref
+            setCurrentPoints(0);
         }
-    }, []);
+    }, [myBestScore, updateGameBestScore]); // Add updateGameBestScore
 
     const resetGame = () => {
         if (gameEngineRef.current) {
@@ -41,6 +63,7 @@ const FlappyBirdScreen = () => {
         setRunning(true);
         setGameStarted(false);
         setCurrentPoints(0);
+        scoreRef.current = 0; // Reset ref
     };
 
     return (
@@ -86,6 +109,7 @@ const FlappyBirdScreen = () => {
                     <Ionicons name="chevron-back" size={28} color="#333" />
                 </TouchableOpacity>
                 <AppText style={styles.scoreText}>{currentPoints}</AppText>
+                <AppText style={styles.bestScoreText}>Best: {myBestScore}</AppText>
             </View>
 
             {/* License Attribution */}
@@ -168,6 +192,16 @@ const styles = StyleSheet.create({
         right: 0,
         textAlign: 'center',
         top: 0,
+    },
+    bestScoreText: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#ffffffff',
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        top: 50, // Position below current score
     },
     licenseText: {
         position: 'absolute',

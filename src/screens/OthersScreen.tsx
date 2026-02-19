@@ -22,6 +22,16 @@ export default function OthersScreen() {
             color: '#3B82F6', // Blue
             bgColor: '#EFF6FF',
         },
+    ];
+
+    const games = [
+        {
+            id: 'ranking',
+            title: '랭킹 보기',
+            icon: 'trophy-outline',
+            color: '#F59E0B', // Amber
+            bgColor: '#FFFBEB',
+        },
         {
             id: 'tetris',
             title: '테트리스',
@@ -45,17 +55,38 @@ export default function OthersScreen() {
         },
     ];
 
-    const handlePress = (featureTitle: string) => {
-        if (featureTitle === '테트리스') {
+    const handlePress = (title: string, id: string) => {
+        if (id === 'ranking') {
+            (navigation as any).navigate('Ranking');
+        } else if (id === 'tetris') {
             (navigation as any).navigate('Tetris');
-        } else if (featureTitle.includes('두쫀쿠')) {
+        } else if (id === 'applegame') {
             (navigation as any).navigate('AppleGame');
-        } else if (featureTitle.includes('플래피')) {
+        } else if (id === 'flappybird') {
             (navigation as any).navigate('FlappyBird');
         } else {
-            Alert.alert(featureTitle, '준비 중인 기능입니다.');
+            // For future features or clocktower if implemented
+            Alert.alert(title, '준비 중인 기능입니다.');
         }
     };
+
+    const renderGrid = (items: any[]) => (
+        <View style={styles.grid}>
+            {items.map((item) => (
+                <TouchableOpacity
+                    key={item.id}
+                    style={styles.card}
+                    onPress={() => handlePress(item.title, item.id)}
+                    activeOpacity={0.8}
+                >
+                    <View style={[styles.iconContainer, { backgroundColor: item.bgColor }]}>
+                        <Ionicons name={item.icon as any} size={28} color={item.color} />
+                    </View>
+                    <AppText style={styles.cardTitle} numberOfLines={1}>{item.title}</AppText>
+                </TouchableOpacity>
+            ))}
+        </View>
+    );
 
     return (
         <LinearGradient
@@ -66,21 +97,12 @@ export default function OthersScreen() {
         >
             <ScrollView contentContainerStyle={styles.contentContainer}>
                 <AppText style={styles.headerTitle}>부가 기능</AppText>
-                <View style={styles.grid}>
-                    {features.map((feature) => (
-                        <TouchableOpacity
-                            key={feature.id}
-                            style={styles.card}
-                            onPress={() => handlePress(feature.title)}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[styles.iconContainer, { backgroundColor: feature.bgColor }]}>
-                                <Ionicons name={feature.icon as any} size={28} color={feature.color} />
-                            </View>
-                            <AppText style={styles.cardTitle} numberOfLines={1}>{feature.title}</AppText>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                {renderGrid(features)}
+
+                <View style={styles.divider} />
+
+                <AppText style={styles.headerTitle}>게임</AppText>
+                {renderGrid(games)}
             </ScrollView>
         </LinearGradient>
     );
@@ -138,5 +160,11 @@ const styles = StyleSheet.create({
         color: '#374151', // Slightly darker gray
         textAlign: 'center',
         letterSpacing: -0.3,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#E5E7EB', // Light gray
+        marginVertical: 20,
+        width: '100%',
     },
 });

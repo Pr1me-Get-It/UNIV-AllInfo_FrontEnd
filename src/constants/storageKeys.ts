@@ -13,5 +13,6 @@ export const STORAGE_KEYS = {
     MAP_FILTER: (safeEmail: string) => `map_filter_${safeEmail}`,
     NICKNAME: (safeEmail: string) => `nickname_${safeEmail}`,
     FILTER_MODE: (safeEmail: string) => `cal_filter_${safeEmail}`,
-    FILTER_SETTINGS: 'filter_settings', // Added from NoticeScreen usage if missing in original JS but I should check original content again to be sure.
+    FILTER_SETTINGS: 'filter_settings',
+    GAME_SCORES: (safeEmail: string) => `game_scores_${safeEmail}`, // Added for local game score management
 };

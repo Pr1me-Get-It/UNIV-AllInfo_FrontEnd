@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { registerUser, withdrawUser } from '../api/userService';
+import { saveScore } from '../api/gameScore'; // Added import
 import { getToken, saveToken, removeToken, getData, saveData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
@@ -33,6 +34,8 @@ interface AuthContextType {
   nickname: string | null; // 전역 닉네임
   isAuthenticated: boolean;
   isLoading: boolean;
+  gameBestScores: { [key: number]: number }; // 게임별 최고 점수 (로컬 관리)
+  updateGameBestScore: (gameId: number, score: number) => Promise<void>; // 점수 업데이트
   loginWithGoogle: () => Promise<void>; // 구글 로그인 로직 내장
   loginDev: (customEmail?: string) => Promise<void>; // 개발자 로그인 로직 내장 (이메일 선택 가능)
   logout: () => Promise<void>; // 통합 로그아웃
@@ -46,10 +49,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
+  const [gameBestScores, setGameBestScores] = useState<{ [key: number]: number }>({}); // Added state
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // 게임 점수 로드 함수
+  const loadGameBestScores = async (email: string) => {
+    try {
+      const safeEmail = email.replace(/\./g, '_');
+      const savedScores = await getData<{ [key: number]: number }>(STORAGE_KEYS.GAME_SCORES(safeEmail));
+      if (savedScores) {
+        setGameBestScores(savedScores);
+        if (__DEV__) console.log('🎮 [Auth] 로컬 게임 점수 로드 완료:', savedScores);
+      } else {
+        setGameBestScores({});
+      }
+    } catch (e) {
+      console.error('Failed to load game scores:', e);
+    }
+  };
+
+  // 게임 점수 업데이트 함수
+  const updateGameBestScore = useCallback(async (gameId: number, score: number) => {
+    if (!userEmail) return;
+
+    const currentBest = gameBestScores[gameId] || 0;
+    // 점수가 더 높거나 (또는 기록이 없을때) 저장
+    // 사용자가 "최대스코어 달성시 유저정보에 그냥 저장해버리고 싶은데" 라고 했고
+    // "최고점일때만 변경하는 방식으로" 라고 정정함.
+    if (score > currentBest) {
+      const newScores = { ...gameBestScores, [gameId]: score };
+      setGameBestScores(newScores);
+
+      const safeEmail = userEmail.replace(/\./g, '_');
+      // 로컬 저장
+      await saveData(STORAGE_KEYS.GAME_SCORES(safeEmail), newScores);
+
+      // 서버 저장
+      const nicknameToSave = nickname || userEmail.split('@')[0];
+      try {
+        if (__DEV__) console.log(`🎮 [Auth] 신기록 달성! 서버 저장 시도: ${score}점`);
+        await saveScore(userEmail, gameId, score, { nickname: nicknameToSave });
+      } catch (e) {
+        console.warn('Failed to save score to server:', e);
+      }
+    }
+  }, [userEmail, nickname, gameBestScores]);
+
 
   // 백엔드 동기화 로직 (유지)
   const syncUserToBackend = async (email: string) => {
+    // ... (Existing logic for push token, registerUser)
     let expoPushToken: string | null = null;
     try {
       expoPushToken = await registerForPushNotificationsAsync();
@@ -64,30 +113,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await registerUser(email, expoPushToken);
       if (__DEV__) console.log(`📡 [Auth] 백엔드 신규 등록 성공: ${email}`);
     } catch (e: any) {
-      // 409 에러는 이미 가입된 유저이므로 에러가 아닌 '성공'의 범주로 처리합니다.
       if (e.response && e.response.status === 409) {
         if (__DEV__) console.log(`📡 [Auth] 기존 유저 로그인 확인: ${email}`);
       } else {
         if (__DEV__) console.error('❌ [Auth] 백엔드 등록 에러 (상세):', JSON.stringify(e.response?.data || e.message, null, 2));
-        // 등록에 실패하면 키워드 동기화도 어려울 수 있으므로 중단하거나 리턴합니다.
         return;
       }
     }
 
-    // C. 키워드 동기화 (추가된 로직)
+    // C. 키워드 동기화 
     try {
-      // 1. 이메일에서 마침표(.) 등 특수문자 제거 (Storage Key 안전성 확보)
       const safeEmail = email.replace(/\./g, '_');
-
-      // 2. getData에 <string[]> 타입을 명시하여 unknown 에러 해결
       const localKeywords = (await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail))) || [];
-
-      // 3. 서버에 동기화 시도
       const response = await syncKeywords(email, localKeywords);
 
       if (response.data.success) {
         const serverKeywords = response.data.keywords;
-        // 4. 서버 응답 데이터로 로컬 캐시 업데이트
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), serverKeywords);
         if (__DEV__) console.log(`📡 [Auth] 키워드 동기화 완료:`, serverKeywords);
       }
@@ -111,7 +152,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) {
       if (__DEV__) console.warn("닉네임 로드 실패:", e);
     }
+
+    // E. 게임 점수 로드 (추가)
+    await loadGameBestScores(email);
   };
+
+  // ... (rest of the file)
+
 
   // 초기화 및 자동 로그인 체크
   useEffect(() => {
@@ -299,6 +346,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         nickname,
         isAuthenticated: !!userEmail,
         isLoading,
+        gameBestScores,
+        updateGameBestScore,
         loginWithGoogle,
         loginDev,
         logout,
