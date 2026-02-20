@@ -219,27 +219,27 @@ export default function ProfileScreen() {
 
     if (value) {
       try {
-        // console.log("🚀 [PushDebug] 푸시 알림 설정 시작...");
+
         const token = await registerForPushNotificationsAsync();
-        // console.log("🚀 [PushDebug] 토큰 발급 결과:", token);
+
 
         if (token) {
-          // console.log("🚀 [PushDebug] 서버로 토큰 전송 시도:", userEmail);
+
           try {
             await registerUser(userEmail, token);
-            // console.log("🚀 [PushDebug] 서버 등록 완료!");
+
             showAlert('알림', '푸시 알림 설정이 완료되었습니다.');
           } catch (apiError: any) {
             // [수정] 409 Conflict (이미 등록된 유저)는 성공으로 처리
             if (apiError.response && apiError.response.status === 409) {
-              // console.log("🚀 [PushDebug] 이미 등록된 토큰/유저 (409) -> 성공 처리");
+
               showAlert('알림', '푸시 알림 설정이 완료되었습니다.'); // 사용자에게는 성공으로 표시
             } else {
               throw apiError; // 다른 에러는 catch 블록으로 전달
             }
           }
         } else {
-          // console.log("🚀 [PushDebug] 토큰이 없어 서버 등록 스킵");
+
           showAlert('오류', '푸시 토큰을 가져올 수 없습니다.');
           setPushEnabled(false);
           // Revert save if failed

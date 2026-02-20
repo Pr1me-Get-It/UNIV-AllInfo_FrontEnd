@@ -35,7 +35,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   gameBestScores: { [key: number]: number }; // 게임별 최고 점수 (로컬 관리)
-  updateGameBestScore: (gameId: number, score: number) => Promise<void>; // 점수 업데이트
+  updateGameBestScore: (gameId: number, score: number, shouldSaveToServer?: boolean) => Promise<void>; // 점수 업데이트
   loginWithGoogle: () => Promise<void>; // 구글 로그인 로직 내장
   loginDev: (customEmail?: string) => Promise<void>; // 개발자 로그인 로직 내장 (이메일 선택 가능)
   logout: () => Promise<void>; // 통합 로그아웃
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const savedScores = await getData<{ [key: number]: number }>(STORAGE_KEYS.GAME_SCORES(safeEmail));
       if (savedScores) {
         setGameBestScores(savedScores);
-        if (__DEV__) console.log('🎮 [Auth] 로컬 게임 점수 로드 완료:', savedScores);
+
       } else {
         setGameBestScores({});
       }
@@ -69,13 +69,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // 게임 점수 업데이트 함수
-  const updateGameBestScore = useCallback(async (gameId: number, score: number) => {
+  const updateGameBestScore = useCallback(async (gameId: number, score: number, shouldSaveToServer: boolean = true) => {
     if (!userEmail) return;
 
     const currentBest = gameBestScores[gameId] || 0;
-    // 점수가 더 높거나 (또는 기록이 없을때) 저장
-    // 사용자가 "최대스코어 달성시 유저정보에 그냥 저장해버리고 싶은데" 라고 했고
-    // "최고점일때만 변경하는 방식으로" 라고 정정함.
+
+    // 점수가 더 높을 때만 업데이트 (혹은 강제 동기화일 경우)
+    // shouldSaveToServer가 false이면 로컬 동기화 목적이므로 점수가 같다면 업데이트 불필요하지만
+    // 여기서는 score > currentBest 조건이 있으므로 '더 높은 점수'를 발견했을 때만 동작함.
     if (score > currentBest) {
       const newScores = { ...gameBestScores, [gameId]: score };
       setGameBestScores(newScores);
@@ -84,13 +85,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // 로컬 저장
       await saveData(STORAGE_KEYS.GAME_SCORES(safeEmail), newScores);
 
-      // 서버 저장
-      const nicknameToSave = nickname || userEmail.split('@')[0];
-      try {
-        if (__DEV__) console.log(`🎮 [Auth] 신기록 달성! 서버 저장 시도: ${score}점`);
-        await saveScore(userEmail, gameId, score, { nickname: nicknameToSave });
-      } catch (e) {
-        console.warn('Failed to save score to server:', e);
+      // 서버 저장 (플래그가 true일 때만)
+      if (shouldSaveToServer) {
+        const nicknameToSave = nickname || userEmail.split('@')[0];
+        try {
+          if (__DEV__) console.log(`🎮 [Auth] 신기록 달성! 서버 저장 시도: ${score}점`);
+          await saveScore(userEmail, gameId, score, { nickname: nicknameToSave });
+        } catch (e) {
+          console.warn('Failed to save score to server:', e);
+        }
       }
     }
   }, [userEmail, nickname, gameBestScores]);
@@ -102,21 +105,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let expoPushToken: string | null = null;
     try {
       expoPushToken = await registerForPushNotificationsAsync();
-      if (__DEV__) console.log(`🔍 [AuthDebug] 발급된 Expo Token: ${expoPushToken ? expoPushToken : 'NULL (발급실패)'}`);
+
     } catch (e) {
       if (__DEV__) console.warn('푸시 토큰 발급 실패:', e);
     }
 
-    if (__DEV__) console.log(`🔍 [AuthDebug] 백엔드 등록 시도: Email=${email}, Token=${expoPushToken}`);
+
 
     try {
       await registerUser(email, expoPushToken);
-      if (__DEV__) console.log(`📡 [Auth] 백엔드 신규 등록 성공: ${email}`);
+
     } catch (e: any) {
       if (e.response && e.response.status === 409) {
-        if (__DEV__) console.log(`📡 [Auth] 기존 유저 로그인 확인: ${email}`);
+
       } else {
-        if (__DEV__) console.error('❌ [Auth] 백엔드 등록 에러 (상세):', JSON.stringify(e.response?.data || e.message, null, 2));
+
         return;
       }
     }

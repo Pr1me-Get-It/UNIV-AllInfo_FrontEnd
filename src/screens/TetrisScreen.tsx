@@ -17,11 +17,10 @@ import CustomAlert from '../components/ui/CustomAlert';
 
 // Helpers
 import { createStage, checkCollision } from '../game/tetris/gameHelpers';
+import { useAuth } from '../context/AuthContext'; // Added import
+import { GAMES } from '../constants/games'; // Added import
 
 const { width, height } = Dimensions.get('window');
-
-// Calculate responsive cell size
-// Layout: Board takes ~60-70% width, but we must also ensure it fits vertically (max 75% height)
 const BOARD_WIDTH_RATIO = 0.65; // Width constraint
 const BOARD_HEIGHT_RATIO = 0.75; // Height constraint
 
@@ -36,15 +35,52 @@ export default function TetrisScreen() {
     const [gameOver, setGameOver] = useState(false);
     const [alertVisible, setAlertVisible] = useState(false);
 
+    const { userEmail, gameBestScores, updateGameBestScore } = useAuth(); // Added useAuth
+    const [myBestScore, setMyBestScore] = useState(0);
+    const GAME_ID = GAMES.TETRIS.id;
+
     const { player, updatePlayerPos, resetPlayer, playerRotate, setPlayer, nextTetromino } = usePlayer();
     const { stage, setStage, rowsCleared } = useStage(player, resetPlayer);
     const { score, setScore, rows, setRows, level, setLevel } = useGameStatus(rowsCleared);
+
+    // Load local best score
+    React.useEffect(() => {
+        if (gameBestScores && typeof gameBestScores[GAME_ID] === 'number') {
+            setMyBestScore(gameBestScores[GAME_ID]);
+        }
+    }, [gameBestScores]);
 
     const movePlayer = (dir: number) => {
         if (!checkCollision(player, stage, { x: dir, y: 0 })) {
             updatePlayerPos({ x: dir, y: 0, collided: false });
         }
     };
+
+    // Calculate dynamic CELL_SIZE
+    const screenHeight = height;
+    const screenWidth = width;
+
+    // Layout Constants
+    const HEADER_HEIGHT = 40; // Reduced from 60
+    const CONTROLS_HEIGHT = 220; // Reduced from 250
+    const PADDING_V = 20; // Reduced from 40
+    const TAB_BAR_HEIGHT = 50; // Approximate TabBar height
+
+    // Available height for the board
+    const availableHeight = screenHeight - insets.top - insets.bottom - HEADER_HEIGHT - CONTROLS_HEIGHT - PADDING_V - TAB_BAR_HEIGHT;
+    const availableWidth = screenWidth * 0.98; // Increased from 95% to 98%
+
+    // Board Dimensions
+    const BOARD_COLS = 12;
+    const BOARD_ROWS = 20;
+
+    // Calculate max cell size that fits both width and height constraints
+    const cellSizeByHeight = availableHeight / BOARD_ROWS;
+    const cellSizeByWidth = (availableWidth * 0.70) / BOARD_COLS; // Increased width ratio from 0.65 to 0.70
+
+    // Use the smaller of the two to ensure fit
+    const CELL_SIZE = Math.min(cellSizeByHeight, cellSizeByWidth, 35); // Max cap increased to 35
+    // Min cap could be added but usually not needed as mobile screens are small
 
     const startGame = () => {
         // Reset everything
@@ -73,6 +109,12 @@ export default function TetrisScreen() {
                 setGameOver(true);
                 setDropTime(null);
                 setAlertVisible(true);
+
+                // Save Score
+                updateGameBestScore(GAME_ID, score);
+                if (score > myBestScore) {
+                    setMyBestScore(score);
+                }
             }
             updatePlayerPos({ x: 0, y: 0, collided: true });
         }
@@ -109,128 +151,134 @@ export default function TetrisScreen() {
     };
 
     return (
-        <ScrollView
-            style={[styles.container, { marginBottom: insets.bottom }]}
-            contentContainerStyle={styles.scrollContent}
-            bounces={false}
-        >
-            <View style={styles.gameContainer}>
-                {/* Game Board */}
-                <View style={styles.tetrisWrapper}>
-                    <View style={styles.tetrisBoard}>
-                        {stage.map((row, y) =>
-                            row.map((cell, x) => (
-                                <View key={`${y}-${x}`} style={{ width: CELL_SIZE, height: CELL_SIZE }}>
-                                    <Cell type={cell[0]} />
-                                </View>
-                            ))
+        <View style={[styles.container, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
+            <View style={styles.contentContainer}>
+                <View style={styles.gameContainer}>
+                    {/* Game Board */}
+                    <View style={[styles.tetrisWrapper, {
+                        width: CELL_SIZE * BOARD_COLS + 4, // border width accounting 
+                        height: CELL_SIZE * BOARD_ROWS + 4
+                    }]}>
+                        <View style={{
+                            flexDirection: 'row',
+                            flexWrap: 'wrap',
+                            width: CELL_SIZE * BOARD_COLS,
+                            height: CELL_SIZE * BOARD_ROWS,
+                        }}>
+                            {stage.map((row, y) =>
+                                row.map((cell, x) => (
+                                    <View key={`${y}-${x}`} style={{ width: CELL_SIZE, height: CELL_SIZE }}>
+                                        <Cell type={cell[0]} />
+                                    </View>
+                                ))
+                            )}
+                        </View>
+
+                        {/* Game Over Overlay */}
+                        {gameOver && (
+                            <View style={styles.gameOverOverlay}>
+                                <AppText style={styles.gameOverText}>Game Over</AppText>
+                                <AppText style={styles.finalScoreText}>Score: {score}</AppText>
+                                <TouchableOpacity style={styles.retryButton} onPress={startGame}>
+                                    <AppText style={styles.retryButtonText}>Try Again</AppText>
+                                </TouchableOpacity>
+                            </View>
                         )}
                     </View>
 
-                    {/* Game Over Overlay */}
-                    {gameOver && (
-                        <View style={styles.gameOverOverlay}>
-                            <AppText style={styles.gameOverText}>Game Over</AppText>
-                            <AppText style={styles.finalScoreText}>Score: {score}</AppText>
-                            <TouchableOpacity style={styles.retryButton} onPress={startGame}>
-                                <AppText style={styles.retryButtonText}>Try Again</AppText>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </View>
+                    {/* Info Display (Score, Rows, Level) - Right Side */}
+                    <View style={styles.statsContainer}>
+                        <Display text={`Best\n${myBestScore}`} />
+                        <Display text={`점수\n${score}`} />
+                        <Display text={`레벨\n${level}`} />
 
-                {/* Info Display (Score, Rows, Level) - Right Side */}
-                <View style={styles.statsContainer}>
-                    <Display text={`점수\n${score}`} />
-                    <Display text={`Rows\n${rows}`} />
-                    <Display text={`레벨\n${level}`} />
-
-                    {/* Next Block Display */}
-                    <View style={styles.nextBlockContainer}>
-                        <AppText style={styles.nextBlockText}>Next</AppText>
-                        <View style={styles.nextBlockGrid}>
-                            {nextTetromino.map((row, y) => (
-                                <View key={y} style={{ flexDirection: 'row' }}>
-                                    {row.map((cell, x) => (
-                                        <View key={x} style={{ width: CELL_SIZE * 0.8, height: CELL_SIZE * 0.8 }}>
-                                            {/* Only render actual blocks, not empty space */}
-                                            <Cell type={cell as any} />
-                                        </View>
-                                    ))}
-                                </View>
-                            ))}
+                        {/* Next Block Display */}
+                        <View style={styles.nextBlockContainer}>
+                            <AppText style={styles.nextBlockText}>Next</AppText>
+                            <View style={styles.nextBlockGrid}>
+                                {nextTetromino.map((row, y) => (
+                                    <View key={y} style={{ flexDirection: 'row' }}>
+                                        {row.map((cell, x) => (
+                                            <View key={x} style={{ width: CELL_SIZE * 0.6, height: CELL_SIZE * 0.6 }}>
+                                                {/* Only render actual blocks, not empty space */}
+                                                <Cell type={cell as any} />
+                                            </View>
+                                        ))}
+                                    </View>
+                                ))}
+                            </View>
                         </View>
                     </View>
                 </View>
-            </View>
 
-            {/* Controls */}
-            <View style={styles.controls}>
-                {/* Start Button */}
-                {!dropTime && !gameOver ? (
-                    <TouchableOpacity style={styles.startButton} onPress={startGame}>
-                        <AppText style={styles.startButtonText}>게임시작</AppText>
-                    </TouchableOpacity>
-                ) : (
-                    <>
-                        {/* Directional Controls */}
-                        <View style={styles.controlRow}>
-                            <TouchableOpacity
-                                style={[styles.controlBtn, styles.rotateBtn]}
-                                onPress={() => playerRotate(stage, 1)}
-                            >
-                                <Ionicons name="refresh" size={28} color="#fff" />
-                            </TouchableOpacity>
-                        </View>
+                {/* Controls */}
+                <View style={styles.controls}>
+                    {/* Start Button */}
+                    {!dropTime && !gameOver ? (
+                        <TouchableOpacity style={styles.startButton} onPress={startGame}>
+                            <AppText style={styles.startButtonText}>게임시작</AppText>
+                        </TouchableOpacity>
+                    ) : (
+                        <>
+                            {/* Directional Controls */}
+                            <View style={styles.controlRow}>
+                                <TouchableOpacity
+                                    style={[styles.controlBtn, styles.rotateBtn]}
+                                    onPress={() => playerRotate(stage, 1)}
+                                >
+                                    <Ionicons name="refresh" size={28} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
 
-                        <View style={styles.controlRow}>
-                            <TouchableOpacity
-                                style={styles.controlBtn}
-                                onPress={() => move({ x: -1, y: 0 })}
-                            >
-                                <Ionicons name="arrow-back" size={28} color="#fff" />
-                            </TouchableOpacity>
+                            <View style={styles.controlRow}>
+                                <TouchableOpacity
+                                    style={styles.controlBtn}
+                                    onPress={() => move({ x: -1, y: 0 })}
+                                >
+                                    <Ionicons name="arrow-back" size={28} color="#fff" />
+                                </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={[styles.controlBtn, styles.dropBtn]}
-                                onPressIn={startFastDrop}
-                                onPressOut={stopFastDrop}
-                            >
-                                <Ionicons name="arrow-down" size={28} color="#fff" />
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.controlBtn, styles.dropBtn]}
+                                    onPressIn={startFastDrop}
+                                    onPressOut={stopFastDrop}
+                                >
+                                    <Ionicons name="arrow-down" size={28} color="#fff" />
+                                </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={styles.controlBtn}
-                                onPress={() => move({ x: 1, y: 0 })}
-                            >
-                                <Ionicons name="arrow-forward" size={28} color="#fff" />
-                            </TouchableOpacity>
-                        </View>
-                    </>
-                )}
-            </View>
+                                <TouchableOpacity
+                                    style={styles.controlBtn}
+                                    onPress={() => move({ x: 1, y: 0 })}
+                                >
+                                    <Ionicons name="arrow-forward" size={28} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                        </>
+                    )}
+                </View>
 
-            <CustomAlert
-                visible={alertVisible}
-                title="Game Over!"
-                message={`Score: ${score}`}
-                onClose={() => setAlertVisible(false)}
-                buttons={[
-                    {
-                        text: '다시 하기',
-                        onPress: () => {
-                            setAlertVisible(false);
-                            startGame();
+                <CustomAlert
+                    visible={alertVisible}
+                    title="Game Over!"
+                    message={`Score: ${score}`}
+                    onClose={() => setAlertVisible(false)}
+                    buttons={[
+                        {
+                            text: '다시 하기',
+                            onPress: () => {
+                                setAlertVisible(false);
+                                startGame();
+                            }
+                        },
+                        {
+                            text: '닫기',
+                            onPress: () => setAlertVisible(false),
+                            style: 'cancel'
                         }
-                    },
-                    {
-                        text: '닫기',
-                        onPress: () => setAlertVisible(false),
-                        style: 'cancel'
-                    }
-                ]}
-            />
-        </ScrollView>
+                    ]}
+                />
+            </View>
+        </View>
     );
 }
 
@@ -239,10 +287,10 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#121212', // Slightly softer black
     },
-    scrollContent: {
+    contentContainer: {
+        flex: 1,
+        justifyContent: 'center', // Center vertically
         alignItems: 'center',
-        paddingVertical: 20,
-        paddingBottom: 50,
     },
     gameContainer: {
         flexDirection: 'row',
@@ -250,6 +298,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         width: '100%',
         paddingHorizontal: 10,
+        marginBottom: 10,
     },
     tetrisWrapper: {
         position: 'relative',
@@ -259,33 +308,28 @@ const styles = StyleSheet.create({
         borderRadius: 8, // Soft corners
         overflow: 'hidden',
     },
-    tetrisBoard: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        width: CELL_SIZE * 12, // 12 Columns
-        height: CELL_SIZE * 20, // 20 Rows
-    },
+    // tetrisBoard style removed, inline style used for dynamic size
     statsContainer: {
         flexDirection: 'column',
         justifyContent: 'flex-start',
         marginLeft: 15,
         width: 80,
-        gap: 15, // Increased gap
+        gap: 10, // Compact gap
     },
     nextBlockContainer: {
         marginTop: 10,
         alignItems: 'center',
         backgroundColor: '#1E1E1E', // Distinct card background
-        padding: 8,
-        borderRadius: 12,
+        padding: 5,
+        borderRadius: 8,
         borderWidth: 1,
         borderColor: '#333',
     },
     nextBlockText: {
         color: '#ccc',
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: '600',
-        marginBottom: 8,
+        marginBottom: 4,
         letterSpacing: 1,
     },
     nextBlockGrid: {
@@ -295,19 +339,20 @@ const styles = StyleSheet.create({
     controls: {
         width: '100%',
         alignItems: 'center',
-        marginTop: 30, // More breathing room
+        justifyContent: 'center',
         paddingHorizontal: 30,
+        height: 180, // Fixed height for controls
     },
     controlRow: {
         flexDirection: 'row',
-        gap: 25, // Wider spacing
-        marginBottom: 20,
+        gap: 20, // Wider spacing
+        marginBottom: 15,
         alignItems: 'center',
     },
     controlBtn: {
-        width: 65,
-        height: 65,
-        borderRadius: 32.5,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: 'rgba(255, 255, 255, 0.1)', // Glassmorphism-ish
         justifyContent: 'center',
         alignItems: 'center',
@@ -317,11 +362,14 @@ const styles = StyleSheet.create({
     rotateBtn: {
         backgroundColor: 'rgba(90, 24, 154, 0.3)', // Subtle Purple tint
         borderColor: '#5A189A',
+        width: 50,
+        height: 50,
+        borderRadius: 25,
     },
     dropBtn: {
-        width: 75, // Main action larger
-        height: 75,
-        borderRadius: 37.5,
+        width: 70, // Main action larger
+        height: 70,
+        borderRadius: 35,
         backgroundColor: 'rgba(219, 31, 37, 0.2)', // App Primary Red tint
         borderColor: '#db1f25ff',
         borderWidth: 2,
@@ -352,7 +400,7 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     gameOverText: {
-        fontSize: 36,
+        fontSize: 30,
         fontWeight: '900',
         color: '#db1f25ff',
         marginBottom: 10,
@@ -361,20 +409,20 @@ const styles = StyleSheet.create({
         textShadowRadius: 10,
     },
     finalScoreText: {
-        fontSize: 24,
+        fontSize: 20,
         color: '#fff',
-        marginBottom: 30,
+        marginBottom: 20,
         fontWeight: '300',
     },
     retryButton: {
-        paddingVertical: 12,
-        paddingHorizontal: 30,
+        paddingVertical: 10,
+        paddingHorizontal: 25,
         backgroundColor: '#fff',
         borderRadius: 25,
     },
     retryButtonText: {
         color: '#db1f25ff',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold',
     },
 });

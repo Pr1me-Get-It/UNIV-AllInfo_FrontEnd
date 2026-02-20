@@ -6,7 +6,6 @@ import { GAMES } from '../constants/games';
 import { getTopScores, getBestScore, GameScore, deleteScore } from '../api/gameScore';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { moderateScale } from '../utils/responsive';
 import { useAuth } from '../context/AuthContext';
 import { AUTH_CONFIG } from '../constants/config';
 
@@ -49,7 +48,7 @@ export default function RankingScreen() {
         try {
             // Use getBestScore API
             const bestResponse = await getBestScore(gameId, userEmail);
-            if (__DEV__) console.log('loadMyBestScore response:', JSON.stringify(bestResponse.data, null, 2));
+
 
             if (bestResponse.data && typeof bestResponse.data.bestScore === 'number') {
                 const serverBest = bestResponse.data.bestScore;
@@ -62,7 +61,7 @@ export default function RankingScreen() {
                     // For now, just update local display. 
                     // To strictly sync, we would need a pure 'setLocalBest' in context. 
                     // But 'updateGameBestScore' is fine, it will just re-save.
-                    updateGameBestScore(gameId, serverBest);
+                    updateGameBestScore(gameId, serverBest, false);
                 } else {
                     setMyBestScore(localBest);
                 }
@@ -70,7 +69,7 @@ export default function RankingScreen() {
                 if (gameBestScores[gameId]) {
                     setMyBestScore(gameBestScores[gameId]);
                 } else {
-                    if (__DEV__) console.log('Best score is not a number or missing, defaulting to 0');
+
                     setMyBestScore(0);
                 }
             }
@@ -88,7 +87,7 @@ export default function RankingScreen() {
         setLoading(true);
         try {
             const response = await getTopScores(gameId, 50); // Get top 50
-            if (__DEV__) console.log('Ranking Data:', JSON.stringify(response.data, null, 2));
+
 
             if (response.data && Array.isArray(response.data)) {
                 // 중복 제거 로직: user_id(또는 email)별로 가장 높은 점수만 남김
@@ -109,7 +108,7 @@ export default function RankingScreen() {
                 // Map 값을 배열로 변환하고 점수 내림차순 정렬
                 const sortedUniqueScores = Array.from(uniqueScoresMap.values()).sort((a, b) => b.score - a.score);
 
-                if (__DEV__) console.log('Loaded scores (deduplicated):', sortedUniqueScores);
+
                 setScores(sortedUniqueScores);
             }
             else if (response.data && (response.data as any).scores) { // Check if wrapped in object

@@ -31,8 +31,8 @@ export default function MapScreen() {
   const { userEmail } = useAuth();
 
   useEffect(() => {
-    console.log('MapScreen: Mounted');
-    return () => console.log('MapScreen: Unmounted');
+    // console.log('MapScreen: Mounted');
+    // return () => console.log('MapScreen: Unmounted');
   }, []);
 
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
@@ -162,9 +162,9 @@ export default function MapScreen() {
             MOUNTAIN: false,
             CADASTRAL: false,
           }}
-          onInitialized={() => console.log('NaverMap: Initialized')}
-          onCameraChanged={(args) => console.log('NaverMap: Camera Changed', args)}
-          onTapMap={(args) => console.log('NaverMap: Tap', args)}
+          onInitialized={() => { }}
+          onCameraChanged={(args) => { }}
+          onTapMap={(args) => { }}
         >
           {filteredPins.map((pin) => (
             <NaverMapMarkerOverlay
@@ -173,7 +173,7 @@ export default function MapScreen() {
               longitude={pin.longitude}
               caption={{ text: pin.name }}
               onTap={() => {
-                console.log('NaverMap: Marker Tapped', pin.name);
+                // console.log('NaverMap: Marker Tapped', pin.name);
                 handleMarkerClick(pin);
               }}
               width={30}

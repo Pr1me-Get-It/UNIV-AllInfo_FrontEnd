@@ -13,6 +13,9 @@ import { COLORS } from '../../constants/theme';
 import CustomAlert from '../../components/ui/CustomAlert';
 import { useAppleGame } from './hooks/useAppleGame';
 import AppleGrid from './components/AppleGrid';
+import { useAuth } from '../../context/AuthContext'; // Added import
+
+import { GAMES } from '../../constants/games'; // Added import
 
 const AppleGameScreen = () => {
     const {
@@ -35,12 +38,30 @@ const AppleGameScreen = () => {
     const navigation = useNavigation();
     const [alertVisible, setAlertVisible] = useState(false);
 
+    // Auth Context & Local Best Score
+    const { userEmail, gameBestScores, updateGameBestScore } = useAuth(); // Added useAuth destructuring
+    const [myBestScore, setMyBestScore] = useState(0);
+    const GAME_ID = GAMES.APPLE_GAME.id;
+
+    // Load local best score
+    React.useEffect(() => {
+        if (gameBestScores && typeof gameBestScores[GAME_ID] === 'number') {
+            setMyBestScore(gameBestScores[GAME_ID]);
+        }
+    }, [gameBestScores]);
+
     // 게임 종료 시 알림 처리를 위한 useEffect
     React.useEffect(() => {
         if (gameState === 'PLAYING' && !isPlaying && timeLeft <= 0) {
             setAlertVisible(true);
+            // Save score
+            updateGameBestScore(GAME_ID, score);
+            // Update local display immediately if higher
+            if (score > myBestScore) {
+                setMyBestScore(score);
+            }
         }
-    }, [gameState, isPlaying, timeLeft]);
+    }, [gameState, isPlaying, timeLeft, score, updateGameBestScore, myBestScore]);
 
     if (gameState === 'MENU') {
         return (
@@ -50,6 +71,11 @@ const AppleGameScreen = () => {
                 </TouchableOpacity>
                 <View style={styles.menuHeader}>
                     <AppText style={styles.menuTitle}>두쫀쿠 게임!</AppText>
+                    <View style={{ marginTop: 10 }}>
+                        <AppText style={{ fontSize: 16, color: '#666', fontWeight: 'bold' }}>
+                            내 최고 점수: <AppText style={{ color: COLORS.PRIMARY }}>{myBestScore}</AppText>
+                        </AppText>
+                    </View>
                 </View>
 
                 <View style={styles.menuContent}>
@@ -59,18 +85,7 @@ const AppleGameScreen = () => {
                     <TouchableOpacity style={styles.menuButtonSecondary} onPress={() => CustomAlert({ visible: true, title: '게임 방법', message: '드래그하여 합이 10이 되는 두쫀쿠들을 선택하세요!', onClose: () => { }, buttons: [{ text: '확인', onPress: () => { } }] })}>
                         <AppText style={styles.menuButtonTextSecondary}>게임 방법</AppText>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.menuButtonSecondary} onPress={() => setAlertVisible(true)}>
-                        <AppText style={styles.menuButtonTextSecondary}>랭킹 보기</AppText>
-                    </TouchableOpacity>
                 </View>
-
-                <CustomAlert
-                    visible={alertVisible}
-                    title="랭킹"
-                    message="준비 중인 기능입니다."
-                    onClose={() => setAlertVisible(false)}
-                    buttons={[{ text: '닫기', onPress: () => setAlertVisible(false), style: 'cancel' }]}
-                />
             </View>
         );
     }
@@ -86,7 +101,10 @@ const AppleGameScreen = () => {
                     <AppText style={styles.label}>점수</AppText>
                     <AppText style={styles.value}>{score}</AppText>
                 </View>
-                <AppText style={styles.title}>두쫀쿠 게임</AppText>
+                <View style={{ alignItems: 'center' }}>
+                    <AppText style={styles.title}>두쫀쿠</AppText>
+                    <AppText style={{ fontSize: 12, color: COLORS.PRIMARY, fontWeight: 'bold' }}>Best: {myBestScore}</AppText>
+                </View>
                 <View style={styles.scoreContainer}>
                     <AppText style={styles.label}>남은시간</AppText>
                     <AppText style={[styles.value, timeLeft <= 10 && styles.warning]}>

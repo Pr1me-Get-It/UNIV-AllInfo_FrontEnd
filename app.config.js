@@ -35,7 +35,7 @@ export default {
       [
         '@mj-studio/react-native-naver-map',
         {
-          client_id: 't6jcujdihj', // TODO: 교체 필요
+          client_id: 'ntn7ch5ym4', // TODO: 교체 필요
         },
       ],
     ],
@@ -49,7 +49,7 @@ export default {
       eas: {
         projectId: '6120be3f-b18d-4531-af3f-af3f6db51bca',
       },
-      naverMapClientId: 't6jcujdihj', // 코드에서 참조할 경우를 대비
+      naverMapClientId: 'ntn7ch5ym4', // 코드에서 참조할 경우를 대비
     },
   },
 };
