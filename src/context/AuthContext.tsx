@@ -12,6 +12,7 @@ import { registerUser, withdrawUser } from '../api/userService';
 import { saveScore } from '../api/gameScore'; // Added import
 import { getToken, saveToken, removeToken, getData, saveData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { GAMES } from '../constants/games'; // Added games for iteration
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { AUTH_CONFIG } from '../constants/config';
 import { Alert } from 'react-native';
@@ -56,15 +57,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loadGameBestScores = async (email: string) => {
     try {
       const safeEmail = email.replace(/\./g, '_');
-      const savedScores = await getData<{ [key: number]: number }>(STORAGE_KEYS.GAME_SCORES(safeEmail));
-      if (savedScores) {
-        setGameBestScores(savedScores);
 
-      } else {
-        setGameBestScores({});
-      }
+      // 1. 기존 로컬 점수 로드 (백엔드 오류 시 폴백용)
+      const savedScores = await getData<{ [key: number]: number }>(STORAGE_KEYS.GAME_SCORES(safeEmail)) || {};
+
+      // 2. 백엔드에서 모든 게임의 최신 점수 로드
+      const newScores: { [key: number]: number } = {};
+      const gameList = Object.values(GAMES);
+
+      await Promise.all(
+        gameList.map(async (game) => {
+          try {
+            const { getBestScore } = await import('../api/gameScore');
+            const response = await getBestScore(game.id, email);
+            if (response.data && typeof response.data.bestScore === 'number') {
+              newScores[game.id] = response.data.bestScore;
+            } else {
+              // 백엔드에 데이터가 없으면 0점 처리 (동기화)
+              newScores[game.id] = 0;
+            }
+          } catch (error: any) {
+            // 개별 API 실패 시 로컬 점수 유지
+            // 백엔드에서 데이터가 없을 때 500을 반환하도록 되어 있으므로, 500 에러는 경고를 띄우지 않음
+            if (error.response?.status !== 500 && __DEV__) {
+              console.warn(`Failed to fetch score for game ${game.id}:`, error.message);
+            }
+            newScores[game.id] = savedScores[game.id] || 0;
+          }
+        })
+      );
+
+      // 3. 동기화된 점수를 상태 및 로컬 스토리지에 업데이트
+      setGameBestScores(newScores);
+      await saveData(STORAGE_KEYS.GAME_SCORES(safeEmail), newScores);
+      if (__DEV__) console.log('📡 [Auth] 게임 점수 서버 동기화 완료:', newScores);
+
     } catch (e) {
-      console.error('Failed to load game scores:', e);
+      console.error('Failed to load/sync game scores:', e);
     }
   };
 

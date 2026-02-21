@@ -8,7 +8,7 @@ import Entities from './entities';
 import { Images } from './assets/images';
 import AppText from '../../components/AppText'; // Adjust path if needed
 import { useAuth } from '../../context/AuthContext';
-import { saveScore, getBestScore } from '../../api/gameScore';
+// Removed saveScore, getBestScore since AuthContext handles it now
 
 const systems = [Physics];
 const GAME_ID = 1; // Flappy Bird Game ID
@@ -16,6 +16,7 @@ const GAME_ID = 1; // Flappy Bird Game ID
 const FlappyBirdScreen = () => {
     const [running, setRunning] = useState(false);
     const [gameStarted, setGameStarted] = useState(false);
+    const [isRestartable, setIsRestartable] = useState(false); // Restart delay state
     const gameEngineRef = React.useRef<any>(null);
     const [currentPoints, setCurrentPoints] = useState(0);
     const scoreRef = React.useRef(0); // Use ref to track score without stale closures
@@ -36,6 +37,7 @@ const FlappyBirdScreen = () => {
     const onEvent = React.useCallback((e: any) => {
         if (e.type === 'game_over') {
             setRunning(false);
+            setIsRestartable(false); // Lock restarting immediately
             const finalScore = scoreRef.current; // Read from ref
 
             // Context를 통해 로컬/서버 동시 업데이트
@@ -45,6 +47,11 @@ const FlappyBirdScreen = () => {
             if (finalScore > myBestScore) {
                 setMyBestScore(finalScore);
             }
+
+            // Enable restart after 0.5 second
+            setTimeout(() => {
+                setIsRestartable(true);
+            }, 500);
 
         } else if (e.type === 'score') {
             scoreRef.current += 1; // Update ref directly
@@ -57,6 +64,8 @@ const FlappyBirdScreen = () => {
     }, [myBestScore, updateGameBestScore]); // Add updateGameBestScore
 
     const resetGame = () => {
+        if (!isRestartable) return; // Prevent reset if not ready
+
         if (gameEngineRef.current) {
             gameEngineRef.current.swap(Entities());
         }
@@ -91,10 +100,21 @@ const FlappyBirdScreen = () => {
 
             {!running && (
                 <View style={styles.fullScreenButton}>
-                    <TouchableOpacity style={styles.fullScreenButton} onPress={resetGame}>
+                    <TouchableOpacity
+                        style={styles.fullScreenButton}
+                        onPress={resetGame}
+                        disabled={!isRestartable} // Disable touch interaction visually/mechanically
+                    >
                         <View style={styles.scoreContainer}>
                             <AppText style={styles.gameOverText}>Game Over</AppText>
-                            <AppText style={styles.gameOverSubText}>Touch to Restart</AppText>
+                            <AppText
+                                style={[
+                                    styles.gameOverSubText,
+                                    { opacity: isRestartable ? 1 : 0.4 } // Dim text while disabled
+                                ]}
+                            >
+                                Touch to Restart
+                            </AppText>
                         </View>
                     </TouchableOpacity>
                 </View>

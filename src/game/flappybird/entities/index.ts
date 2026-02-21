@@ -36,7 +36,7 @@ export default () => {
     const pipeBottom3 = Matter.Bodies.rectangle(pipeSizePosC.pipeBottom.pos.x, pipeSizePosC.pipeBottom.pos.y, 50, windowHeight, { isStatic: true, label: 'Pipe' });
 
     // Missile
-    const missile = Matter.Bodies.rectangle(windowWidth + 100, windowHeight / 2, 100, 50, { isStatic: true, label: 'Missile' }); // isStatic: true so it doesn't fall, we move it manually
+    const missile = Matter.Bodies.rectangle(windowWidth + 100, windowHeight / 2, 60, 30, { isStatic: true, label: 'Missile' }); // isStatic: true so it doesn't fall, we move it manually
 
     Matter.World.add(world, [bird, pipeTop1, pipeBottom1, pipeTop2, pipeBottom2, pipeTop3, pipeBottom3, missile]);
 

@@ -9,11 +9,11 @@ const LoginPlaceholder = ({
   icon = 'lock-closed-outline',
   targetScreen = 'All', // 설정(로그인) 탭의 이름
 }) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
 
   return (
     <View style={styles.container}>
-      <Ionicons name={icon} size={60} color="#ccc" style={styles.icon} />
+      <Ionicons name={icon as any} size={60} color="#ccc" style={styles.icon} />
       <AppText style={styles.msg}>{msg}</AppText>
       <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate(targetScreen)}>
         <AppText style={styles.btnText}>로그인 하러 가기</AppText>

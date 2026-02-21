@@ -22,6 +22,13 @@ export default function OthersScreen() {
             color: '#3B82F6', // Blue
             bgColor: '#EFF6FF',
         },
+        {
+            id: 'reactionTest',
+            title: '반응속도',
+            icon: 'flash-outline',
+            color: '#14B8A6', // Teal
+            bgColor: '#F0FDFA',
+        },
     ];
 
     const games = [

@@ -103,17 +103,19 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
     if (entities.physics.score >= 10) {
         const missile = entities.Missile;
 
-        // 미사일 이동 (왼쪽으로)
-        Matter.Body.translate(missile.body, { x: -5, y: 0 });
+        // 미사일 이동 (왼쪽으로) - 속도를 5에서 3.5로 낮춤
+        Matter.Body.translate(missile.body, { x: -4, y: 0 });
 
-        // 화면 밖으로 나가면 재활용
+        // 화면 밖으로 나가면 재활용 (딜레이 추가)
         if (missile.body.position.x < -50) {
             const randomY = Math.floor(Math.random() * (windowHeight - 100)) + 50;
-            Matter.Body.setPosition(missile.body, { x: windowWidth + 50, y: randomY });
+            // 미사일이 자주 나오지 않도록 x 좌표를 멀리 랜덤하게 띄워줌 (100 ~ 600 사이 딜레이 스폰)
+            const randomDelayX = windowWidth + 100 + Math.random() * 500;
+            Matter.Body.setPosition(missile.body, { x: randomDelayX, y: randomY });
         }
     } else {
-        // 점수가 20 미만이면 미사일을 화면 밖으로 치워둠 (혹시 모르니)
-        Matter.Body.setPosition(entities.Missile.body, { x: windowWidth + 100, y: windowHeight / 2 });
+        // 점수가 10 미만이면 미사일을 화면 밖으로 치워둠
+        Matter.Body.setPosition(entities.Missile.body, { x: windowWidth + 1000, y: windowHeight / 2 });
     }
 
     return entities;

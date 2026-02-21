@@ -84,14 +84,18 @@ export default function CalendarScreen({ navigation }: any) {
 
   // Reanimated Shared Value
   const itemHeight = useSharedValue(MIN_HEIGHT);
+  const startHeight = useSharedValue(MIN_HEIGHT);
 
   const { userEmail, isAuthenticated } = useAuth();
 
   // Gesture Handler
   const panGesture = Gesture.Pan()
-    .onChange((e) => {
-      const sensitivity = 0.2; // Slow down drag
-      let newHeight = itemHeight.value + e.changeY * sensitivity;
+    .onStart(() => {
+      startHeight.value = itemHeight.value;
+    })
+    .onUpdate((e) => {
+      const sensitivity = 0.4; // 적당한 드래그 감도
+      let newHeight = startHeight.value + e.translationY * sensitivity;
       if (newHeight < MIN_HEIGHT) newHeight = MIN_HEIGHT;
       if (newHeight > MAX_HEIGHT) newHeight = MAX_HEIGHT;
       itemHeight.value = newHeight;
@@ -164,7 +168,15 @@ export default function CalendarScreen({ navigation }: any) {
   const daySelectedEvents = useMemo(() => {
     return visibleEvents.filter((e: any) => {
       const s = e.start.date || e.start.dateTime?.split('T')[0];
-      const end = e.end?.date || e.end?.dateTime?.split('T')[0] || s;
+      let end = e.end?.date || e.end?.dateTime?.split('T')[0] || s;
+
+      const isGoogleAllDay = e.start.date && !e.id.startsWith('knu_');
+      if (isGoogleAllDay && e.end?.date) {
+        const endDateObj = new Date(end);
+        endDateObj.setDate(endDateObj.getDate() - 1);
+        end = endDateObj.toISOString().split('T')[0];
+      }
+
       return selectedDate >= s && selectedDate <= end;
     });
   }, [visibleEvents, selectedDate]);

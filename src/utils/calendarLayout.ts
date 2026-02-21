@@ -60,8 +60,11 @@ export const processCalendarEvents = (
         // Google Calendar API 'end.date' is exclusive, so if it's an all-day event
         // that ends on 2024-02-10, it actually includes up to 2024-02-09.
         // If it has dateTime, it's point-in-time, effectively inclusive for that day.
-        if (event.start.date) {
-            // Adjust exclusive end date for all-day events
+        // 학사 일정(academic_schedule)의 경우 이미 end.date가 inclusive하므로 변환하지 않습니다.
+        const isGoogleAllDay = event.start.date && !event.id.startsWith('knu_');
+
+        if (isGoogleAllDay && event.end?.date) {
+            // Adjust exclusive end date for all-day events (Google only)
             const endDateObj = new Date(endStr);
             endDateObj.setDate(endDateObj.getDate() - 1);
             endStr = getDateStr(endDateObj);

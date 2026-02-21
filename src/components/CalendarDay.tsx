@@ -38,6 +38,57 @@ interface CalendarDayProps {
   dayWidth: number;
 }
 
+const EventBlock = memo(({ ev, dayWidth, itemHeight, rTextStyle }: any) => {
+  const EVENT_HEIGHT = 16;
+  const EVENT_MARGIN = 2;
+
+  const rEventBlockStyle = useAnimatedStyle(() => {
+    const scale = interpolate(itemHeight.value, [50, 100], [0.5, 1], Extrapolation.CLAMP);
+    return {
+      height: EVENT_HEIGHT * scale,
+      top: ev.slotIndex * ((EVENT_HEIGHT + EVENT_MARGIN) * scale),
+      borderRadius: 3 * scale,
+      paddingVertical: 1, // Add tiny padding to prevent text cutoff
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          left: 0,
+          width: dayWidth * ev.colSpan - 2, // Slight gap on right
+          backgroundColor: ev.color,
+          paddingHorizontal: 2,
+          justifyContent: 'center',
+          zIndex: 100 + ev.slotIndex,
+        },
+        rEventBlockStyle,
+      ]}
+    >
+      {/* 축소 시 텍스트만 투명도를 0으로 만들기 위해 rTextStyle 적용 */}
+      <Animated.View style={[rTextStyle, { width: '100%', alignItems: 'center', justifyContent: 'center' }]}>
+        <AppText
+          style={{
+            fontSize: 10,
+            color: ev.textColor,
+            fontWeight: 'bold',
+            textAlign: 'center',
+            width: '100%',
+            includeFontPadding: false,
+            lineHeight: 12,
+            marginTop: 1, // 미세 픽셀 단위 중앙 정렬 조정
+          }}
+          numberOfLines={1}
+        >
+          {ev.summary}
+        </AppText>
+      </Animated.View>
+    </Animated.View>
+  );
+});
+
 const CalendarDay = ({
   date,
   state,
@@ -111,80 +162,17 @@ const CalendarDay = ({
       </View>
 
       {/* Expanded View: Absolute Positioned Events */}
-      <Animated.View style={[styles.eventContainer, rTextStyle]}>
-        {events.map((ev, i) => {
-          // If the event starts on this day (which it should if it's in the list), 
-          // we render it with width = dayWidth * colSpan
-
-          return (
-            <View
-              key={`${ev.id}-${ev.startDate}`}
-              style={{
-                position: 'absolute',
-                top: ev.slotIndex * (EVENT_HEIGHT + EVENT_MARGIN),
-                left: 0,
-                width: dayWidth * ev.colSpan - 2, // Slight gap on right
-                height: EVENT_HEIGHT,
-                backgroundColor: ev.color,
-                borderRadius: 3,
-                paddingHorizontal: 2,
-                justifyContent: 'center',
-                // ZIndex is tricky in RN Android. 
-                // We rely on render order (later slots render on top if overlapping, but slots shouldn't overlap).
-                // However, cross-day z-index (next cell covering this one) is the real issue.
-                // We might need zIndex here.
-                zIndex: 100 + ev.slotIndex,
-              }}
-            >
-              <AppText
-                style={{
-                  fontSize: 10,
-                  color: ev.textColor,
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                  width: '100%',
-                }}
-                numberOfLines={1}
-              >
-                {ev.summary}
-              </AppText>
-            </View>
-          );
-        })}
-      </Animated.View>
-
-      {/* Collapsed View: Dots (Need to fetch dots from somewhere? 
-          The 'events' prop now only contains chunks starting here.
-          For dots, we usually want to know if *any* event exists on this day.
-          But our new architecture only passes 'starts' to this component.
-          
-          PROBLEM: Dots won't show for continued events if we only pass chunks starting here.
-          
-          FIX: We need to update CalendarScreen to pass ALL events active on this day for dots,
-          OR update usage of 'events' here.
-          
-          For now, I'll accept that only starting events show dots, or I need to request a fix.
-          However, the user asked for "Continuous Event View" (expanded).
-          Let's assume checking 'isExpanded' or similar.
-          
-          Actually, I can't easily fix the dots without changing the data structure passed to CalendarDay
-          to include "occupying events" vs "starting events".
-          
-          Let's stick to the requested "Continuous View" first.
-          If dots are missing for continued days, I can fix that in a follow-up.
-      */}
-      <Animated.View style={[styles.dotContainer, rDotStyle]}>
-        {/* Temporary: Only showing dots for events starting today. */}
-        {events.slice(0, 3).map((ev, i) => (
-          <View
-            key={`dot-${i}`}
-            style={[
-              styles.dot,
-              { backgroundColor: ev.color === '#FEE2E2' ? 'rgb(219, 31, 38)' : '#333' },
-            ]}
+      <View style={[styles.eventContainer]}>
+        {events.map((ev, i) => (
+          <EventBlock
+            key={`${ev.id}-${ev.startDate}`}
+            ev={ev}
+            dayWidth={dayWidth}
+            itemHeight={itemHeight}
+            rTextStyle={rTextStyle}
           />
         ))}
-      </Animated.View>
+      </View>
 
     </AnimatedTouchableOpacity>
   );
