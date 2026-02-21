@@ -162,9 +162,15 @@ export default function MapScreen() {
             MOUNTAIN: false,
             CADASTRAL: false,
           }}
-          onInitialized={() => { }}
-          onCameraChanged={(args) => { }}
-          onTapMap={(args) => { }}
+          onInitialized={() => {
+            console.log('[NaverMap] onInitialized - Map loaded securely.');
+          }}
+          onCameraChanged={(args) => {
+            // console.log('[NaverMap] onCameraChanged:', args);
+          }}
+          onTapMap={(args) => {
+            console.log('[NaverMap] onTapMap:', args);
+          }}
         >
           {filteredPins.map((pin) => (
             <NaverMapMarkerOverlay

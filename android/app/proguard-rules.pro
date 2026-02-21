@@ -12,8 +12,3 @@
 -keep class com.facebook.react.turbomodule.** { *; }
 
 # Add any project specific keep options here:
-# react-native-google-signin
--keep class com.google.android.gms.** { *; }
--keep class com.google.api.client.** { *; }
--keep class com.google.api.services.people.** { *; }
--dontwarn com.google.android.gms.**

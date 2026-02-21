@@ -3,12 +3,12 @@ export default {
     scheme: 'univ-allinfo',
     name: 'UNIV-AllInfo',
     slug: 'univ-allinfo',
-    version: '0.5.1',
+    version: '0.10.1',
     orientation: 'portrait',
-    icon: './assets/icon.png',
+    icon: './src/assets/icon.png',
     userInterfaceStyle: 'light',
     splash: {
-      image: './assets/splash.png',
+      image: './src/assets/splash.png',
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
     },
@@ -21,13 +21,11 @@ export default {
       package: 'com.univallinfo.app',
       googleServicesFile: './google-services.json',
       adaptiveIcon: {
-        foregroundImage: './assets/adaptive-icon.png',
-        backgroundColor: '#ffffff',
-      },
+        foregroundImage: './src/assets/adaptive-icon.png.png',
+        backgroundColor: '#ffffff'
+      }
     },
-    web: {
-      favicon: './assets/favicon.png',
-    },
+    web: {},
     plugins: [
       'expo-web-browser',
       'expo-secure-store',
@@ -35,7 +33,7 @@ export default {
       [
         '@mj-studio/react-native-naver-map',
         {
-          client_id: 'ntn7ch5ym4', // TODO: 교체 필요
+          client_id: 't6jcujdihj',
         },
       ],
     ],
@@ -49,7 +47,7 @@ export default {
       eas: {
         projectId: '6120be3f-b18d-4531-af3f-af3f6db51bca',
       },
-      naverMapClientId: 'ntn7ch5ym4', // 코드에서 참조할 경우를 대비
+      naverMapClientId: 't6jcujdihj',
     },
   },
 };

@@ -28,6 +28,9 @@ export default function SchoolMap({ pins, onPinPress }: SchoolMapProps) {
                 CADASTRAL: false,
                 MOUNTAIN: false,
             }}
+            onInitialized={() => {
+                console.log('[SchoolMap.native] onInitialized - Map loaded securely.');
+            }}
         >
             {pins.map((pin) => (
                 <NaverMapMarkerOverlay
