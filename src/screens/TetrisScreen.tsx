@@ -19,6 +19,14 @@ import CustomAlert from '../components/ui/CustomAlert';
 import { createStage, checkCollision } from '../game/tetris/gameHelpers';
 import { useAuth } from '../context/AuthContext'; // Added import
 import { GAMES } from '../constants/games'; // Added import
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+
+type TetrisScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Tetris'>;
+
+interface Props {
+    navigation: TetrisScreenNavigationProp;
+}
 
 const { width, height } = Dimensions.get('window');
 const BOARD_WIDTH_RATIO = 0.65; // Width constraint
@@ -29,7 +37,7 @@ const CELL_SIZE_H = (height * BOARD_HEIGHT_RATIO) / 20; // 20 Rows
 
 const CELL_SIZE = Math.min(CELL_SIZE_W, CELL_SIZE_H);
 
-export default function TetrisScreen() {
+export default function TetrisScreen({ navigation }: Props) {
     const insets = useSafeAreaInsets();
     const [dropTime, setDropTime] = useState<number | null>(null);
     const [gameOver, setGameOver] = useState(false);

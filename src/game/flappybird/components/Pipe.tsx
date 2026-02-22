@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Image } from 'react-native';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
 import { Images } from '../assets/images';
 
 const Pipe = (props: any) => {
@@ -64,7 +65,7 @@ const Pipe = (props: any) => {
                     {pipeSegments}
                     <Image
                         style={{ width: width, height: capHeight }}
-                        resizeMode="stretch"
+                        contentFit="fill"
                         source={Images.pipeTop}
                     />
                 </>
@@ -74,7 +75,7 @@ const Pipe = (props: any) => {
                 <>
                     <Image
                         style={{ width: width, height: capHeight }}
-                        resizeMode="stretch"
+                        contentFit="fill"
                         source={Images.pipeTop}
                     />
                     {pipeSegments}

@@ -15,6 +15,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { getToken } from '../utils/storage';
 import SOURCE_LABELS from '../constants/labeltag.json';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
+import { RootStackParamList } from '../types/navigation';
+
+type DetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Detail'>;
+type DetailScreenRouteProp = RouteProp<RootStackParamList, 'Detail'>;
+
+interface Props {
+  navigation: DetailScreenNavigationProp;
+  route: DetailScreenRouteProp;
+}
 
 const DEV_TOKEN = 'DEV_MODE_ACCESS_TOKEN';
 const stripHtml = text => {
@@ -27,8 +38,8 @@ const stripHtml = text => {
     .replace(/&gt;/g, '>'); // > 엔티티 변환
 };
 
-export default function DetailScreen({ route, navigation }) {
-  const params = route.params || {};
+export default function DetailScreen({ route, navigation }: Props) {
+  const params = route.params || { item: null };
   const item = params.item || null;
   const context = useContext(AlarmContext);
   const { markAsRead, toggleBookmark, bookmarkStatus, addMockEvent } = context || {};
@@ -58,7 +69,6 @@ export default function DetailScreen({ route, navigation }) {
     try {
       // [수정] item.id 대신 itemId 사용
       const response = await api.get(`/notice/${itemId}/deadline`);
-      console.log(`[Deadline Info] ID: ${itemId}`, response.data); // 로그 추가
 
       // [수정] 실제 API 응답 구조에 맞춰 파싱 (response.data 자체가 객체임)
       // 예: {"deadline": "...", "kickoff": "...", ...}
@@ -111,7 +121,6 @@ export default function DetailScreen({ route, navigation }) {
 
     try {
       const token = await getToken();
-      console.log('[Calendar Debug] Token:', token); // 토큰 확인
 
       if (!token) {
         Alert.alert('로그인 필요', '캘린더에 등록하려면 로그인이 필요합니다.');

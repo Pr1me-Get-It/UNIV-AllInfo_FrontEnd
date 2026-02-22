@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Image, StatusBar } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { Image } from 'expo-image';
 import SimpleGameEngine from './components/GameEngine';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons'; // Assuming you use Ionicons or similar
 import { Physics } from './systems/Physics';
 import Entities from './entities';
@@ -21,7 +24,7 @@ const FlappyBirdScreen = () => {
     const [currentPoints, setCurrentPoints] = useState(0);
     const scoreRef = React.useRef(0); // Use ref to track score without stale closures
     const [myBestScore, setMyBestScore] = useState(0); // State to store best score
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { userEmail, nickname, gameBestScores, updateGameBestScore } = useAuth(); // Get gameBestScores and update function
 
     const initialEntities = React.useMemo(() => Entities(), []);
@@ -77,7 +80,7 @@ const FlappyBirdScreen = () => {
 
     return (
         <View style={styles.container}>
-            <Image source={Images.background} style={styles.backgroundImage} resizeMode="stretch" />
+            <Image source={Images.background} style={styles.backgroundImage} contentFit="fill" />
 
             <SimpleGameEngine
                 ref={gameEngineRef}

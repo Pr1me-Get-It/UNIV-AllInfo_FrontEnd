@@ -1,11 +1,20 @@
 // screen/BookmarkScreen.jsx
 import React, { useContext } from 'react';
-import { View, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { AlarmContext } from '../data/Alarm';
 import { useAuth } from '../context/AuthContext';
 import LoginPlaceholder from '../components/ui/LoginPlaceholder';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+
+type BookmarkScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Bookmark'>;
+
+interface Props {
+  navigation: BookmarkScreenNavigationProp;
+}
 
 // 타입 정의 추가
 interface BookmarkItem {
@@ -15,7 +24,7 @@ interface BookmarkItem {
   [key: string]: any; // 다른 속성 허용
 }
 
-export default function BookmarkScreen({ navigation }: any) {
+export default function BookmarkScreen({ navigation }: Props) {
   // 1. Context에서 필요한 데이터와 인증 상태를 가져옵니다.
   const context = useContext(AlarmContext);
   const { bookmarkStatus } = context || { bookmarkStatus: {} };
@@ -52,7 +61,7 @@ export default function BookmarkScreen({ navigation }: any) {
               style={styles.itemRow}
               onPress={() => navigation.navigate('Detail', { item })}>
               <View style={styles.iconBackground}>
-                <Image source={item.image} style={styles.customIcon} />
+                <Image source={item.image} style={styles.customIcon} contentFit="contain" />
               </View>
               <View style={styles.textWrapper}>
                 <AppText style={styles.itemText} numberOfLines={1}>
@@ -95,7 +104,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 15,
   },
-  customIcon: { width: 40, height: 40, resizeMode: 'contain' },
+  customIcon: { width: 40, height: 40 },
   textWrapper: {
     flex: 1,
     flexDirection: 'row',

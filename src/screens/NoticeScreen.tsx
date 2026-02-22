@@ -1,6 +1,6 @@
 /* screen/NoticeScreen.tsx */
 
-import React, { useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -25,14 +25,24 @@ import NoticeItem from '../components/NoticeItem';
 import { fetchNotices } from '../api/noticeService';
 import { COMMON_TAGS } from '../constants/noticeCategories';
 import { moderateScale } from '../utils/responsive';
+import debounce from 'lodash.debounce';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 
-export default function NoticeScreen({ navigation }: any) {
+type NoticeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTab'>;
+
+interface Props {
+  navigation: NoticeScreenNavigationProp;
+}
+
+export default function NoticeScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
   const { readStatus } = useContext(AlarmContext) || { readStatus: {} };
   const { userEmail } = useAuth(); // 유저 이메일 가져오기
   const safeStatus = readStatus || {};
 
   const [query, setQuery] = useState('');
+  const [inputText, setInputText] = useState(''); // 타이핑용 로컬 상태
   const [filterMode, setFilterMode] = useState('all');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
@@ -64,6 +74,20 @@ export default function NoticeScreen({ navigation }: any) {
     };
     initFilters();
   }, []);
+
+  // 검색 인풋 디바운스 적용
+  const debouncedSetQuery = useRef(
+    debounce((text: string) => {
+      setQuery(text);
+    }, 500) // 500ms 지연
+  ).current;
+
+  // 컴포넌트 언마운트 시 메모리 누수 방지
+  useEffect(() => {
+    return () => {
+      debouncedSetQuery.cancel();
+    };
+  }, [debouncedSetQuery]);
 
   // 필터 저장 함수
   const persistFilters = async (newList: string[]) => {
@@ -472,13 +496,16 @@ export default function NoticeScreen({ navigation }: any) {
         <TextInput
           placeholder="공지사항 검색..."
           placeholderTextColor="#999"
-          value={query}
-          onChangeText={setQuery}
+          value={inputText}
+          onChangeText={(text) => {
+            setInputText(text);
+            debouncedSetQuery(text);
+          }}
           style={styles.searchInput}
           returnKeyType="search"
         />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')}>
+        {inputText.length > 0 && (
+          <TouchableOpacity onPress={() => { setInputText(''); setQuery(''); }}>
             <Ionicons name="close-circle" size={20} color="#ccc" />
           </TouchableOpacity>
         )}

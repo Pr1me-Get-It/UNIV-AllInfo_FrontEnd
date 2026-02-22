@@ -316,23 +316,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 회원 탈퇴 함수
   const withdraw = useCallback(async () => {
-    console.log('📡 [AuthContext] withdraw 함수 시작');
+    if (__DEV__) console.log('📡 [AuthContext] withdraw 함수 시작');
     setIsLoading(true);
     try {
       if (userEmail && userEmail !== DEV_EMAIL) {
         // 1. 백엔드에 회원 탈퇴 요청
-        try {
-          await withdrawUser(userEmail);
-          console.log('📡 [AuthContext] 백엔드 회원 탈퇴 성공');
-        } catch (e: any) {
-          console.error('❌ [AuthContext] 백엔드 회원 탈퇴 실패:', e);
-          // 실패하더라도 로컬 로그아웃은 진행 여부를 결정해야 하지만,
-          // 보통은 서버 실패 시 사용자에게 알리고 중단하거나, 강제 탈퇴 시 진행함.
-          // 여기서는 에러 로그만 남기고 일단 진행 (사용자 관점에서는 탈퇴 처리)
-        }
+        await withdrawUser(userEmail);
+        if (__DEV__) console.log('📡 [AuthContext] 백엔드 회원 탈퇴 성공');
 
         // 2. 구글 연동 해제 (선택)
-        // 로그아웃과 동일하게 구글 세션도 해제
         try {
           await GoogleSignin.revokeAccess();
           await GoogleSignin.signOut();
@@ -340,16 +332,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.warn('구글 세션 해제(revoke) 중 오류 (무시):', e);
         }
       }
-    } finally {
-      // 3. 로컬 데이터 클리어 및 초기화 (로그아웃 로직 재사용 가능하지만 명시적으로 수행)
-      console.log('📡 [AuthContext] 로컬 데이터 삭제 및 유저 리셋');
+
+      // 3. 로컬 데이터 클리어 및 초기화
+      if (__DEV__) console.log('📡 [AuthContext] 로컬 데이터 삭제 및 유저 리셋');
       await removeToken();
       setUserEmail(null);
       setUserInfo(null);
       setNickname(null); // 닉네임 상태 초기화
+      if (__DEV__) console.log('✅ [AuthContext] 회원 탈퇴 프로세스 완료');
+    } catch (error) {
+      console.error('❌ [AuthContext] 회원 탈퇴 에러:', error);
+      throw error; // 에러를 ProfileScreen으로 전달
+    } finally {
       setIsLoading(false);
-      // Alert.alert 제거 -> ProfileScreen에서 처리
-      console.log('✅ [AuthContext] 회원 탈퇴 프로세스 완료');
     }
   }, [userEmail]);
 

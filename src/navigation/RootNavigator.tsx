@@ -12,6 +12,7 @@ const TetrisScreen = React.lazy(() => import('../screens/TetrisScreen'));
 const AppleGameScreen = React.lazy(() => import('../game/apple/AppleGameScreen'));
 const FlappyBirdScreen = React.lazy(() => import('../game/flappybird/FlappyBirdScreen'));
 const RankingScreen = React.lazy(() => import('../screens/RankingScreen'));
+const LinkSettingScreen = React.lazy(() => import('../screens/LinkSettingScreen'));
 
 const Stack = createNativeStackNavigator();
 
@@ -71,6 +72,15 @@ export default function RootNavigator() {
           name="Ranking"
           component={RankingScreen}
           options={{ title: '게임 랭킹', headerShown: true }}
+        />
+        <Stack.Screen
+          name="LinkSetting"
+          component={LinkSettingScreen}
+          options={{
+            headerShown: false,
+            animation: 'fade', // 애니메이션이 느리다고 하여 가장 빠르고 간결한 fade(혹은 default) 체제로 변경
+            animationDuration: 150, // Android 기준 전환 속도
+          }}
         />
       </Stack.Navigator>
     </Suspense>

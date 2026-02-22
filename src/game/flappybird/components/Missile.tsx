@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image } from 'react-native';
+import { Image } from 'expo-image';
 import { Images } from '../assets/images';
 
 const Missile = (props: any) => {
@@ -17,7 +17,7 @@ const Missile = (props: any) => {
                 width: width,
                 height: height,
             }}
-            resizeMode="contain"
+            contentFit="contain"
             source={Images.rocket}
         />
     );

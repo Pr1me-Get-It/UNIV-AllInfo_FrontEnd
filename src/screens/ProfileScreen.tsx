@@ -4,7 +4,6 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Platform,
   Switch,
@@ -13,6 +12,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
@@ -20,6 +20,8 @@ import { useAuth } from '../context/AuthContext';
 import { registerUser } from '../api/userService';
 import { registerForPushNotificationsAsync, sendTestNotification } from '../utils/notifications';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 import CustomAlert from '../components/ui/CustomAlert';
 import { saveData, getData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
@@ -31,7 +33,7 @@ const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_PASSWORD = '1557';
 
 export default function ProfileScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // 1. 모든 훅(useState, useAuth 등)은 반드시 최상단에 모여야 합니다.
   const {
@@ -83,6 +85,9 @@ export default function ProfileScreen() {
   const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
   const [feedbackInput, setFeedbackInput] = useState('');
   const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+
+  // 라이선스 모달 상태
+  const [isLicenseModalVisible, setIsLicenseModalVisible] = useState(false);
 
   // 피드백 전송 핸들러
   const handleFeedbackSubmit = async () => {
@@ -187,8 +192,12 @@ export default function ProfileScreen() {
   // 회원 탈퇴 버튼 핸들러
   const handleWithdraw = () => {
     showAlert('회원 탈퇴', '정말 탈퇴하시겠습니까?\n모든 데이터가 삭제됩니다.', async () => {
-      await withdraw();
-      showAlert('알림', '회원 탈퇴가 완료되었습니다.');
+      try {
+        await withdraw();
+        showAlert('알림', '회원 탈퇴가 완료되었습니다.');
+      } catch (error) {
+        showAlert('오류', '회원 탈퇴 처리에 실패했습니다.\n잠시 후 다시 시도해주세요.');
+      }
     });
   };
 
@@ -345,6 +354,44 @@ export default function ProfileScreen() {
               </View>
             </View>
           </View>
+        </Modal>
+
+        {/* --- License Modal --- */}
+        <Modal
+          visible={isLicenseModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsLicenseModalVisible(false)}>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setIsLicenseModalVisible(false)}>
+            <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
+              <AppText style={styles.modalTitle}>오픈소스 라이선스</AppText>
+              <ScrollView style={{ maxHeight: 300, width: '100%', marginBottom: 20 }} showsVerticalScrollIndicator={false}>
+                <AppText style={{ fontSize: 13, color: '#4b5563', lineHeight: 22 }}>
+                  본 애플리케이션은 다음과 같은 핵심 오픈소스 기술 스택을 활용하고 있습니다:{'\n\n'}
+                  • React Native (0.74+){'\n'}
+                  • Expo (SDK 51){'\n'}
+                  • React Navigation{'\n'}
+                  • React Query (@tanstack/react-query){'\n'}
+                  • React Native Reanimated (Reanimated 3){'\n'}
+                  • Lottie React Native{'\n'}
+                  • React Native Naver Map{'\n'}
+                  • Matter.js (물리 엔진){'\n'}
+                  • Axios{'\n'}
+                  {'\n'}각 프로젝트의 라이선스 원문은 해당 공식 저장소에서 확인 가능합니다.
+                </AppText>
+              </ScrollView>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalCancelBtn]}
+                  onPress={() => setIsLicenseModalVisible(false)}>
+                  <AppText style={styles.modalCancelText}>닫기</AppText>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
 
         {/* 피드백 모달 */}
@@ -514,6 +561,12 @@ export default function ProfileScreen() {
               <View>
                 <AppText style={styles.menuLabel}>피드백 보내기</AppText>
                 <AppText style={styles.menuDescription}>버그 제보, 기능 요청 등을 전달합니다.</AppText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuRow} onPress={() => setIsLicenseModalVisible(true)}>
+              <View>
+                <AppText style={styles.menuLabel}>오픈소스 라이선스</AppText>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#ccc" />
             </TouchableOpacity>

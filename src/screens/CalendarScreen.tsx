@@ -11,7 +11,7 @@ import {
 import AppText from '../components/AppText';
 
 const MIN_HEIGHT = 50;
-const MAX_HEIGHT = 100;
+const MAX_HEIGHT = 80;
 
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -76,7 +76,16 @@ const TODAY_STR = new Date().toISOString().split('T')[0];
 const screenWidth = Dimensions.get('window').width;
 const dayWidth = (screenWidth - 32) / 7;
 
-export default function CalendarScreen({ navigation }: any) {
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+
+type CalendarScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTab'>;
+
+interface Props {
+  navigation: CalendarScreenNavigationProp;
+}
+
+export default function CalendarScreen({ navigation }: Props) {
   const [selectedDate, setSelectedDate] = useState(TODAY_STR);
   const [filterMode, setFilterMode] = useState('all');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
@@ -90,6 +99,9 @@ export default function CalendarScreen({ navigation }: any) {
 
   // Gesture Handler
   const panGesture = Gesture.Pan()
+    // 캘린더가 접혀있을 때는 아래로만(10) 제스처 활성화하여, 위로 스와이프 시 아래의 ScrollView가 스크롤되도록 함
+    // 캘린더가 펼쳐져 있을 때는 위로도(-10) 제스처를 활성화하여 캘린더를 접을 수 있게 함
+    .activeOffsetY(isExpanded ? [-10, 10] : 10)
     .onStart(() => {
       startHeight.value = itemHeight.value;
     })

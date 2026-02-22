@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 const LoginPlaceholder = ({
   msg = '로그인이 필요한 기능입니다.',
   icon = 'lock-closed-outline',
-  targetScreen = 'All', // 설정(로그인) 탭의 이름
+  targetScreen = 'Profile', // 설정(로그인) 탭의 이름
 }) => {
   const navigation = useNavigation<any>();
 

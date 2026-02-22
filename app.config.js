@@ -21,7 +21,7 @@ export default {
       package: 'com.univallinfo.app',
       googleServicesFile: './google-services.json',
       adaptiveIcon: {
-        foregroundImage: './src/assets/adaptive-icon.png.png',
+        foregroundImage: './src/assets/adaptive-icon.png',
         backgroundColor: '#ffffff'
       }
     },

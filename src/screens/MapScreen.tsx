@@ -22,9 +22,9 @@ const { width } = Dimensions.get('window');
 
 // Define default camera position (first pin or center of campus)
 const INITIAL_REGION = {
-  latitude: 37.5509,
-  longitude: 127.0755,
-  zoom: 16,
+  latitude: 35.888753,
+  longitude: 128.610514,
+  zoom: 14,
 };
 
 export default function MapScreen() {
@@ -163,13 +163,13 @@ export default function MapScreen() {
             CADASTRAL: false,
           }}
           onInitialized={() => {
-            console.log('[NaverMap] onInitialized - Map loaded securely.');
+            if (__DEV__) console.log('[NaverMap] onInitialized - Map loaded securely.');
           }}
           onCameraChanged={(args) => {
             // console.log('[NaverMap] onCameraChanged:', args);
           }}
           onTapMap={(args) => {
-            console.log('[NaverMap] onTapMap:', args);
+            if (__DEV__) console.log('[NaverMap] onTapMap:', args);
           }}
         >
           {filteredPins.map((pin) => (

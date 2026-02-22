@@ -6,11 +6,13 @@ import { GAMES } from '../constants/games';
 import { getTopScores, getBestScore, GameScore, deleteScore } from '../api/gameScore';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
 import { AUTH_CONFIG } from '../constants/config';
 
 export default function RankingScreen() {
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { userEmail, gameBestScores, updateGameBestScore } = useAuth(); // Added gameBestScores
     const [selectedGameId, setSelectedGameId] = useState<number>(GAMES.FLAPPY_BIRD.id);
     const [scores, setScores] = useState<GameScore[]>([]);

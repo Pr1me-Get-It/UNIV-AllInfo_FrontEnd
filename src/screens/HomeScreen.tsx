@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,21 +9,105 @@ import {
   Linking,
   Dimensions,
   Animated,
+  Modal,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { EXTERNAL_LINKS } from '../constants/links';
+import { AVAILABLE_LINKS, ExternalLink } from '../constants/links';
 import { COLORS } from '../constants/colors';
 import AppText from '../components/AppText';
 import { useAuth } from '../context/AuthContext';
 import { moderateScale } from '../utils/responsive';
+import CustomAlert from '../components/ui/CustomAlert';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTab'>;
+
+interface Props {
+  navigation: HomeScreenNavigationProp;
+}
 
 const { width } = Dimensions.get('window');
 const CARD_SPACING = 15;
 const CARD_WIDTH = (width - 40 - CARD_SPACING) / 2; // 2 columns
 
-export default function HomeScreen({ navigation }: any) {
-  const { nickname } = useAuth();
+export default function HomeScreen({ navigation }: Props) {
+  const { nickname, userInfo, isAuthenticated, updateNickname } = useAuth();
+  const [customLinks, setCustomLinks] = useState<ExternalLink[]>(AVAILABLE_LINKS.slice(0, 4));
+
+  // 닉네임 모달 상태
+  const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState('');
+
+  // 커스텀 알림 상태
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertOnConfirm, setAlertOnConfirm] = useState<(() => void) | undefined>(undefined);
+  const [alertButtons, setAlertButtons] = useState<any[] | undefined>(undefined);
+
+  const showAlert = (title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertOnConfirm(() => onConfirm);
+    setAlertButtons(buttons);
+    setAlertVisible(true);
+  };
+
+  const closeAlert = () => {
+    setAlertVisible(false);
+    setAlertOnConfirm(undefined);
+    setAlertButtons(undefined);
+  };
+
+  // 닉네임 저장 핸들러
+  const handleNicknameSave = async () => {
+    if (!nicknameInput.trim()) {
+      showAlert('오류', '닉네임을 입력해주세요.');
+      return;
+    }
+
+    if (isAuthenticated) {
+      await updateNickname(nicknameInput.trim());
+      setIsNicknameModalVisible(false);
+      setNicknameInput('');
+      showAlert('알림', '닉네임이 성공적으로 변경되었습니다.');
+    }
+  };
+
+  const handleNicknamePress = () => {
+    if (!isAuthenticated) {
+      showAlert('로그인 필요', '로그인이 필요합니다.', () => {
+        navigation.navigate('Profile');
+      });
+      return;
+    }
+    setNicknameInput(nickname || userInfo?.name || '');
+    setIsNicknameModalVisible(true);
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadLinks = async () => {
+        try {
+          const stored = await AsyncStorage.getItem('CUSTOM_LINKS');
+          if (stored) {
+            const ids = JSON.parse(stored) as string[];
+            const filtered = ids.map(id => AVAILABLE_LINKS.find(link => link.id === id)).filter(Boolean) as ExternalLink[];
+            setCustomLinks(filtered);
+          } else {
+            setCustomLinks(AVAILABLE_LINKS.slice(0, 4));
+          }
+        } catch (error) {
+          console.error('Failed to load custom links on home', error);
+        }
+      };
+      loadLinks();
+    }, [])
+  );
 
   // Animation for greeting
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -120,47 +204,135 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* 링크 그리드 */}
-        <View style={styles.gridContainer}>
-          {EXTERNAL_LINKS.map(link => (
-            <TouchableOpacity
-              key={link.id}
-              style={styles.linkCard}
-              onPress={() => handleOpenLink(link.url)}
-              activeOpacity={0.9}>
-              <View style={styles.iconWrapper}>
-                <Ionicons
-                  name={(link.icon as any) || 'link-outline'}
-                  size={24}
-                  color={COLORS.primary}
-                />
-              </View>
-              <View style={styles.textContainer}>
-                <AppText style={styles.linkText}>{link.title}</AppText>
-              </View>
-            </TouchableOpacity>
-          ))}
+        {/* 링크 그리드 (바로가기 서비스) */}
+        <View style={styles.sectionHeader}>
+          <AppText style={styles.sectionTitle}>바로가기 서비스</AppText>
+        </View>
+        <View style={styles.gridWrapper}>
+          <View style={styles.gridContainer}>
+            {customLinks.map(link => (
+              <TouchableOpacity
+                key={link.id}
+                style={styles.linkCard}
+                onPress={() => handleOpenLink(link.url)}
+                activeOpacity={0.7}>
+                <View style={styles.iconWrapper}>
+                  <Ionicons
+                    name={(link.icon as any) || 'link-outline'}
+                    size={28}
+                    color={COLORS.primary}
+                  />
+                </View>
+                <View style={styles.textContainer}>
+                  <AppText style={styles.linkText} numberOfLines={2}>{link.title}</AppText>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* 맞춤형 서비스 섹션 */}
-        <View style={styles.section}>
+        <View style={styles.sectionHeader}>
           <AppText style={styles.sectionTitle}>맞춤형 서비스</AppText>
-          <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Keyword')}>
-            <View>
-              <AppText style={styles.menuLabel}>키워드 설정</AppText>
-              <AppText style={styles.menuDescription}>관심있는 키워드로 개인화된 공지를 받습니다.</AppText>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Bookmark')}>
-            <View>
-              <AppText style={styles.menuLabel}>즐겨 찾기</AppText>
-              <AppText style={styles.menuDescription}>내가 찜한 컨텐츠들.</AppText>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        </View>
+        <View style={styles.gridWrapper}>
+          <View style={styles.gridContainer}>
+            <TouchableOpacity
+              style={styles.linkCard}
+              onPress={() => navigation.navigate('Keyword')}
+              activeOpacity={0.7}>
+              <View style={styles.iconWrapper}>
+                <Ionicons name="notifications-outline" size={28} color={COLORS.primary} />
+              </View>
+              <View style={styles.textContainer}>
+                <AppText style={styles.linkText} numberOfLines={2}>키워드 알림</AppText>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkCard}
+              onPress={() => navigation.navigate('Bookmark')}
+              activeOpacity={0.7}>
+              <View style={styles.iconWrapper}>
+                <Ionicons name="bookmark-outline" size={28} color={COLORS.primary} />
+              </View>
+              <View style={styles.textContainer}>
+                <AppText style={styles.linkText} numberOfLines={2}>즐겨 찾기</AppText>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkCard}
+              onPress={handleNicknamePress}
+              activeOpacity={0.7}>
+              <View style={styles.iconWrapper}>
+                <Ionicons name="person-outline" size={28} color={COLORS.primary} />
+              </View>
+              <View style={styles.textContainer}>
+                <AppText style={styles.linkText} numberOfLines={2}>닉네임 변경</AppText>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 홈 화면 설정 버튼 */}
+        <View style={styles.settingButtonContainer}>
+          <TouchableOpacity
+            style={styles.settingButton}
+            onPress={() => navigation.navigate('LinkSetting')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="settings-outline" size={18} color="#6B7280" style={{ marginRight: 6 }} />
+            <AppText style={styles.settingButtonText}>홈 화면 설정</AppText>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* 닉네임 설정 모달 */}
+      <Modal
+        visible={isNicknameModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsNicknameModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <AppText style={styles.modalTitle}>닉네임 설정</AppText>
+            <AppText style={styles.modalDesc}>사용하실 닉네임을 입력하세요.</AppText>
+            <TextInput
+              style={styles.nicknameInput}
+              placeholder="닉네임 (10자 이내)"
+              value={nicknameInput}
+              onChangeText={setNicknameInput}
+              maxLength={10}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalCancelBtn]}
+                onPress={() => {
+                  setIsNicknameModalVisible(false);
+                  setNicknameInput('');
+                }}>
+                <AppText style={styles.modalCancelText}>취소</AppText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalConfirmBtn]}
+                onPress={handleNicknameSave}>
+                <AppText style={styles.modalConfirmText}>저장</AppText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 커스텀 알림 */}
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        onClose={closeAlert}
+        onConfirm={alertOnConfirm}
+        buttons={alertButtons}
+      />
     </LinearGradient>
   );
 }
@@ -201,7 +373,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 100, // 하단 탭 바에 가리지 않도록 넉넉하게 여백 추가
   },
   searchContainer: {
     flexDirection: 'row',
@@ -223,46 +395,59 @@ const styles = StyleSheet.create({
     color: '#111',
     padding: 0, // Android 텍스트 패딩 제거
   },
+  sectionHeader: {
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
   sectionTitle: {
-    fontSize: moderateScale(22, 0.3),
+    fontSize: moderateScale(20, 0.3),
     fontWeight: 'bold',
     color: '#111',
+  },
+  gridWrapper: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 25,
+    // 섀도우 효과 추가
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
   linkCard: {
-    width: CARD_WIDTH,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: CARD_SPACING,
-    justifyContent: 'center', // Changed from space-between to center
-    alignItems: 'flex-start', // Align items to left
-    height: 100,
-    elevation: 0,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    width: '25%', // 4 columns per row
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 5,
   },
   iconWrapper: {
-    width: moderateScale(36, 0.3),
-    height: moderateScale(36, 0.3),
-    borderRadius: 10,
-    backgroundColor: 'rgba(219, 31, 38, 0.08)',
+    width: moderateScale(48, 0.3),
+    height: moderateScale(48, 0.3),
+    borderRadius: 16,
+    backgroundColor: 'rgba(219, 31, 38, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10, // Added margin bottom to separate from text
+    marginBottom: 8,
   },
   textContainer: {
     width: '100%',
+    alignItems: 'center',
   },
   linkText: {
-    fontSize: moderateScale(14, 0.3), // Slightly reduced
-    fontWeight: '700',
-    color: '#333',
-    lineHeight: moderateScale(20, 0.3),
+    fontSize: moderateScale(12, 0.3),
+    fontWeight: 'bold',
+    color: '#374151',
+    textAlign: 'center',
+    lineHeight: moderateScale(16, 0.3),
   },
   shortcutScroll: {
     marginBottom: 20, // Reduced from 25
@@ -296,25 +481,52 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   section: { marginBottom: 25 },
-  menuRow: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
+  settingButtonContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+    paddingBottom: 20,
+  },
+  settingButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  settingButtonText: {
+    fontSize: moderateScale(14, 0.3),
+    color: '#4B5563',
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  menuLabel: {
-    fontSize: moderateScale(16, 0.3),
-    fontWeight: '500',
-    color: '#111827',
-    marginBottom: 2,
-    includeFontPadding: false, // Android excess padding removal
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    padding: 24,
+    borderRadius: 16,
+    elevation: 5,
+    alignItems: 'center',
   },
-  menuDescription: {
-    fontSize: moderateScale(13, 0.3),
-    color: '#6B7280',
-    includeFontPadding: false, // Android excess padding removal
-    lineHeight: moderateScale(18, 0.3),
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
+  modalDesc: { fontSize: 14, color: '#666', marginBottom: 20 },
+  nicknameInput: {
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    fontSize: 16,
+    paddingVertical: 8,
+    marginBottom: 24,
   },
+  modalButtons: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', gap: 10 },
+  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  modalCancelBtn: { backgroundColor: '#f0f0f0' },
+  modalConfirmBtn: { backgroundColor: COLORS.primary },
+  modalCancelText: { color: '#333', fontWeight: '600' },
+  modalConfirmText: { color: '#fff', fontWeight: '600' },
 });

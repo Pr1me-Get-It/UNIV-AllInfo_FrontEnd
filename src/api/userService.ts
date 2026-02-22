@@ -59,7 +59,7 @@ export const deleteUserKeyword = async (
  * @param email 유저 이메일
  */
 export const withdrawUser = async (email: string): Promise<AxiosResponse<any>> => {
-  return await api.delete('/user/unregister', {
+  return await api.delete('/user/register', {
     data: { email }, // DELETE 요청 body에 email 포함
   });
 };

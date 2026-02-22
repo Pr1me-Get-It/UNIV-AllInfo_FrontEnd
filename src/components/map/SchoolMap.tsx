@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { ReactNativeZoomableView } from '@dudigital/react-native-zoomable-view';
 import { MapPin } from '../../data/mapData';
 
@@ -22,7 +23,7 @@ export default function SchoolMap({ pins, onPinPress }: SchoolMapProps) {
                 <Image
                     source={require('../../assets/map.webp')}
                     style={styles.mapImage}
-                    resizeMode="contain"
+                    contentFit="contain"
                 />
                 {/* Potentially render pins here for web later if needed */}
             </View>

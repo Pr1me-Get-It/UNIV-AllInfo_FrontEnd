@@ -23,6 +23,14 @@ import { getData, saveData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 // 데이터 그룹 분리
 import SOURCE_LABELS from '../constants/labeltag.json';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+
+type KeywordScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Keyword'>;
+
+interface Props {
+  navigation: KeywordScreenNavigationProp;
+}
 
 // 데이터 그룹 분리
 // [변경] 학부 직접 추가 UI 제거됨
@@ -38,8 +46,8 @@ const POPULAR_KEYWORDS = [
   { label: '교환학생', value: '교환학생' },
 ];
 
-export default function KeywordScreen({ navigation }) {
-  const [keywords, setKeywords] = useState([]);
+export default function KeywordScreen({ navigation }: Props) {
+  const [keywords, setKeywords] = useState<string[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,7 +84,7 @@ export default function KeywordScreen({ navigation }) {
 
       if (localKeywords && Array.isArray(localKeywords)) {
         setKeywords(localKeywords);
-        console.log(`� [로컬 로드] 저장된 키워드 불러오기 성공:`, localKeywords);
+        if (__DEV__) console.log(` [로컬 로드] 저장된 키워드 불러오기 성공:`, localKeywords);
       } else {
         // 로컬 데이터가 없으면 빈 배열
         setKeywords([]);
@@ -131,17 +139,15 @@ export default function KeywordScreen({ navigation }) {
     // [추가] 로컬 스토리지 즉시 저장
     if (userEmail) {
       const safeEmail = userEmail.replace(/\./g, '_');
-      await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-      console.log(`💾 [로컬 저장] 키워드 추가 후 로컬 스토리지 업데이트: ${trimmedKeyword}`);
+      if (__DEV__) console.log(`💾 [로컬 저장] 키워드 추가 후 로컬 스토리지 업데이트: ${trimmedKeyword}`);
     }
 
     try {
-      // 2. 백그라운드에서 API 호출
-      console.log(`➕ [추가 시도] ${trimmedKeyword} 추가 중... (전송될 리스트: ${newKeywords})`);
+      if (__DEV__) console.log(`➕ [추가 시도] ${trimmedKeyword} 추가 중... (전송될 리스트: ${newKeywords})`);
       const response = await syncKeywords(userEmail, newKeywords);
 
       if (response.data && response.data.success) {
-        console.log(`✅ [추가 완료] 백엔드에 반영됨.`);
+        if (__DEV__) console.log(`✅ [추가 완료] 백엔드에 반영됨.`);
         // 성공 시: 서버 데이터로 최신화 (혹시 모를 동기화)
         // 만약 서버 데이터가 비어있다면, 우리가 로컬에서 만든 newKeywords 유지
         const serverKeywords = response.data.keywords;
@@ -181,22 +187,24 @@ export default function KeywordScreen({ navigation }) {
     const prevKeywords = [...keywords];
     const newKeywords = keywords.filter(k => k !== keywordToDelete);
 
-    console.log(
-      `🗑 [삭제 시도] ${keywordToDelete} 삭제 중... (현재: ${prevKeywords} -> 예정: ${newKeywords})`,
-    );
+    if (__DEV__) {
+      console.log(
+        `🗑 [삭제 시도] ${keywordToDelete} 삭제 중... (현재: ${prevKeywords} -> 예정: ${newKeywords})`,
+      );
+    }
 
     setKeywords(newKeywords);
 
     // [추가] 로컬 스토리지 즉시 저장
     const safeEmail = userEmail.replace(/\./g, '_');
     await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-    console.log(`💾 [로컬 저장] 키워드 삭제 후 로컬 스토리지 업데이트: ${keywordToDelete}`);
+    if (__DEV__) console.log(`💾 [로컬 저장] 키워드 삭제 후 로컬 스토리지 업데이트: ${keywordToDelete}`);
 
     try {
       const response = await deleteUserKeyword(userEmail, keywordToDelete);
 
       if (response.data.success) {
-        console.log(`✅ [삭제 완료] 백엔드에서 ${keywordToDelete} 삭제됨.`);
+        if (__DEV__) console.log(`✅ [삭제 완료] 백엔드에서 ${keywordToDelete} 삭제됨.`);
         // 서버에서 최신 리스트를 주면 그것으로 한 번 더 동기화
         if (response.data.keywords) {
           setKeywords(response.data.keywords);

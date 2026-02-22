@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
-import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { COLORS } from '../constants/colors';
 import AppText from './AppText';
 import { moderateScale } from '../utils/responsive';
@@ -14,7 +15,7 @@ const NoticeItem = ({ item, isRead, onPress }: NoticeItemProps) => {
   return (
     <TouchableOpacity style={styles.itemRow} onPress={() => onPress(item)}>
       <View style={styles.iconBackground}>
-        <Image source={item.image} style={styles.customIcon} />
+        <Image source={item.image} style={styles.customIcon} contentFit="contain" />
       </View>
 
       <View style={styles.textWrapper}>
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: moderateScale(8, 0.3),
   },
-  customIcon: { width: moderateScale(28, 0.3), height: moderateScale(28, 0.3), resizeMode: 'contain' },
+  customIcon: { width: moderateScale(28, 0.3), height: moderateScale(28, 0.3) },
   textWrapper: { flex: 1 },
   sourceText: {
     fontSize: moderateScale(10, 0.3),

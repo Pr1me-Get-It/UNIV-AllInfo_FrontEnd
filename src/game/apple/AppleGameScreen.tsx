@@ -14,6 +14,8 @@ import CustomAlert from '../../components/ui/CustomAlert';
 import { useAppleGame } from './hooks/useAppleGame';
 import AppleGrid from './components/AppleGrid';
 import { useAuth } from '../../context/AuthContext'; // Added import
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
 
 import { GAMES } from '../../constants/games'; // Added import
 
@@ -35,7 +37,7 @@ const AppleGameScreen = () => {
     } = useAppleGame();
 
     const insets = useSafeAreaInsets();
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const [alertVisible, setAlertVisible] = useState(false);
 
     // Auth Context & Local Best Score

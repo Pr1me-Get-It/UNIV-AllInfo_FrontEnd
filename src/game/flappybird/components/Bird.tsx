@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image } from 'react-native';
+import { Image } from 'expo-image';
 import { Images } from '../assets/images';
 
 const Bird = (props: any) => {
@@ -20,7 +20,7 @@ const Bird = (props: any) => {
                 height: height,
                 transform: [{ rotate: `${props.angle}deg` }]
             }}
-            resizeMode="stretch"
+            contentFit="fill"
             source={image}
         />
     );

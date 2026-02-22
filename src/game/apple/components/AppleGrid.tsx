@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import AppText from '../../../components/AppText';
 import { Apple } from '../hooks/useAppleGame';
 
@@ -38,7 +39,7 @@ const AppleGrid = ({ grid, selectedIndices, firstSelection, onCellPress, cellSiz
                                         styles.appleImage,
                                         { width: cellSize - 2, height: cellSize - 2 },
                                     ]}
-                                    resizeMode="contain"
+                                    contentFit="contain"
                                 />
                                 {(isSelected || isFirstSelection) && (
                                     <View style={styles.selectionOverlay} />
