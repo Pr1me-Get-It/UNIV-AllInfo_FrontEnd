@@ -41,7 +41,7 @@ export default () => {
     Matter.World.add(world, [bird, pipeTop1, pipeBottom1, pipeTop2, pipeBottom2, pipeTop3, pipeBottom3, missile]);
 
     return {
-        physics: { engine: engine, world: world, started: false, score: 0 },
+        physics: { engine: engine, world: world, started: false, score: 0, gameOver: false, hasCollisionListener: false },
         Bird: { body: bird, renderer: Bird, angle: 0 },
         PipeTop1: { body: pipeTop1, renderer: Pipe, isTop: true, scored: false },
         PipeBottom1: { body: pipeBottom1, renderer: Pipe, isTop: false },

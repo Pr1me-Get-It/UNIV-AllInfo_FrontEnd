@@ -14,6 +14,7 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
         const startTouch = touches.find((t: any) => t.type === 'press');
         if (startTouch) {
             entities.physics.started = true;
+            entities.physics.gameOver = false; // 🔴 게임오버 플래그 초기화
             entities.physics.engine.gravity.y = 1.3; // 중력 활성화
 
             // 첫 점프
@@ -31,6 +32,11 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
         Matter.Engine.update(engine, Math.min(time.delta, 16.666));
 
         // 대기 상태에서는 파이프 이동 및 생성/삭제 로직 실행 안 함
+        return entities;
+    }
+
+    // ✅ 이미 게임오버 상태라면 바로 리턴 (중복 이벤트 방지)
+    if (entities.physics.gameOver) {
         return entities;
     }
 
@@ -88,13 +94,17 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
 
     // 화면 하단 충돌 체크 (Game Over)
     if (entities.Bird.body.position.y >= windowHeight) {
+        entities.physics.gameOver = true; // 🔴 플래그 설정
         dispatch({ type: 'game_over' });
+        return entities;
     }
-
 
     // 충돌 감지 (이벤트 리스너가 중복 등록되지 않도록 체크)
     if (!entities.physics.hasCollisionListener) {
         Matter.Events.on(engine, 'collisionStart', (event: any) => {
+            // ✅ 이미 게임오버 상태면 중복 발생 차단
+            if (entities.physics.gameOver) return;
+            entities.physics.gameOver = true; // 🔴 플래그 설정
             dispatch({ type: 'game_over' });
         });
         entities.physics.hasCollisionListener = true;
