@@ -9,6 +9,7 @@ export type RootStackParamList = {
     Tetris: undefined;
     AppleGame: undefined;
     FlappyBird: undefined;
+    FishingGame: undefined;
     Ranking: undefined;
     LinkSetting: undefined;
 };

@@ -71,6 +71,8 @@ export default function OthersScreen() {
             (navigation as any).navigate('AppleGame');
         } else if (id === 'flappybird') {
             (navigation as any).navigate('FlappyBird');
+        } else if (id === 'reactionTest') {
+            (navigation as any).navigate('FishingGame');
         } else {
             // For future features or clocktower if implemented
             Alert.alert(title, '준비 중인 기능입니다.');

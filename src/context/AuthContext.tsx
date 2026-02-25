@@ -10,7 +10,7 @@ import React, {
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { registerUser, withdrawUser } from '../api/userService';
 import { saveScore } from '../api/gameScore'; // Added import
-import { getToken, saveToken, removeToken, getData, saveData } from '../utils/storage';
+import { getToken, saveToken, removeToken, getData, saveData, removeData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { GAMES } from '../constants/games'; // Added games for iteration
 import { registerForPushNotificationsAsync } from '../utils/notifications';
@@ -335,10 +335,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // 3. 로컬 데이터 클리어 및 초기화
       if (__DEV__) console.log('📡 [AuthContext] 로컬 데이터 삭제 및 유저 리셋');
+
+      if (userEmail) {
+        const safeEmail = userEmail.replace(/\./g, '_');
+        await removeData(STORAGE_KEYS.NICKNAME(safeEmail));
+        await removeData(STORAGE_KEYS.KEYWORDS(safeEmail));
+        await removeData(STORAGE_KEYS.BOOKMARK(safeEmail));
+        await removeData(STORAGE_KEYS.READ(safeEmail));
+        await removeData(STORAGE_KEYS.PUSH_SETTING(safeEmail));
+        await removeData(STORAGE_KEYS.MAP_FILTER(safeEmail));
+        await removeData(STORAGE_KEYS.FILTER_MODE(safeEmail));
+        await removeData(STORAGE_KEYS.GAME_SCORES(safeEmail));
+      }
+
       await removeToken();
       setUserEmail(null);
       setUserInfo(null);
       setNickname(null); // 닉네임 상태 초기화
+      setGameBestScores({}); // 메모리의 게임 점수 초기화
       if (__DEV__) console.log('✅ [AuthContext] 회원 탈퇴 프로세스 완료');
     } catch (error) {
       console.error('❌ [AuthContext] 회원 탈퇴 에러:', error);

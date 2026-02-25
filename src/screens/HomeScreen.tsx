@@ -20,6 +20,7 @@ import { COLORS } from '../constants/colors';
 import AppText from '../components/AppText';
 import { useAuth } from '../context/AuthContext';
 import { moderateScale } from '../utils/responsive';
+import { isValidNickname } from '../utils/filter';
 import CustomAlert from '../components/ui/CustomAlert';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -65,13 +66,19 @@ export default function HomeScreen({ navigation }: Props) {
 
   // 닉네임 저장 핸들러
   const handleNicknameSave = async () => {
-    if (!nicknameInput.trim()) {
+    const input = nicknameInput.trim();
+    if (!input) {
       showAlert('오류', '닉네임을 입력해주세요.');
       return;
     }
 
+    if (!isValidNickname(input)) {
+      showAlert('부적절한 닉네임', '비속어나 제한된 단어가 포함되어 있습니다.');
+      return;
+    }
+
     if (isAuthenticated) {
-      await updateNickname(nicknameInput.trim());
+      await updateNickname(input);
       setIsNicknameModalVisible(false);
       setNicknameInput('');
       showAlert('알림', '닉네임이 성공적으로 변경되었습니다.');
@@ -96,7 +103,9 @@ export default function HomeScreen({ navigation }: Props) {
           const stored = await AsyncStorage.getItem('CUSTOM_LINKS');
           if (stored) {
             const ids = JSON.parse(stored) as string[];
-            const filtered = ids.map(id => AVAILABLE_LINKS.find(link => link.id === id)).filter(Boolean) as ExternalLink[];
+            const filtered = ids
+              .map(id => AVAILABLE_LINKS.find(link => link.id === id))
+              .filter(Boolean) as ExternalLink[];
             setCustomLinks(filtered);
           } else {
             setCustomLinks(AVAILABLE_LINKS.slice(0, 4));
@@ -106,7 +115,7 @@ export default function HomeScreen({ navigation }: Props) {
         }
       };
       loadLinks();
-    }, [])
+    }, []),
   );
 
   // Animation for greeting
@@ -138,8 +147,7 @@ export default function HomeScreen({ navigation }: Props) {
       colors={[COLORS.lightPink, COLORS.white]}
       style={styles.page}
       start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 0.8 }}
-    >
+      end={{ x: 0.5, y: 0.8 }}>
       {/* 상단 헤더 섹션 */}
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
@@ -177,8 +185,7 @@ export default function HomeScreen({ navigation }: Props) {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.shortcutScrollContent}
-          style={styles.shortcutScroll}
-        >
+          style={styles.shortcutScroll}>
           <TouchableOpacity
             style={styles.pillButton}
             onPress={() => navigation.navigate('MainTab', { screen: 'Map' })}
@@ -224,7 +231,9 @@ export default function HomeScreen({ navigation }: Props) {
                   />
                 </View>
                 <View style={styles.textContainer}>
-                  <AppText style={styles.linkText} numberOfLines={2}>{link.title}</AppText>
+                  <AppText style={styles.linkText} numberOfLines={2}>
+                    {link.title}
+                  </AppText>
                 </View>
               </TouchableOpacity>
             ))}
@@ -245,7 +254,9 @@ export default function HomeScreen({ navigation }: Props) {
                 <Ionicons name="notifications-outline" size={28} color={COLORS.primary} />
               </View>
               <View style={styles.textContainer}>
-                <AppText style={styles.linkText} numberOfLines={2}>키워드 알림</AppText>
+                <AppText style={styles.linkText} numberOfLines={2}>
+                  키워드 알림
+                </AppText>
               </View>
             </TouchableOpacity>
 
@@ -257,7 +268,9 @@ export default function HomeScreen({ navigation }: Props) {
                 <Ionicons name="bookmark-outline" size={28} color={COLORS.primary} />
               </View>
               <View style={styles.textContainer}>
-                <AppText style={styles.linkText} numberOfLines={2}>즐겨 찾기</AppText>
+                <AppText style={styles.linkText} numberOfLines={2}>
+                  즐겨 찾기
+                </AppText>
               </View>
             </TouchableOpacity>
 
@@ -269,7 +282,9 @@ export default function HomeScreen({ navigation }: Props) {
                 <Ionicons name="person-outline" size={28} color={COLORS.primary} />
               </View>
               <View style={styles.textContainer}>
-                <AppText style={styles.linkText} numberOfLines={2}>닉네임 변경</AppText>
+                <AppText style={styles.linkText} numberOfLines={2}>
+                  닉네임 변경
+                </AppText>
               </View>
             </TouchableOpacity>
           </View>
@@ -280,9 +295,13 @@ export default function HomeScreen({ navigation }: Props) {
           <TouchableOpacity
             style={styles.settingButton}
             onPress={() => navigation.navigate('LinkSetting')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="settings-outline" size={18} color="#6B7280" style={{ marginRight: 6 }} />
+            activeOpacity={0.8}>
+            <Ionicons
+              name="settings-outline"
+              size={18}
+              color="#6B7280"
+              style={{ marginRight: 6 }}
+            />
             <AppText style={styles.settingButtonText}>홈 화면 설정</AppText>
           </TouchableOpacity>
         </View>
@@ -462,11 +481,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     paddingHorizontal: 12, // Reduced from 16
-    paddingVertical: 6,   // Reduced from 10
+    paddingVertical: 6, // Reduced from 10
     borderRadius: 999, // Pill shape
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginRight: 8,       // Reduced from 10
+    marginRight: 8, // Reduced from 10
     // Shadow for depth
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },

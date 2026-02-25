@@ -27,7 +27,8 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
         }
 
         // 대기 상태에서도 물리 엔진은 업데이트하지만, 중력이 0이라 떨어지지 않음
-        Matter.Engine.update(engine, time.delta);
+        // delta 값을 최대 16.666ms(60fps)로 제한하여 물리 엔진 경고 방지 및 안정성 확보
+        Matter.Engine.update(engine, Math.min(time.delta, 16.666));
 
         // 대기 상태에서는 파이프 이동 및 생성/삭제 로직 실행 안 함
         return entities;
@@ -44,8 +45,8 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
         entities.Bird.angle += 20;
     });
 
-    // 물리 엔진 업데이트
-    Matter.Engine.update(engine, time.delta);
+    // 물리 엔진 업데이트 (delta 값을 최대 16.666ms로 제한)
+    Matter.Engine.update(engine, Math.min(time.delta, 16.666));
 
     // 새 회전 처리 (매 프레임 1도 회전) - 사용자가 5 -> 1로 수정함
     entities.Bird.angle += 1;
