@@ -396,6 +396,7 @@ export default function ProfileScreen() {
                   • React Native (0.74+){'\n'}• Expo (SDK 51){'\n'}• React Navigation{'\n'}• React
                   Query (@tanstack/react-query){'\n'}• React Native Reanimated (Reanimated 3){'\n'}•
                   Lottie React Native{'\n'}• React Native Naver Map{'\n'}• Matter.js (물리 엔진)
+                  {'\n'}• React Native Calendars{'\n'}• badwords-ko (비속어 필터){'\n'}• React Native Draggable Grid
                   {'\n'}• Axios{'\n'}
                   {'\n'}각 프로젝트의 라이선스 원문은 해당 공식 저장소에서 확인 가능합니다.
                 </AppText>

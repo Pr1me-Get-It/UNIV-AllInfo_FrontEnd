@@ -111,10 +111,10 @@ export default function NoticeScreen({ navigation }: Props) {
   });
 
   const handleClearCache = async () => {
-    console.log('Refresh button pressed. Refetching...');
+    if (__DEV__) console.log('Refresh button pressed. Refetching...');
     try {
       await refetch();
-      console.log('Refetch command sent.');
+      if (__DEV__) console.log('Refetch command sent.');
     } catch (error) {
       console.error('Refetch failed:', error);
     }
@@ -148,7 +148,7 @@ export default function NoticeScreen({ navigation }: Props) {
         // 로컬 저장 및 서버 동기화
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
         await syncKeywords(userEmail, newKeywords);
-        console.log(`🔗 [필터-키워드 연동] ${code} ${isAdding ? '추가' : '삭제'}됨.`);
+        if (__DEV__) console.log(`🔗 [필터-키워드 연동] ${code} ${isAdding ? '추가' : '삭제'}됨.`);
       } catch (e) {
         console.error('키워드 연동 실패:', e);
       }
@@ -182,7 +182,7 @@ export default function NoticeScreen({ navigation }: Props) {
 
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
         await syncKeywords(userEmail, newKeywords);
-        console.log(`🔗 [필터-키워드 연동] 전체 ${isSelectingAll ? '추가' : '해제'} 완료.`);
+        if (__DEV__) console.log(`🔗 [필터-키워드 연동] 전체 ${isSelectingAll ? '추가' : '해제'} 완료.`);
       } catch (e) {
         console.error('키워드 전체 연동 실패:', e);
       }
@@ -193,7 +193,7 @@ export default function NoticeScreen({ navigation }: Props) {
     refetch();
   }, [refetch]);
 
-  const normalizeSource = (source: string) => {
+  const normalizeSource = useCallback((source: string) => {
     if (!source) return null;
     const key = source.split(/[\/|]/)[0].toUpperCase().trim();
 
@@ -201,13 +201,12 @@ export default function NoticeScreen({ navigation }: Props) {
     if ((SOURCE_LABELS as any)[key]) return key;
 
     // 2. 이름으로 찾기 (예: "음악학과학사공지" -> "음악학과" -> "MUS")
-    // "공지사항" 텍스트 제거에 의존하지 않고, 학과명으로 시작하는지 확인
     const foundCode = Object.keys(SOURCE_LABELS).find(
       code => source.startsWith((SOURCE_LABELS as any)[code]),
     );
 
     return foundCode || null;
-  };
+  }, []);
 
   // --- 5. 클라이언트 사이드 필터링 & 카운트 ---
   // 주의: 서버 페이지네이션을 사용하므로, unreadCount는 '현재 로드된 데이터' 기준입니다.

@@ -76,4 +76,9 @@ const styles = StyleSheet.create({
   readLabel: { fontSize: moderateScale(11, 0.3), color: '#bbb', fontWeight: 'normal', includeFontPadding: false },
 });
 
-export default memo(NoticeItem);
+// ✅ 커스텀 비교 함수: id, 제목, 읽음 상태가 동일하면 리렌더링 생략
+export default memo(NoticeItem, (prev, next) =>
+  prev.item.id === next.item.id &&
+  prev.item.title === next.item.title &&
+  prev.isRead === next.isRead
+);

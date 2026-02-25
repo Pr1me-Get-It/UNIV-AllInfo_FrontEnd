@@ -55,9 +55,9 @@ export const AlarmContext = createContext<AlarmContextType>({
   readStatus: {},
   bookmarkStatus: {},
   mockEvents: [],
-  markAsRead: () => {},
-  toggleBookmark: () => {},
-  addMockEvent: () => {},
+  markAsRead: () => { },
+  toggleBookmark: () => { },
+  addMockEvent: () => { },
 });
 
 // 🔒 SecureStore 키 안전화 함수: 특수문자(@ 등)를 언더바로 치환
@@ -115,10 +115,7 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
   const toggleBookmark = useCallback(
     (item: AlarmItem) => {
       const safeEmail = sanitizeKey(userEmail);
-      if (!safeEmail) {
-        alert('로그인이 필요합니다.');
-        return;
-      }
+      if (!safeEmail) return; // 비로그인: DetailScreen에서 CustomAlert로 처리됨
 
       setBookmarkStatus((prev: Record<string, AlarmItem>) => {
         const newStatus = { ...prev };
