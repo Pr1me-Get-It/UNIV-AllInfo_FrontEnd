@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   StyleSheet,
@@ -47,6 +48,7 @@ export default function ProfileScreen() {
     logout,
     withdraw, // 회원 탈퇴
     updateNickname, // 닉네임 업데이트 함수
+    isLoading, // 로딩 상태
   } = useAuth(); //
 
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
@@ -55,6 +57,21 @@ export default function ProfileScreen() {
   // 닉네임 관련 상태
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
+  const [isForcedNickname, setIsForcedNickname] = useState(false);
+
+  // Focus 시점에 닉네임 여부 검사
+  useFocusEffect(
+    React.useCallback(() => {
+      // 로딩 중이 아니고, 로그인은 완료되었으나 닉네임이 없는 경우
+      if (!isLoading && isAuthenticated && nickname === null && userInfo !== null) {
+        setIsForcedNickname(true);
+        setIsNicknameModalVisible(true);
+      } else {
+        setIsForcedNickname(false);
+      }
+    }, [isLoading, isAuthenticated, nickname, userInfo])
+  );
+
   const [pushEnabled, setPushEnabled] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [nightPushOnly, setNightPushOnly] = useState(false);
@@ -322,7 +339,11 @@ export default function ProfileScreen() {
           visible={isNicknameModalVisible}
           transparent={true}
           animationType="fade"
-          onRequestClose={() => setIsNicknameModalVisible(false)}>
+          onRequestClose={() => {
+            if (!isForcedNickname) {
+              setIsNicknameModalVisible(false);
+            }
+          }}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <AppText style={styles.modalTitle}>닉네임 설정</AppText>
@@ -335,14 +356,16 @@ export default function ProfileScreen() {
                 maxLength={10}
               />
               <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalBtn, styles.modalCancelBtn]}
-                  onPress={() => {
-                    setIsNicknameModalVisible(false);
-                    setNicknameInput('');
-                  }}>
-                  <AppText style={styles.modalCancelText}>취소</AppText>
-                </TouchableOpacity>
+                {!isForcedNickname && (
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalCancelBtn]}
+                    onPress={() => {
+                      setIsNicknameModalVisible(false);
+                      setNicknameInput('');
+                    }}>
+                    <AppText style={styles.modalCancelText}>취소</AppText>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={[styles.modalBtn, styles.modalConfirmBtn]}
                   onPress={handleNicknameSave}>
@@ -452,7 +475,7 @@ export default function ProfileScreen() {
                   <AppText style={styles.welcomeText}>로그인됨</AppText>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <AppText style={styles.userNameText}>
-                      {nickname || userInfo?.name || '사용자'} 님
+                      {isForcedNickname ? '닉네임 설정 중...' : (nickname || userInfo?.name || '사용자') + ' 님'}
                     </AppText>
                   </View>
                   <AppText style={styles.emailText}>{userEmail}</AppText>
@@ -465,6 +488,7 @@ export default function ProfileScreen() {
                 ]}
                 onPress={() => {
                   setNicknameInput(nickname || userInfo?.name || '');
+                  setIsForcedNickname(false);
                   setIsNicknameModalVisible(true);
                 }}>
                 <Ionicons name="pencil" size={14} color="#374151" />

@@ -13,4 +13,5 @@ export const STORAGE_KEYS = {
   MAP_FILTER: safeEmail => `map_filter_${safeEmail}`,
   NICKNAME: safeEmail => `nickname_${safeEmail}`,
   FILTER_MODE: safeEmail => `cal_filter_${safeEmail}`,
+  GAME_SCORES: safeEmail => `game_scores_${safeEmail}`,
 };

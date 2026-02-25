@@ -116,7 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // 서버 저장 (플래그가 true일 때만)
       if (shouldSaveToServer) {
-        const nicknameToSave = nickname || userEmail.split('@')[0];
+        const nicknameToSave = nickname || '사용자';
         try {
           if (__DEV__) console.log(`🎮 [Auth] 신기록 달성! 서버 저장 시도: ${score}점`);
           await saveScore(userEmail, gameId, score, { nickname: nicknameToSave });

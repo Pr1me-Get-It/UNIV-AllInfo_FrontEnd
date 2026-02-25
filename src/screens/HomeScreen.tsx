@@ -43,6 +43,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
 
+
   // 커스텀 알림 상태
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
