@@ -10,10 +10,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AppText from '../components/AppText';
+import CustomAlert from '../components/ui/CustomAlert';
 import { AlarmContext } from '../data/Alarm';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { getToken } from '../utils/storage';
+import { useAuth } from '../context/AuthContext';
 import SOURCE_LABELS from '../constants/labeltag.json';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -43,6 +45,7 @@ export default function DetailScreen({ route, navigation }: Props) {
   const item = params.item || null;
   const context = useContext(AlarmContext);
   const { markAsRead, toggleBookmark, bookmarkStatus, addMockEvent } = context || {};
+  const { isAuthenticated } = useAuth();
   // [수정] API 응답의 notice_id를 우선 사용
   const itemId = item ? item.notice_id || item.id : null;
   const sourcePrefix = item?.source ? item.source.split('/')[0] : '';
@@ -56,6 +59,27 @@ export default function DetailScreen({ route, navigation }: Props) {
 
   const [deadlineInfo, setDeadlineInfo] = useState(null);
   const [loadingDeadline, setLoadingDeadline] = useState(false);
+
+  // Custom Alert 상태
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertOnConfirm, setAlertOnConfirm] = useState<(() => void) | undefined>(undefined);
+  const [alertButtons, setAlertButtons] = useState<any[] | undefined>(undefined);
+
+  const showAlert = (title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertOnConfirm(() => onConfirm);
+    setAlertButtons(buttons);
+    setAlertVisible(true);
+  };
+
+  const closeAlert = () => {
+    setAlertVisible(false);
+    setAlertOnConfirm(undefined);
+    setAlertButtons(undefined);
+  };
 
   useEffect(() => {
     if (!item || !itemId || !markAsRead) return;
@@ -87,6 +111,22 @@ export default function DetailScreen({ route, navigation }: Props) {
 
   // 👇 [추가] 좋아요(북마크) 토글 핸들러
   const handleLikeToggle = async () => {
+    if (!isAuthenticated) {
+      showAlert(
+        '로그인 필요',
+        '북마크 기능은 로그인이 필요합니다.',
+        undefined,
+        [
+          { text: '닫기', style: 'cancel' },
+          {
+            text: '로그인 하러가기',
+            onPress: () => navigation.navigate('Profile'),
+          },
+        ]
+      );
+      return;
+    }
+
     if (toggleBookmark) {
       // 1. 서버 통신 및 상태 변경 요청
       toggleBookmark(item);
@@ -119,13 +159,24 @@ export default function DetailScreen({ route, navigation }: Props) {
   const addToCalendar = async () => {
     if (!deadlineInfo) return;
 
+    if (!isAuthenticated) {
+      showAlert(
+        '로그인 필요',
+        '캘린더에 등록하려면 로그인이 필요합니다.',
+        undefined,
+        [
+          { text: '닫기', style: 'cancel' },
+          {
+            text: '로그인 하러가기',
+            onPress: () => navigation.navigate('Profile'),
+          },
+        ]
+      );
+      return;
+    }
+
     try {
       const token = await getToken();
-
-      if (!token) {
-        Alert.alert('로그인 필요', '캘린더에 등록하려면 로그인이 필요합니다.');
-        return;
-      }
 
       if (token === DEV_TOKEN) {
         const newEvent = {
@@ -269,6 +320,16 @@ export default function DetailScreen({ route, navigation }: Props) {
           <AppText style={styles.textBtnLabel}>다시 '안 읽음'으로 표시하기</AppText>
         </TouchableOpacity>
       </View>
+
+      {/* 커스텀 알림 */}
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        onClose={closeAlert}
+        onConfirm={alertOnConfirm}
+        buttons={alertButtons}
+      />
     </ScrollView>
   );
 }

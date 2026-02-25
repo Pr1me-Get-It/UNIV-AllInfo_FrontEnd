@@ -333,7 +333,7 @@ export default function CalendarScreen({ navigation }: Props) {
     }
   };
 
-  if (!isAuthenticated) return <LoginPlaceholder targetScreen="Profile" />;
+
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

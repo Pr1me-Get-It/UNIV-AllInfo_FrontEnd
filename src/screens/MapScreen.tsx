@@ -38,7 +38,7 @@ export default function MapScreen() {
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
   const [searchText, setSearchText] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [visibleTypes, setVisibleTypes] = useState<string[]>(['facility', 'administrative', 'other']);
+  const [visibleTypes, setVisibleTypes] = useState<string[]>(['facility', 'administrative', 'other', 'door']);
 
   // Load saved filters on mount or when userEmail changes
   useEffect(() => {
@@ -91,6 +91,7 @@ export default function MapScreen() {
   const PIN_TYPES = [
     { key: 'facility', label: '시설', color: '#4CAF50' },
     { key: 'administrative', label: '행정', color: '#FF9800' },
+    { key: 'door', label: '출입문', color: '#E91E63' },
     { key: 'other', label: '기타', color: '#9E9E9E' },
   ];
 
@@ -182,8 +183,8 @@ export default function MapScreen() {
                 // console.log('NaverMap: Marker Tapped', pin.name);
                 handleMarkerClick(pin);
               }}
-              width={30}
-              height={40}
+              width={20}
+              height={28}
             />
           ))}
         </NaverMapView>
@@ -227,7 +228,7 @@ export default function MapScreen() {
             <View style={styles.sheetHeader}>
               <View style={styles.sheetHeaderTitleRow}>
                 <AppText style={styles.sheetTitle}>{selectedPin.name}</AppText>
-                <AppText style={styles.infoType}>{selectedPin.type === 'facility' ? '시설' : selectedPin.type === 'administrative' ? '행정' : '기타'}</AppText>
+                <AppText style={styles.infoType}>{selectedPin.type === 'facility' ? '시설' : selectedPin.type === 'administrative' ? '행정' : selectedPin.type === 'door' ? '출입문' : '기타'}</AppText>
               </View>
               <TouchableOpacity onPress={closeBottomSheet}>
                 <Ionicons name="close-circle" size={30} color="#ccc" />

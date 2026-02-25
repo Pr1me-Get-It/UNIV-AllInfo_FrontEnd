@@ -24,6 +24,8 @@ import { isValidNickname } from '../utils/filter';
 import CustomAlert from '../components/ui/CustomAlert';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import MealWidget from '../components/home/MealWidget';
+import BusWidget from '../components/home/BusWidget';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTab'>;
 
@@ -212,9 +214,15 @@ export default function HomeScreen({ navigation }: Props) {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* 링크 그리드 (바로가기 서비스) */}
-        <View style={styles.sectionHeader}>
+        {/* 링크 그리드 (바로가기 서비스) 및 홈 화면 설정 버튼 */}
+        <View style={[styles.sectionHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
           <AppText style={styles.sectionTitle}>바로가기 서비스</AppText>
+          <TouchableOpacity
+            style={styles.inlineSettingButton}
+            onPress={() => navigation.navigate('LinkSetting')}
+            activeOpacity={0.8}>
+            <AppText style={styles.inlineSettingButtonText}>커스텀</AppText>
+          </TouchableOpacity>
         </View>
         <View style={styles.gridWrapper}>
           <View style={styles.gridContainer}>
@@ -291,21 +299,12 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* 홈 화면 설정 버튼 */}
-        <View style={styles.settingButtonContainer}>
-          <TouchableOpacity
-            style={styles.settingButton}
-            onPress={() => navigation.navigate('LinkSetting')}
-            activeOpacity={0.8}>
-            <Ionicons
-              name="settings-outline"
-              size={18}
-              color="#6B7280"
-              style={{ marginRight: 6 }}
-            />
-            <AppText style={styles.settingButtonText}>홈 화면 설정</AppText>
-          </TouchableOpacity>
-        </View>
+        {/* 오늘의 학식 위젯 */}
+        <MealWidget />
+
+        {/* 캠퍼스 이동 (버스/셔틀) 위젯 */}
+        <BusWidget />
+
       </ScrollView>
 
       {/* 닉네임 설정 모달 */}
@@ -390,6 +389,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     marginLeft: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -405,6 +409,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 15, // Reduced from 20
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
   searchIcon: {
     marginRight: 8,
@@ -489,10 +498,10 @@ const styles = StyleSheet.create({
     marginRight: 8, // Reduced from 10
     // Shadow for depth
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowRadius: 5,
+    elevation: 2,
   },
   pillText: {
     fontSize: moderateScale(13, 0.3), // Reduced from 14
@@ -501,21 +510,23 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   section: { marginBottom: 25 },
-  settingButtonContainer: {
-    alignItems: 'center',
-    marginVertical: 10,
-    paddingBottom: 20,
-  },
-  settingButton: {
+  inlineSettingButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  settingButtonText: {
-    fontSize: moderateScale(14, 0.3),
+  inlineSettingButtonText: {
+    fontSize: moderateScale(12, 0.3),
     color: '#4B5563',
     fontWeight: '600',
   },
