@@ -42,20 +42,6 @@ export interface BusInfo {
 
 export const MOCK_BUSES: BusInfo[] = [
     {
-        id: 'b1',
-        type: 'shuttle',
-        routeName: '순환 A코스',
-        destination: '본관 앞',
-        arrivalEstimate: '약 3분 후',
-    },
-    {
-        id: 'b2',
-        type: 'shuttle',
-        routeName: '야간 셔틀',
-        destination: '정문',
-        arrivalEstimate: '18:30 출발',
-    },
-    {
         id: 'b3',
         type: 'city',
         routeName: '708번',

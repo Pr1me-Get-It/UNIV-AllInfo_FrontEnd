@@ -30,6 +30,7 @@ import { COLORS } from '../constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { moderateScale } from '../utils/responsive';
 import { isValidNickname } from '../utils/filter';
+import { sendFeedback } from '../api/feedbackService';
 
 const PRIMARY = 'rgb(219, 31, 38)';
 const DEV_PASSWORD = '1557';
@@ -116,15 +117,14 @@ export default function ProfileScreen() {
 
     setIsSendingFeedback(true);
     try {
-      // Mock API 호출
-      const { sendFeedback } = require('../api/feedbackService');
-      await sendFeedback(userEmail, feedbackInput);
+      // 실제 백엔드 API 호출
+      await sendFeedback(feedbackInput);
 
       setIsFeedbackModalVisible(false);
       setFeedbackInput('');
       showAlert('감사합니다', '소중한 의견이 전달되었습니다. 🙇‍♂️');
-    } catch (error) {
-      console.error('Feedback Error:', error);
+    } catch (error: any) {
+      console.error('[Feedback] 전송 실패 ❌', error?.response?.data ?? error?.message ?? error);
       showAlert('전송 실패', '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setIsSendingFeedback(false);
