@@ -1,82 +1,110 @@
 [
   {
-    "id": 32,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 17,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 01:00:26"
+    "param": "stationId",
+    "value": "7011010100",
+    "success": true,
+    "status": 200,
+    "data": {
+      "header": {
+        "success": true,
+        "resultCode": "0000",
+        "resultMsg": "성공"
+      },
+      "body": {
+        "items": [],
+        "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다.",
+        "totalCount": 0
+      }
+    }
   },
   {
-    "id": 33,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 17,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 01:00:26"
+    "param": "bstopId",
+    "value": "00318",
+    "success": true,
+    "status": 200,
+    "data": {
+      "header": {
+        "success": true,
+        "resultCode": "0000",
+        "resultMsg": "성공"
+      },
+      "body": {
+        "items": [],
+        "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다.",
+        "totalCount": 0
+      }
+    }
   },
   {
-    "id": 31,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 15,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 01:00:23"
+    "param": "bstopId",
+    "value": "7011010100",
+    "success": true,
+    "status": 200,
+    "data": {
+      "header": {
+        "success": true,
+        "resultCode": "0000",
+        "resultMsg": "성공"
+      },
+      "body": {
+        "items": [],
+        "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다.",
+        "totalCount": 0
+      }
+    }
   },
   {
-    "id": 34,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 11,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 01:06:23"
+    "param": "nodeId",
+    "value": "7011010100",
+    "success": true,
+    "status": 200,
+    "data": {
+      "header": {
+        "success": true,
+        "resultCode": "0000",
+        "resultMsg": "성공"
+      },
+      "body": {
+        "items": [],
+        "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다.",
+        "totalCount": 0
+      }
+    }
   },
   {
-    "id": 35,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 11,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 01:06:24"
+    "param": "nodeId",
+    "value": "00318",
+    "success": true,
+    "status": 200,
+    "data": {
+      "header": {
+        "success": true,
+        "resultCode": "0000",
+        "resultMsg": "성공"
+      },
+      "body": {
+        "items": [],
+        "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다.",
+        "totalCount": 0
+      }
+    }
   },
   {
-    "id": 36,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 11,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 01:06:24"
-  },
-  {
-    "id": 26,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 9,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 00:54:23"
-  },
-  {
-    "id": 27,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 9,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 00:54:24"
-  },
-  {
-    "id": 28,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 9,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 00:59:22"
-  },
-  {
-    "id": 25,
-    "user_id": 4,
-    "game_id": 1,
-    "score": 8,
-    "metadata": "{\"nickname\":\"개발자\"}",
-    "played_at": "2026-02-21 00:54:23"
+    "param": "wincId",
+    "value": "00318",
+    "success": true,
+    "status": 200,
+    "data": {
+      "header": {
+        "success": true,
+        "resultCode": "0000",
+        "resultMsg": "성공"
+      },
+      "body": {
+        "items": [],
+        "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다.",
+        "totalCount": 0
+      }
+    }
   }
 ]

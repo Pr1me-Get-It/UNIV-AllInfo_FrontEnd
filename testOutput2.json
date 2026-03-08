@@ -1,0 +1,184 @@
+[
+  {
+    "requestParams": {
+      "bsId": "7011010100"
+    },
+    "success": true,
+    "status": 200,
+    "totalCount": 4,
+    "items": [
+      {
+        "routeNo": "503",
+        "arrList": [
+          {
+            "routeId": "3000503001",
+            "routeNo": "503",
+            "moveDir": "1",
+            "bsGap": 2,
+            "bsNm": "영진고등학교건너",
+            "vhcNo2": "3917",
+            "busTCd2": "N",
+            "busTCd3": "N",
+            "busAreaCd": "DG",
+            "arrState": "전",
+            "prevBsGap": 1,
+            "arrTime": 131
+          },
+          {
+            "routeId": "3000503001",
+            "routeNo": "503",
+            "moveDir": "1",
+            "bsGap": 8,
+            "bsNm": "산격거평타운건너",
+            "vhcNo2": "3911",
+            "busTCd2": "N",
+            "busTCd3": "N",
+            "busAreaCd": "DG",
+            "arrState": "10분",
+            "prevBsGap": 3,
+            "arrTime": 575
+          }
+        ]
+      },
+      {
+        "routeNo": "북구2",
+        "arrList": [
+          {
+            "routeId": "4060002002",
+            "routeNo": "북구2",
+            "moveDir": "1",
+            "bsGap": 2,
+            "bsNm": "영진전문대학교정문앞",
+            "vhcNo2": "1031",
+            "busTCd2": "D",
+            "busTCd3": "N",
+            "busAreaCd": "DG",
+            "arrState": "전",
+            "prevBsGap": 1,
+            "arrTime": 234
+          },
+          {
+            "routeId": "4060002002",
+            "routeNo": "북구2",
+            "moveDir": "1",
+            "bsGap": 9,
+            "bsNm": "텍스빌",
+            "vhcNo2": "1080",
+            "busTCd2": "D",
+            "busTCd3": "N",
+            "busAreaCd": "DG",
+            "arrState": "15분",
+            "prevBsGap": 3,
+            "arrTime": 843
+          }
+        ]
+      },
+      {
+        "routeNo": "937",
+        "arrList": [
+          {
+            "routeId": "3000937000",
+            "routeNo": "937",
+            "moveDir": "0",
+            "bsGap": 5,
+            "bsNm": "건영아파트건너",
+            "vhcNo2": "1906",
+            "busTCd2": "D",
+            "busTCd3": "N",
+            "busAreaCd": "DG",
+            "arrState": "9분",
+            "prevBsGap": 3,
+            "arrTime": 510
+          },
+          {
+            "routeId": "3000937000",
+            "routeNo": "937",
+            "moveDir": "0",
+            "bsGap": 12,
+            "bsNm": "무태네거리(시내방향)",
+            "vhcNo2": "1987",
+            "busTCd2": "N",
+            "busTCd3": "N",
+            "busAreaCd": "DG",
+            "arrState": "25분",
+            "prevBsGap": 3,
+            "arrTime": 1488
+          }
+        ]
+      },
+      {
+        "routeNo": "410",
+        "arrList": [
+          {
+            "routeId": "3000410000",
+            "routeNo": "410",
+            "moveDir": "1",
+            "bsGap": 5,
+            "bsNm": "복현우체국앞",
+            "vhcNo2": "3816",
+            "busTCd2": "D",
+            "busTCd3": "N",
+            "busAreaCd": "DG",
+            "arrState": "11분",
+            "prevBsGap": 3,
+            "arrTime": 611
+          },
+          {
+            "routeId": "3000410000",
+            "routeNo": "410",
+            "moveDir": "1",
+            "bsGap": 15,
+            "bsNm": "약령시건너(동성로입구)",
+            "vhcNo2": "3812",
+            "busTCd2": "D",
+            "busTCd3": "N",
+            "busAreaCd": "DG",
+            "arrState": "23분",
+            "prevBsGap": 3,
+            "arrTime": 1338
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "requestParams": {
+      "busStopId": "7011010100"
+    },
+    "success": true,
+    "status": 200,
+    "totalCount": 0,
+    "items": [],
+    "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다."
+  },
+  {
+    "requestParams": {
+      "stopId": "7011010100"
+    },
+    "success": true,
+    "status": 200,
+    "totalCount": 0,
+    "items": [],
+    "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다."
+  },
+  {
+    "requestParams": {
+      "stnnId": "7011010100"
+    },
+    "success": true,
+    "status": 200,
+    "totalCount": 0,
+    "items": [],
+    "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다."
+  },
+  {
+    "requestParams": {
+      "stId": "7011010100"
+    },
+    "success": true,
+    "status": 200,
+    "totalCount": 0,
+    "items": [],
+    "msg": "기점에서 버스가 출발 대기중이거나 운행 정보가 없습니다."
+  }
+]

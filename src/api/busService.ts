@@ -54,7 +54,7 @@ export const fetchBusArrivals = async (stationId: string): Promise<BusArrivalIte
     console.log(`[BusService] 정류장 ${stationId} 도착 정보 조회 중...`);
 
     const response = await busClient.get('/getRealtime02', {
-        params: { stationId },
+        params: { bsId: stationId },
     });
 
     const body = response.data?.body;
@@ -63,8 +63,26 @@ export const fetchBusArrivals = async (stationId: string): Promise<BusArrivalIte
         return [];
     }
 
-    console.log(`[BusService] 정류장 ${stationId} 응답: ${body.totalCount}개 버스`, body.items);
-    return body.items as BusArrivalItem[];
+    const arrivals: BusArrivalItem[] = [];
+    body.items.forEach((item: any) => {
+        if (item.arrList && Array.isArray(item.arrList)) {
+            item.arrList.forEach((arr: any) => {
+                arrivals.push({
+                    routeNo: item.routeNo || arr.routeNo,
+                    arrtime: arr.arrTime,
+                    arrState: arr.arrState || '',
+                    stopCnt: arr.bsGap || 0,
+                    directionDst: '', // 종점 정보가 명확하지 않으므로 비워둠
+                });
+            });
+        }
+    });
+
+    // 도착 시간 임박순으로 정렬
+    arrivals.sort((a, b) => a.arrtime - b.arrtime);
+
+    console.log(`[BusService] 정류장 ${stationId} 응답: ${arrivals.length}개 버스`);
+    return arrivals;
 };
 
 /**

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import AppText from '../AppText';
 import { COLORS } from '../../constants/colors';
 import { moderateScale } from '../../utils/responsive';
@@ -17,6 +17,7 @@ export default function BusWidget() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [selectedStationId, setSelectedStationId] = useState<string>(DEFAULT_STATION_IDS[0]);
 
     const loadArrivals = useCallback(async () => {
         try {
@@ -48,7 +49,9 @@ export default function BusWidget() {
                 </View>
                 <View>
                     <AppText style={styles.routeName}>{item.routeNo}번</AppText>
-                    <AppText style={styles.destination}>{item.directionDst} 방면</AppText>
+                    {item.directionDst ? (
+                        <AppText style={styles.destination}>{item.directionDst} 방면</AppText>
+                    ) : null}
                 </View>
             </View>
             <View style={styles.busInfoRight}>
@@ -60,10 +63,10 @@ export default function BusWidget() {
         </View>
     );
 
-    const allArrivals: BusArrivalItem[] = arrivals
-        .flatMap((s) => s.arrivals)
-        .sort((a, b) => a.arrtime - b.arrtime)
-        .slice(0, 5); // 최대 5개 표시
+    const selectedStationData = arrivals.find((s) => s.stationId === selectedStationId);
+    const displayArrivals: BusArrivalItem[] = selectedStationData
+        ? [...selectedStationData.arrivals].slice(0, 5) // 해당 정류장 버스 최대 5개 표시
+        : [];
 
     const updatedTime = lastUpdated
         ? `${lastUpdated.getHours()}:${String(lastUpdated.getMinutes()).padStart(2, '0')} 기준`
@@ -86,7 +89,32 @@ export default function BusWidget() {
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.card}>
+            {/* 탭 네비게이션 영역 */}
+            {!isLoading && !error && arrivals.length > 0 && (
+                <View style={styles.tabsContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScrollContent}>
+                        {arrivals.map((station) => {
+                            const isSelected = station.stationId === selectedStationId;
+                            return (
+                                <TouchableOpacity
+                                    key={station.stationId}
+                                    style={[styles.tabButton, isSelected && styles.tabButtonActive]}
+                                    onPress={() => setSelectedStationId(station.stationId)}
+                                >
+                                    <AppText
+                                        style={[styles.tabText, isSelected && styles.tabTextActive]}
+                                        numberOfLines={1}
+                                    >
+                                        {station.stationName}
+                                    </AppText>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            )}
+
+            <View style={[styles.card, arrivals.length > 0 && styles.cardWithTabs]}>
                 {isLoading ? (
                     <View style={styles.centerBox}>
                         <ActivityIndicator size="small" color={COLORS.primary} />
@@ -100,14 +128,14 @@ export default function BusWidget() {
                             <AppText style={styles.retryText}>다시 시도</AppText>
                         </TouchableOpacity>
                     </View>
-                ) : allArrivals.length > 0 ? (
+                ) : displayArrivals.length > 0 ? (
                     <View style={styles.listContainer}>
-                        {allArrivals.map((item, i) => renderBusItem(item, i))}
+                        {displayArrivals.map((item, i) => renderBusItem(item, i))}
                     </View>
                 ) : (
                     <View style={styles.centerBox}>
                         <Ionicons name="bus-outline" size={28} color="#D1D5DB" />
-                        <AppText style={styles.emptyText}>현재 운행 중인 버스가 없습니다.</AppText>
+                        <AppText style={styles.emptyText}>현재 버스 도착 정보가 없습니다.</AppText>
                     </View>
                 )}
             </View>
@@ -151,6 +179,43 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#F3F4F6',
         minHeight: 80,
+    },
+    cardWithTabs: {
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderTopWidth: 0,
+    },
+    tabsContainer: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        borderWidth: 1,
+        borderBottomWidth: 0,
+        borderColor: '#F3F4F6',
+        paddingTop: 8,
+    },
+    tabsScrollContent: {
+        paddingHorizontal: 12,
+        paddingBottom: 12,
+        gap: 8,
+    },
+    tabButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+    },
+    tabButtonActive: {
+        backgroundColor: COLORS.primary,
+    },
+    tabText: {
+        fontSize: moderateScale(13, 0.3),
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    tabTextActive: {
+        color: '#FFFFFF',
+        fontWeight: 'bold',
     },
     listContainer: { gap: 16 },
     busItem: {
