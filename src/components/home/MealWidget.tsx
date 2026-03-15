@@ -10,6 +10,8 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.75; // 75% of screen width
 
 export default function MealWidget() {
+    const isApiReady = false;
+
     const renderMealCard = (meal: MealMenu) => {
         return (
             <TouchableOpacity key={meal.id} style={styles.card} activeOpacity={0.9}>
@@ -49,15 +51,23 @@ export default function MealWidget() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-                snapToInterval={CARD_WIDTH + 16} // card width + margin
-                decelerationRate="fast"
-            >
-                {MOCK_MEALS.map(renderMealCard)}
-            </ScrollView>
+            {isApiReady ? (
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                    snapToInterval={CARD_WIDTH + 16} // card width + margin
+                    decelerationRate="fast"
+                >
+                    {MOCK_MEALS.map(renderMealCard)}
+                </ScrollView>
+            ) : (
+                <View style={styles.placeholderCard}>
+                    <Ionicons name="restaurant-outline" size={32} color="#ccc" />
+                    <AppText style={styles.placeholderText}>학식 정보 준비 중입니다</AppText>
+                    <AppText style={styles.placeholderSubText}>차후 업데이트 예정입니다.</AppText>
+                </View>
+            )}
         </View>
     );
 }
@@ -159,5 +169,31 @@ const styles = StyleSheet.create({
         fontSize: moderateScale(13, 0.3),
         color: '#EF4444',
         fontWeight: 'bold',
+    },
+    placeholderCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 40,
+        marginHorizontal: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
+    placeholderText: {
+        fontSize: moderateScale(16, 0.3),
+        fontWeight: 'bold',
+        color: '#333',
+        marginTop: 12,
+    },
+    placeholderSubText: {
+        fontSize: moderateScale(13, 0.3),
+        color: '#999',
+        marginTop: 6,
     },
 });

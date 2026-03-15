@@ -87,7 +87,7 @@ interface Props {
 
 export default function CalendarScreen({ navigation }: Props) {
   const [selectedDate, setSelectedDate] = useState(TODAY_STR);
-  const [filterMode, setFilterMode] = useState('all');
+  const [filterMode, setFilterMode] = useState<string | null>(null);
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -160,6 +160,7 @@ export default function CalendarScreen({ navigation }: Props) {
   };
 
   const visibleEvents = useMemo(() => {
+    if (filterMode === null) return [];
     return events.filter((event: any) => {
       if (filterMode === 'all') return true;
       const type = event.hasOwnProperty('type') ? event.type : -1;
@@ -318,7 +319,9 @@ export default function CalendarScreen({ navigation }: Props) {
       if (userEmail && isAuthenticated) {
         const safeEmail = userEmail.replace(/\./g, '_');
         const savedFilter = (await getData(STORAGE_KEYS.FILTER_MODE(safeEmail))) as string;
-        if (savedFilter) setFilterMode(savedFilter);
+        setFilterMode(savedFilter || 'all');
+      } else {
+        setFilterMode('all');
       }
     };
     loadFilter();

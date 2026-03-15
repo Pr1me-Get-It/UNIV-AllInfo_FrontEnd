@@ -33,9 +33,10 @@ type NoticeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 
 
 interface Props {
   navigation: NoticeScreenNavigationProp;
+  route: any;
 }
 
-export default function NoticeScreen({ navigation }: Props) {
+export default function NoticeScreen({ navigation, route }: Props) {
   const queryClient = useQueryClient();
   const { readStatus } = useContext(AlarmContext) || { readStatus: {} };
   const { userEmail } = useAuth(); // 유저 이메일 가져오기
@@ -74,6 +75,19 @@ export default function NoticeScreen({ navigation }: Props) {
     };
     initFilters();
   }, []);
+
+  // 1-1. 외부(홈 화면 등)에서 넘어온 검색어 처리
+  useEffect(() => {
+    if (route.params?.initialQuery) {
+      const initial = route.params.initialQuery;
+      // 로컬 인풋과 실제 쿼리 상태 모두 업데이트
+      setInputText(initial);
+      setQuery(initial);
+      
+      // 파라미터 사용 후 속성 제거 (뒤로가기 등 재진입 시 중복 방지)
+      (navigation as any).setParams({ initialQuery: undefined });
+    }
+  }, [route.params?.initialQuery]);
 
   // 검색 인풋 디바운스 적용
   const debouncedSetQuery = useRef(

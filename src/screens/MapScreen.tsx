@@ -119,6 +119,9 @@ export default function MapScreen() {
     setSelectedPin(pin);
   };
 
+  // Temporary flag to disable map
+  const isMapReady = false;
+
   return (
     <View style={styles.page}>
       <View style={styles.headerContainer}>
@@ -151,94 +154,104 @@ export default function MapScreen() {
       </View>
 
       <View style={styles.mapArea}>
-        <NaverMapView
-          style={styles.mapContainer}
-          initialCamera={INITIAL_REGION}
-          mapType="Basic"
-          layerGroups={{
-            BUILDING: true,
-            TRANSIT: true,
-            TRAFFIC: false,
-            BICYCLE: false,
-            MOUNTAIN: false,
-            CADASTRAL: false,
-          }}
-          onInitialized={() => {
-            if (__DEV__) console.log('[NaverMap] onInitialized - Map loaded securely.');
-          }}
-          onCameraChanged={(args) => {
-            // console.log('[NaverMap] onCameraChanged:', args);
-          }}
-          onTapMap={(args) => {
-            if (__DEV__) console.log('[NaverMap] onTapMap:', args);
-          }}
-        >
-          {filteredPins.map((pin) => (
-            <NaverMapMarkerOverlay
-              key={pin.id}
-              latitude={pin.latitude}
-              longitude={pin.longitude}
-              caption={{ text: pin.name }}
-              onTap={() => {
-                // console.log('NaverMap: Marker Tapped', pin.name);
-                handleMarkerClick(pin);
-              }}
-              width={20}
-              height={28}
-            />
-          ))}
-        </NaverMapView>
-
-        <TouchableOpacity
-          style={[styles.sidebarToggle, isSidebarOpen ? styles.sidebarToggleOpen : null]}
-          onPress={() => setIsSidebarOpen(!isSidebarOpen)}
-        >
-          <Ionicons name={isSidebarOpen ? "chevron-forward" : "list"} size={24} color="#333" />
-        </TouchableOpacity>
-
-        {isSidebarOpen && (
-          <View style={styles.sidebar}>
-            <AppText style={styles.sidebarTitle}>핀 필터</AppText>
-            {PIN_TYPES.map((type) => (
-              <TouchableOpacity
-                key={type.key}
-                style={styles.filterItem}
-                onPress={() => togglePinType(type.key)}
-              >
-                <Ionicons
-                  name={visibleTypes.includes(type.key) ? "checkbox" : "square-outline"}
-                  size={20}
-                  color={visibleTypes.includes(type.key) ? COLORS.primary : "#999"}
-                />
-                <AppText style={styles.filterLabel}>{type.label}</AppText>
-              </TouchableOpacity>
-            ))}
+        {!isMapReady ? (
+          <View style={styles.placeholderContainer}>
+            <Ionicons name="construct-outline" size={60} color="#ccc" />
+            <AppText style={styles.placeholderText}>지도 서비스 준비 중입니다</AppText>
+            <AppText style={styles.placeholderSubText}>차후 업데이트예정입니다.</AppText>
           </View>
-        )}
+        ) : (
+          <>
+            <NaverMapView
+              style={styles.mapContainer}
+              initialCamera={INITIAL_REGION}
+              mapType="Basic"
+              layerGroups={{
+                BUILDING: true,
+                TRANSIT: true,
+                TRAFFIC: false,
+                BICYCLE: false,
+                MOUNTAIN: false,
+                CADASTRAL: false,
+              }}
+              onInitialized={() => {
+                if (__DEV__) console.log('[NaverMap] onInitialized - Map loaded securely.');
+              }}
+              onCameraChanged={(args) => {
+                // console.log('[NaverMap] onCameraChanged:', args);
+              }}
+              onTapMap={(args) => {
+                if (__DEV__) console.log('[NaverMap] onTapMap:', args);
+              }}
+            >
+              {filteredPins.map((pin) => (
+                <NaverMapMarkerOverlay
+                  key={pin.id}
+                  latitude={pin.latitude}
+                  longitude={pin.longitude}
+                  caption={{ text: pin.name }}
+                  onTap={() => {
+                    // console.log('NaverMap: Marker Tapped', pin.name);
+                    handleMarkerClick(pin);
+                  }}
+                  width={20}
+                  height={28}
+                />
+              ))}
+            </NaverMapView>
 
-        {selectedPin && (
-          <Animated.View
-            style={[
-              styles.bottomSheet,
-              {
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            <View style={styles.sheetHeader}>
-              <View style={styles.sheetHeaderTitleRow}>
-                <AppText style={styles.sheetTitle}>{selectedPin.name}</AppText>
-                <AppText style={styles.infoType}>{selectedPin.type === 'facility' ? '시설' : selectedPin.type === 'administrative' ? '행정' : selectedPin.type === 'door' ? '출입문' : '기타'}</AppText>
+            <TouchableOpacity
+              style={[styles.sidebarToggle, isSidebarOpen ? styles.sidebarToggleOpen : null]}
+              onPress={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              <Ionicons name={isSidebarOpen ? "chevron-forward" : "list"} size={24} color="#333" />
+            </TouchableOpacity>
+
+            {isSidebarOpen && (
+              <View style={styles.sidebar}>
+                <AppText style={styles.sidebarTitle}>핀 필터</AppText>
+                {PIN_TYPES.map((type) => (
+                  <TouchableOpacity
+                    key={type.key}
+                    style={styles.filterItem}
+                    onPress={() => togglePinType(type.key)}
+                  >
+                    <Ionicons
+                      name={visibleTypes.includes(type.key) ? "checkbox" : "square-outline"}
+                      size={20}
+                      color={visibleTypes.includes(type.key) ? COLORS.primary : "#999"}
+                    />
+                    <AppText style={styles.filterLabel}>{type.label}</AppText>
+                  </TouchableOpacity>
+                ))}
               </View>
-              <TouchableOpacity onPress={closeBottomSheet}>
-                <Ionicons name="close-circle" size={30} color="#ccc" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.sheetContent}>
-              <AppText style={styles.infoDesc}>{selectedPin.description}</AppText>
-              <View style={{ height: 20 }} />
-            </ScrollView>
-          </Animated.View>
+            )}
+
+            {selectedPin && (
+              <Animated.View
+                style={[
+                  styles.bottomSheet,
+                  {
+                    transform: [{ translateY: slideAnim }],
+                  },
+                ]}
+              >
+                <View style={styles.sheetHeader}>
+                  <View style={styles.sheetHeaderTitleRow}>
+                    <AppText style={styles.sheetTitle}>{selectedPin.name}</AppText>
+                    <AppText style={styles.infoType}>{selectedPin.type === 'facility' ? '시설' : selectedPin.type === 'administrative' ? '행정' : selectedPin.type === 'door' ? '출입문' : '기타'}</AppText>
+                  </View>
+                  <TouchableOpacity onPress={closeBottomSheet}>
+                    <Ionicons name="close-circle" size={30} color="#ccc" />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.sheetContent}>
+                  <AppText style={styles.infoDesc}>{selectedPin.description}</AppText>
+                  <View style={{ height: 20 }} />
+                </ScrollView>
+              </Animated.View>
+            )}
+          </>
         )}
       </View>
     </View>
@@ -439,5 +452,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#4B5563',
     lineHeight: 22,
+  },
+  placeholderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
+    backgroundColor: '#f8f9fa',
+  },
+  placeholderText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 15,
+  },
+  placeholderSubText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

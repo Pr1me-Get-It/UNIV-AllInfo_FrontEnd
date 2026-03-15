@@ -44,6 +44,7 @@ export default function HomeScreen({ navigation }: Props) {
   // 닉네임 모달 상태
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
+  const [searchText, setSearchText] = useState('');
 
 
   // 커스텀 알림 상태
@@ -145,6 +146,18 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
+  const handleSearchSubmit = () => {
+    const trimmedQuery = searchText.trim();
+    if (trimmedQuery) {
+      // Navigate to Notice tab with search query
+      navigation.navigate('MainTab', {
+        screen: 'Notice',
+        params: { initialQuery: trimmedQuery }
+      } as any);
+      setSearchText(''); // Clear search bar after navigation
+    }
+  };
+
   return (
     <LinearGradient
       colors={[COLORS.lightPink, COLORS.white]}
@@ -179,7 +192,9 @@ export default function HomeScreen({ navigation }: Props) {
             placeholder="무엇이 궁금하신가요?"
             placeholderTextColor="#9CA3AF"
             returnKeyType="search"
-            onSubmitEditing={() => Alert.alert('검색', '준비 중입니다.')}
+            value={searchText}
+            onChangeText={setSearchText}
+            onSubmitEditing={handleSearchSubmit}
           />
         </View>
 
