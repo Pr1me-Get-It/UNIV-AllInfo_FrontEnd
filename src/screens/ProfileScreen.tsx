@@ -393,11 +393,11 @@ export default function ProfileScreen() {
                 showsVerticalScrollIndicator={false}>
                 <AppText style={{ fontSize: 13, color: '#4b5563', lineHeight: 22 }}>
                   본 애플리케이션은 다음과 같은 핵심 오픈소스 기술 스택을 활용하고 있습니다:{'\n\n'}
-                  • React Native (0.74+){'\n'}• Expo (SDK 51){'\n'}• React Navigation{'\n'}• React
-                  Query (@tanstack/react-query){'\n'}• React Native Reanimated (Reanimated 3){'\n'}•
-                  Lottie React Native{'\n'}• React Native Naver Map{'\n'}• Matter.js (물리 엔진)
+                  • React Native (0.81){'\n'}• Expo (SDK 54){'\n'}• React Navigation (v7){'\n'}• React
+                  Query (@tanstack/react-query v5){'\n'}• React Native Reanimated (v4){'\n'}•
+                  React Native Naver Map (@mj-studio){'\n'}• Matter.js (물리 엔진)
                   {'\n'}• React Native Calendars{'\n'}• badwords-ko (비속어 필터){'\n'}• React Native Draggable Grid
-                  {'\n'}• Axios{'\n'}
+                  {'\n'}• Axios{'\n'}• Expo Image / Linear Gradient / Notifications{'\n'}
                   {'\n'}각 프로젝트의 라이선스 원문은 해당 공식 저장소에서 확인 가능합니다.
                 </AppText>
               </ScrollView>

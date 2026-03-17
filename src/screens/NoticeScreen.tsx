@@ -83,7 +83,7 @@ export default function NoticeScreen({ navigation, route }: Props) {
       // 로컬 인풋과 실제 쿼리 상태 모두 업데이트
       setInputText(initial);
       setQuery(initial);
-      
+
       // 파라미터 사용 후 속성 제거 (뒤로가기 등 재진입 시 중복 방지)
       (navigation as any).setParams({ initialQuery: undefined });
     }
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 20,
     marginHorizontal: 20,
-    marginBottom: 110,
+    marginBottom: 130,
     paddingVertical: 10,
   },
   tabsContainer: {

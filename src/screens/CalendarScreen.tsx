@@ -24,6 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchGoogleEvents } from '../api/calendarService';
 import CalendarDay from '../components/CalendarDay';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { RouteProp } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -81,11 +82,14 @@ import { RootStackParamList } from '../types/navigation';
 
 type CalendarScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTab'>;
 
+type CalendarScreenRouteProp = RouteProp<RootStackParamList, 'MainTab'>;
+
 interface Props {
   navigation: CalendarScreenNavigationProp;
+  route: CalendarScreenRouteProp;
 }
 
-export default function CalendarScreen({ navigation }: Props) {
+export default function CalendarScreen({ navigation, route }: Props) {
   const [selectedDate, setSelectedDate] = useState(TODAY_STR);
   const [filterMode, setFilterMode] = useState<string | null>(null);
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
@@ -326,6 +330,21 @@ export default function CalendarScreen({ navigation }: Props) {
     };
     loadFilter();
   }, [userEmail, isAuthenticated]);
+
+  // 외부(홈 화면 검색 등)에서 넘어온 날짜 파라미터 처리
+  useFocusEffect(
+    useCallback(() => {
+      const params = route.params as any;
+      if (params?.initialDate) {
+        const targetDate = params.initialDate;
+        setSelectedDate(targetDate);
+        setCurrentMonth(targetDate);
+
+        // 파라미터 사용 후 초기화
+        navigation.setParams({ initialDate: undefined } as any);
+      }
+    }, [route.params, navigation])
+  );
 
   const handleFilterSelect = async (m: string) => {
     setFilterMode(m);

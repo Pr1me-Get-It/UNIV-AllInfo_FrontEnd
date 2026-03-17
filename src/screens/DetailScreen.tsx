@@ -276,10 +276,14 @@ export default function DetailScreen({ route, navigation }: Props) {
               <TouchableOpacity onPress={addToCalendar} style={styles.calendarIconBtn}>
                 <Ionicons name="calendar-outline" size={18} color="#DB1F26" />
               </TouchableOpacity>
+
             </View>
             <AppText style={styles.deadlineDate}>
               {deadlineInfo.kickoff ? `${formatDate(deadlineInfo.kickoff)} ~ ` : ''}
               {formatDate(deadlineInfo.deadline) || '상시 모집'}
+            </AppText>
+            <AppText style={styles.warningText}>
+              * 실제와 다를 수 있습니다! 꼭 확인해주세요!
             </AppText>
           </View>
         ) : null}
@@ -288,6 +292,7 @@ export default function DetailScreen({ route, navigation }: Props) {
         <AppText style={styles.guideText}>
           상세 내용은 아래 버튼을 눌러 학교 홈페이지에서 확인하세요.
         </AppText>
+
 
         {/* 3. Action Buttons */}
         <View style={styles.actionGroup}>
@@ -405,7 +410,7 @@ const styles = StyleSheet.create({
 
   // Body Section
   bodySection: {
-    padding: 24,
+    padding: 30,
   },
   // Deadline Card
   deadlineCard: {
@@ -506,5 +511,10 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontSize: 13,
     textDecorationLine: 'underline',
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#D32F2F',
+    marginTop: 4,
   },
 });

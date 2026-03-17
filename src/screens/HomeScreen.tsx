@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -26,6 +26,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import MealWidget from '../components/home/MealWidget';
 import BusWidget from '../components/home/BusWidget';
+import academicSchedule from '../constants/academic_schedule.json';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTab'>;
 
@@ -45,6 +46,87 @@ export default function HomeScreen({ navigation }: Props) {
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  // 1. 통합 검색 인덱스 정의
+  const searchIndex = useMemo(() => {
+    // 내부 스크린 및 기능
+    const internalFeatures = [
+      { id: 'map', title: '학교 지도', type: 'internal', screen: 'Map', icon: 'map' },
+      { id: 'applegame', title: '두쫀쿠게임', type: 'internal', screen: 'AppleGame', icon: 'nutrition' },
+      { id: 'flappybird', title: '플래피 버드', type: 'internal', screen: 'FlappyBird', icon: 'rocket' },
+      { id: 'keyword', title: '키워드 알림 설정', type: 'internal', screen: 'Keyword', icon: 'notifications-outline' },
+      { id: 'bookmark', title: '즐겨찾기(북마크)', type: 'internal', screen: 'Bookmark', icon: 'bookmark-outline' },
+    ];
+
+    // 프로필 설정 항목들
+    const profileSettings = [
+      { id: 'push_setting', title: '푸시 알림 설정', type: 'internal', screen: 'Profile', icon: 'notifications' },
+      { id: 'sound_setting', title: '알림 소리 설정', type: 'internal', screen: 'Profile', icon: 'volume-high' },
+      { id: 'feedback', title: '피드백 보내기', type: 'internal', screen: 'Profile', icon: 'mail-unread' },
+      { id: 'license', title: '오픈소스 라이선스', type: 'internal', screen: 'Profile', icon: 'document-text' },
+      { id: 'nickname_setting', title: '닉네임 변경', type: 'action', action: 'nickname', icon: 'person-outline' },
+      { id: 'logout', title: '로그아웃', type: 'internal', screen: 'Profile', icon: 'log-out' },
+    ];
+
+    // 외부 링크들
+    const externalLinks = AVAILABLE_LINKS.map(link => ({
+      ...link,
+      type: 'external',
+    }));
+
+    // 학사 일정들
+    const academicEvents = academicSchedule.map((event: any) => ({
+      id: event.id,
+      title: `[학사일정] ${event.summary}`,
+      type: 'academic',
+      date: event.start.date || event.start.dateTime?.split('T')[0],
+      icon: 'calendar',
+    }));
+
+    return [...internalFeatures, ...profileSettings, ...externalLinks, ...academicEvents];
+  }, []);
+
+  // 2. 실시간 검색 결과 필터링
+  useEffect(() => {
+    const query = searchText.trim().toLowerCase();
+    if (!query) {
+      setSearchResults([]);
+      return;
+    }
+
+    const filtered = searchIndex.filter(item =>
+      item.title.toLowerCase().includes(query)
+    ).slice(0, 8); // 제안 목록을 8개로 소폭 확장
+
+    setSearchResults(filtered);
+  }, [searchText, searchIndex]);
+
+  // 3. 검색 결과 클릭 핸들러
+  const handleSearchResultPress = (item: any) => {
+    setSearchText('');
+    setSearchResults([]);
+
+    if (item.type === 'external') {
+      handleOpenLink(item.url);
+    } else if (item.type === 'internal') {
+      if (item.screen === 'Map') {
+        navigation.navigate('MainTab', { screen: 'Map' } as any);
+      } else {
+        navigation.navigate(item.screen as any);
+      }
+    } else if (item.type === 'academic') {
+      // 캘린더 화면으로 해당 날짜와 함께 이동
+      navigation.navigate('MainTab', {
+        screen: 'Calendar',
+        params: { initialDate: item.date }
+      } as any);
+    } else if (item.type === 'action') {
+      if (item.action === 'nickname') {
+        handleNicknamePress();
+      }
+    }
+  };
 
 
   // 커스텀 알림 상태
@@ -185,17 +267,42 @@ export default function HomeScreen({ navigation }: Props) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* 검색바 섹션 */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="무엇이 궁금하신가요?"
-            placeholderTextColor="#9CA3AF"
-            returnKeyType="search"
-            value={searchText}
-            onChangeText={setSearchText}
-            onSubmitEditing={handleSearchSubmit}
-          />
+        <View style={styles.searchSection}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="무엇이 궁금하신가요?"
+              placeholderTextColor="#9CA3AF"
+              returnKeyType="search"
+              value={searchText}
+              onChangeText={setSearchText}
+              onSubmitEditing={handleSearchSubmit}
+            />
+            {searchText.length > 0 && (
+              <TouchableOpacity onPress={() => { setSearchText(''); setSearchResults([]); }}>
+                <Ionicons name="close-circle" size={20} color="#ccc" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* 검색 결과 제안 목록 */}
+          {searchResults.length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              {searchResults.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.suggestionItem}
+                  onPress={() => handleSearchResultPress(item)}>
+                  <View style={styles.suggestionIconWrapper}>
+                    <Ionicons name={(item.icon as any) || 'link-outline'} size={18} color={COLORS.primary} />
+                  </View>
+                  <AppText style={styles.suggestionText}>{item.title}</AppText>
+                  <Ionicons name="chevron-forward" size={16} color="#ccc" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* 바로가기 메뉴 섹션 (Pill-shaped) */}
@@ -382,7 +489,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 5,
   },
   headerTitleContainer: {
     flex: 1,
@@ -414,21 +521,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100, // 하단 탭 바에 가리지 않도록 넉넉하게 여백 추가
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  searchSection: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB', // Add subtle border for visibility on white background
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 15, // Reduced from 20
+    borderColor: '#E5E7EB',
+    marginBottom: 10,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 5,
     elevation: 2,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   searchIcon: {
     marginRight: 8,
@@ -437,10 +547,37 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: moderateScale(15, 0.3),
     color: '#111',
-    padding: 0, // Android 텍스트 패딩 제거
+    padding: 0,
+  },
+  suggestionsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingVertical: 5,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+  },
+  suggestionIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(219, 31, 38, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  suggestionText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
   },
   sectionHeader: {
-    marginBottom: 10,
+    marginTop: 4,
+    marginBottom: 6,
     paddingHorizontal: 4,
   },
   sectionTitle: {
@@ -494,11 +631,13 @@ const styles = StyleSheet.create({
     lineHeight: moderateScale(16, 0.3),
   },
   shortcutScroll: {
-    marginBottom: 20, // Reduced from 25
-    maxHeight: 40, // Reduced height
+    marginBottom: 15,
+    maxHeight: 60,
   },
   shortcutScrollContent: {
-    paddingHorizontal: 0, // Align with left edge
+    paddingHorizontal: 0,
+    paddingTop: 2,
+    paddingBottom: 8,
     alignItems: 'center',
   },
   pillButton: {
