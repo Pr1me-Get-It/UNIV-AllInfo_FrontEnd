@@ -73,7 +73,14 @@ LocaleConfig.locales['kr'] = {
 };
 LocaleConfig.defaultLocale = 'kr';
 
-const TODAY_STR = new Date().toISOString().split('T')[0];
+const getTodayStr = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const TODAY_STR = getTodayStr();
 const screenWidth = Dimensions.get('window').width;
 const dayWidth = (screenWidth - 32) / 7;
 
@@ -154,10 +161,17 @@ export default function CalendarScreen({ navigation, route }: Props) {
 
   const getDatesInRange = (startDate: string, endDate: string) => {
     const dates = [];
-    let curr = new Date(startDate);
-    const end = new Date(endDate);
+    const [sYr, sMo, sDa] = startDate.split('T')[0].split('-').map(Number);
+    const [eYr, eMo, eDa] = endDate.split('T')[0].split('-').map(Number);
+    
+    let curr = new Date(sYr, sMo - 1, sDa);
+    const end = new Date(eYr, eMo - 1, eDa);
+    
     while (curr <= end) {
-      dates.push(curr.toISOString().split('T')[0]);
+      const y = curr.getFullYear();
+      const m = String(curr.getMonth() + 1).padStart(2, '0');
+      const d = String(curr.getDate()).padStart(2, '0');
+      dates.push(`${y}-${m}-${d}`);
       curr.setDate(curr.getDate() + 1);
     }
     return dates;
@@ -168,11 +182,37 @@ export default function CalendarScreen({ navigation, route }: Props) {
     return events.filter((event: any) => {
       if (filterMode === 'all') return true;
       const type = event.hasOwnProperty('type') ? event.type : -1;
+      // type 2(공휴일)는 학부/대학원 필터에 관계없이 항상 표시
+      if (type === 2) return true;
       return filterMode === 'undergraduate' ? type === 0 : type === 1;
     });
   }, [events, filterMode]);
 
-  // 1. Process events for Calendar Layout (Month View)
+  const holidayDates = useMemo(() => {
+    const holidays = new Set<string>();
+    visibleEvents.forEach((ev: any) => {
+      if (ev.type === 2) {
+        const s = ev.start.date || ev.start.dateTime?.split('T')[0];
+        let end = ev.end?.date || ev.end?.dateTime?.split('T')[0] || s;
+
+        const isGoogleAllDay = ev.start.date && !ev.id.startsWith('knu_');
+        if (isGoogleAllDay && ev.end?.date) {
+          const [eYr, eMo, eDa] = end.split('T')[0].split('-').map(Number);
+          const endDateObj = new Date(eYr, eMo - 1, eDa);
+          endDateObj.setDate(endDateObj.getDate() - 1);
+          const y = endDateObj.getFullYear();
+          const m = String(endDateObj.getMonth() + 1).padStart(2, '0');
+          const d = String(endDateObj.getDate()).padStart(2, '0');
+          end = `${y}-${m}-${d}`;
+        }
+
+        const dates = getDatesInRange(s, end);
+        dates.forEach(d => holidays.add(d));
+      }
+    });
+    return holidays;
+  }, [visibleEvents]);
+
   const [currentMonth, setCurrentMonth] = useState(TODAY_STR);
 
   const processedEvents = useMemo(() => {
@@ -180,6 +220,18 @@ export default function CalendarScreen({ navigation, route }: Props) {
     // Use currentMonth substring(0, 7) instead of selectedDate
     return processCalendarEvents(visibleEvents, currentMonth.substring(0, 7));
   }, [visibleEvents, currentMonth]); // Re-calc only when events change or month changes
+
+  const updatedMarkedDates = useMemo(() => {
+    const obj: any = {};
+    Object.keys(processedEvents).forEach(date => {
+      obj[date] = { marked: true };
+    });
+    holidayDates.forEach(date => {
+      obj[date] = { ...obj[date], isHoliday: true };
+    });
+    obj[selectedDate] = { ...obj[selectedDate], selected: true };
+    return obj;
+  }, [processedEvents, holidayDates, selectedDate]);
 
   // 2. Events for the List View (Selected Date) - Keep existing logic
   const daySelectedEvents = useMemo(() => {
@@ -211,6 +263,7 @@ export default function CalendarScreen({ navigation, route }: Props) {
           state={state}
           events={dayEvents}
           isSelected={isSelected}
+          isHolidayDate={holidayDates.has(dateStr)}
           onPress={(d) => {
             setSelectedDate(d);
             // Optional: If user selects a date, ensure currentMonth is synced if it somehow drifted
@@ -221,7 +274,7 @@ export default function CalendarScreen({ navigation, route }: Props) {
         />
       );
     },
-    [processedEvents, selectedDate],
+    [processedEvents, selectedDate, holidayDates],
   );
 
   const formatTime = (dateTime: string) => {
@@ -242,7 +295,7 @@ export default function CalendarScreen({ navigation, route }: Props) {
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ marginRight: 15, alignItems: 'flex-end' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                <AppText style={{ fontSize: 12, color: '#666', marginRight: 6 }}>학부</AppText>
+                <AppText style={{ fontSize: 12, color: '#666', marginRight: 6 }}>학부공통</AppText>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgb(219, 31, 38)' }} />
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -262,6 +315,7 @@ export default function CalendarScreen({ navigation, route }: Props) {
           <CalendarHeightProvider itemHeight={itemHeight}>
             <Calendar
               current={currentMonth}
+              markedDates={updatedMarkedDates}
               onMonthChange={(month: any) => setCurrentMonth(month.dateString)}
               dayComponent={renderDay}
               monthFormat={'yyyy년 M월'}
@@ -395,7 +449,7 @@ export default function CalendarScreen({ navigation, route }: Props) {
                   style={styles.filterOption}
                   onPress={() => handleFilterSelect(m)}>
                   <AppText style={filterMode === m ? styles.activeFilterText : styles.filterText}>
-                    {m === 'all' ? '전체' : m === 'undergraduate' ? '학부' : '대학원'}
+                    {m === 'all' ? '전체' : m === 'undergraduate' ? '학부공통' : '대학원'}
                   </AppText>
                 </TouchableOpacity>
               ))}

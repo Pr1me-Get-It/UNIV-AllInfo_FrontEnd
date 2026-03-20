@@ -94,6 +94,24 @@ export const AVAILABLE_LINKS: ExternalLink[] = [
     icon: 'cube-outline',
   },
   {
+    id: 'knu_safe',
+    title: '연구실안전관리시스템',
+    url: 'https://safe.knu.ac.kr/',
+    icon: 'medkit-outline',
+  },
+  {
+    id: 'knu_human_right',
+    title: '경북대 인권센터',
+    url: 'https://hrcedu.knu.ac.kr/',
+    icon: 'people-outline',
+  },
+  {
+    id: 'knu_swedu',
+    title: 'SW교육센터',
+    url: 'https://swedu.knu.ac.kr/',
+    icon: 'code-outline',
+  },
+  {
     id: 'knu_changup_center',
     title: '창업교육센터 공지',
     url: 'https://changup.knu.ac.kr/changup/Board?menuId=MENU_CHANGUP0051',
@@ -147,4 +165,11 @@ export const AVAILABLE_LINKS: ExternalLink[] = [
     url: 'https://startup.knu.ac.kr/bbs/board.php?bo_table=noti2&page=1',
     icon: 'rocket-outline',
   },
+  {
+    id: 'knu_grad',
+    title: '대학원',
+    url: 'https://grad.knu.ac.kr/',
+    icon: 'school-outline',
+  },
+
 ];

@@ -36,6 +36,7 @@ interface CalendarDayProps {
   isSelected: boolean;
   onPress: (dateString: string) => void;
   dayWidth: number;
+  isHolidayDate?: boolean;
 }
 
 const EventBlock = memo(({ ev, dayWidth, itemHeight, rTextStyle }: any) => {
@@ -96,9 +97,15 @@ const CalendarDay = ({
   isSelected,
   onPress,
   dayWidth,
+  isHolidayDate,
 }: CalendarDayProps) => {
   const { itemHeight } = useCalendarHeight();
   const isToday = state === 'today';
+
+  // 공휴일 여부 판별 (props로 전달받은 isHolidayDate 이거나, 기본적으로 일요일인 경우)
+  const [yr, mo, da] = date.dateString.split('-').map(Number);
+  const dayOfWeek = new Date(yr, mo - 1, da).getDay();
+  const isHoliday = isHolidayDate || dayOfWeek === 0;
 
   // Height constants
   const DATE_HEIGHT = 20; // Height reserved for the date number
@@ -154,7 +161,8 @@ const CalendarDay = ({
         <AppText
           style={[
             styles.dayText,
-            isToday && styles.todayText,
+            isHoliday && styles.holidayText, // 공휴일 & 일요일: 빨간색
+            isToday && styles.todayText,     // 오늘: 빨간색 + 볼드 (덮어씌움)
             isSelected && styles.selectedDayText,
           ]}>
           {date.day}
@@ -188,6 +196,7 @@ const styles = StyleSheet.create({
   },
   selectedDayBox: { backgroundColor: 'rgba(219, 31, 38, 0.05)', borderRadius: 8 },
   dayText: { fontSize: 14, color: '#333' },
+  holidayText: { color: 'rgb(219, 31, 38)' },
   todayText: { color: 'rgb(219, 31, 38)', fontWeight: 'bold' },
   selectedDayText: { fontWeight: 'bold' },
   eventContainer: {

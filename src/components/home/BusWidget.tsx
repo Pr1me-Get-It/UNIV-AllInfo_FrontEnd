@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppText from '../AppText';
 import { COLORS } from '../../constants/colors';
 import { moderateScale } from '../../utils/responsive';
@@ -18,6 +19,33 @@ export default function BusWidget() {
     const [error, setError] = useState<string | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [selectedStationId, setSelectedStationId] = useState<string>(DEFAULT_STATION_IDS[0]);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [favoriteStationId, setFavoriteStationId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadFav = async () => {
+            try {
+                const fav = await AsyncStorage.getItem('FAVORITE_BUS_STATION');
+                if (fav) {
+                    setFavoriteStationId(fav);
+                    setSelectedStationId(fav);
+                }
+            } catch (e) {}
+        };
+        loadFav();
+    }, []);
+
+    const toggleFavorite = async (stationId: string) => {
+        try {
+            if (favoriteStationId === stationId) {
+                await AsyncStorage.removeItem('FAVORITE_BUS_STATION');
+                setFavoriteStationId(null);
+            } else {
+                await AsyncStorage.setItem('FAVORITE_BUS_STATION', stationId);
+                setFavoriteStationId(stationId);
+            }
+        } catch (e) {}
+    };
 
     const loadArrivals = useCallback(async () => {
         try {
@@ -89,32 +117,22 @@ export default function BusWidget() {
                 </TouchableOpacity>
             </View>
 
-            {/* 탭 네비게이션 영역 */}
-            {!isLoading && !error && arrivals.length > 0 && (
-                <View style={styles.tabsContainer}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScrollContent}>
-                        {arrivals.map((station) => {
-                            const isSelected = station.stationId === selectedStationId;
-                            return (
-                                <TouchableOpacity
-                                    key={station.stationId}
-                                    style={[styles.tabButton, isSelected && styles.tabButtonActive]}
-                                    onPress={() => setSelectedStationId(station.stationId)}
-                                >
-                                    <AppText
-                                        style={[styles.tabText, isSelected && styles.tabTextActive]}
-                                        numberOfLines={1}
-                                    >
-                                        {station.stationName}
-                                    </AppText>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
+            {/* 선택된 정류장 드롭다운 버튼 */}
+            {!isLoading && !error && arrivals.length > 0 && selectedStationData && (
+                <TouchableOpacity
+                    style={styles.dropdownButton}
+                    onPress={() => setIsModalVisible(true)}
+                    activeOpacity={0.7}
+                >
+                    <View style={styles.dropdownInner}>
+                        <AppText style={styles.dropdownText}>{selectedStationData.stationName}</AppText>
+                        {favoriteStationId === selectedStationId && <Ionicons name="star" size={16} color="#F59E0B" style={{ marginLeft: 6 }} />}
+                    </View>
+                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                </TouchableOpacity>
             )}
 
-            <View style={[styles.card, arrivals.length > 0 && styles.cardWithTabs]}>
+            <View style={[styles.card, arrivals.length > 0 && selectedStationData && styles.cardWithDropdown]}>
                 {isLoading ? (
                     <View style={styles.centerBox}>
                         <ActivityIndicator size="small" color={COLORS.primary} />
@@ -139,6 +157,45 @@ export default function BusWidget() {
                     </View>
                 )}
             </View>
+
+            <Modal visible={isModalVisible} transparent animationType="fade" onRequestClose={() => setIsModalVisible(false)}>
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setIsModalVisible(false)}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <AppText style={styles.modalTitle}>정류장 선택</AppText>
+                            <TouchableOpacity onPress={() => setIsModalVisible(false)}>
+                                <Ionicons name="close" size={24} color="#111" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView contentContainerStyle={styles.stationList}>
+                            {arrivals.map(station => {
+                                const isFav = station.stationId === favoriteStationId;
+                                const isSelected = station.stationId === selectedStationId;
+                                return (
+                                    <TouchableOpacity
+                                        key={station.stationId}
+                                        style={[styles.stationRow, isSelected && styles.stationRowActive]}
+                                        onPress={() => {
+                                            setSelectedStationId(station.stationId);
+                                            setIsModalVisible(false);
+                                        }}
+                                    >
+                                        <AppText style={[styles.stationRowText, isSelected && styles.stationRowTextActive]}>
+                                            {station.stationName}
+                                        </AppText>
+                                        <TouchableOpacity 
+                                            style={styles.favToggleBtn}
+                                            onPress={(e) => { e.stopPropagation(); toggleFavorite(station.stationId); }}
+                                        >
+                                            <Ionicons name={isFav ? "star" : "star-outline"} size={22} color={isFav ? "#F59E0B" : "#D1D5DB"} />
+                                        </TouchableOpacity>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </View>
     );
 }
@@ -180,42 +237,88 @@ const styles = StyleSheet.create({
         borderColor: '#F3F4F6',
         minHeight: 80,
     },
-    cardWithTabs: {
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-        borderTopWidth: 0,
+    cardWithDropdown: {
+        borderTopWidth: 1,
     },
-    tabsContainer: {
+    dropdownButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
+    dropdownInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    dropdownText: {
+        fontSize: moderateScale(15, 0.3),
+        fontWeight: 'bold',
+        color: '#111',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        borderWidth: 1,
-        borderBottomWidth: 0,
-        borderColor: '#F3F4F6',
+        maxHeight: '70%',
+        paddingBottom: 40,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    modalTitle: {
+        fontSize: moderateScale(18, 0.3),
+        fontWeight: 'bold',
+        color: '#111',
+    },
+    stationList: {
+        paddingHorizontal: 16,
         paddingTop: 8,
     },
-    tabsScrollContent: {
-        paddingHorizontal: 12,
-        paddingBottom: 12,
-        gap: 8,
+    stationRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
     },
-    tabButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
+    stationRowActive: {
+        backgroundColor: 'rgba(33, 150, 243, 0.05)',
+        borderRadius: 12,
+        borderBottomWidth: 0,
     },
-    tabButtonActive: {
-        backgroundColor: COLORS.primary,
+    stationRowText: {
+        fontSize: moderateScale(15, 0.3),
+        color: '#374151',
     },
-    tabText: {
-        fontSize: moderateScale(13, 0.3),
-        color: '#6B7280',
-        fontWeight: '500',
-    },
-    tabTextActive: {
-        color: '#FFFFFF',
+    stationRowTextActive: {
+        color: COLORS.primary,
         fontWeight: 'bold',
+    },
+    favToggleBtn: {
+        padding: 4,
     },
     listContainer: { gap: 16 },
     busItem: {

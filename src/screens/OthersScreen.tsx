@@ -8,9 +8,6 @@ import { moderateScale } from '../utils/responsive';
 
 import { useNavigation } from '@react-navigation/native';
 
-const { width } = Dimensions.get('window');
-const SPACING = 8; // Reduced spacing slightly to allow more room for icons
-const CARD_WIDTH = (width - 40 - SPACING * 3) / 4; // 4 items per row
 
 export default function OthersScreen() {
     const navigation = useNavigation();
@@ -55,7 +52,7 @@ export default function OthersScreen() {
         },
         {
             id: 'flappybird',
-            title: '플래피', // Shortened name
+            title: '호반우', // Shortened name
             icon: 'rocket-outline',
             color: '#EF4444', // Red
             bgColor: '#FEF2F2',
@@ -80,20 +77,24 @@ export default function OthersScreen() {
     };
 
     const renderGrid = (items: any[]) => (
-        <View style={styles.grid}>
-            {items.map((item) => (
-                <TouchableOpacity
-                    key={item.id}
-                    style={styles.card}
-                    onPress={() => handlePress(item.title, item.id)}
-                    activeOpacity={0.8}
-                >
-                    <View style={[styles.iconContainer, { backgroundColor: item.bgColor }]}>
-                        <Ionicons name={item.icon as any} size={28} color={item.color} />
-                    </View>
-                    <AppText style={styles.cardTitle} numberOfLines={1}>{item.title}</AppText>
-                </TouchableOpacity>
-            ))}
+        <View style={styles.gridWrapper}>
+            <View style={styles.grid}>
+                {items.map((item) => (
+                    <TouchableOpacity
+                        key={item.id}
+                        style={styles.card}
+                        onPress={() => handlePress(item.title, item.id)}
+                        activeOpacity={0.8}
+                    >
+                        <View style={[styles.iconContainer, { backgroundColor: item.bgColor }]}>
+                            <Ionicons name={item.icon as any} size={28} color={item.color} />
+                        </View>
+                        <View style={{ width: '100%', alignItems: 'center' }}>
+                            <AppText style={styles.cardTitle} numberOfLines={1}>{item.title}</AppText>
+                        </View>
+                    </TouchableOpacity>
+                ))}
+            </View>
         </View>
     );
 
@@ -131,23 +132,29 @@ const styles = StyleSheet.create({
         color: '#111',
         marginBottom: 20,
     },
+    gridWrapper: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 25,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'flex-start',
-        gap: SPACING,
     },
     card: {
-        width: CARD_WIDTH,
-        backgroundColor: 'transparent', // Remove card background for icon-like look
-        // borderRadius: 12,
-        // paddingVertical: 10,
-        marginBottom: 10,
+        width: '25%',
         alignItems: 'center',
-        justifyContent: 'flex-start',
-        // Remove shadow/border for cleaner icon look
-        borderWidth: 0,
-        elevation: 0,
+        marginBottom: 16,
+        paddingHorizontal: 5,
     },
     iconContainer: {
         width: moderateScale(56, 0.3), // Slightly larger

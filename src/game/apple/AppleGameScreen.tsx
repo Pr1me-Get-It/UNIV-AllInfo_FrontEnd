@@ -78,14 +78,14 @@ const AppleGameScreen = () => {
                             내 최고 점수: <AppText style={{ color: COLORS.PRIMARY }}>{myBestScore}</AppText>
                         </AppText>
                     </View>
+                    <AppText style={{ fontSize: 14, color: '#666', marginTop: 10 }}>
+                        터치 두번으로 합이 10이되도록 만드세요!
+                    </AppText>
                 </View>
 
                 <View style={styles.menuContent}>
                     <TouchableOpacity style={styles.menuButton} onPress={startGame}>
                         <AppText style={styles.menuButtonText}>게임 시작</AppText>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.menuButtonSecondary} onPress={() => CustomAlert({ visible: true, title: '게임 방법', message: '드래그하여 합이 10이 되는 두쫀쿠들을 선택하세요!', onClose: () => { }, buttons: [{ text: '확인', onPress: () => { } }] })}>
-                        <AppText style={styles.menuButtonTextSecondary}>게임 방법</AppText>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -95,23 +95,31 @@ const AppleGameScreen = () => {
     return (
         <View style={[styles.container, { paddingBottom: insets.bottom }]}>
             <View style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 0) }]}>
-                <TouchableOpacity onPress={() => setGameState('MENU')} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={28} color="#333" />
-                </TouchableOpacity>
+                {/* 왼쪽 영역: 뒤로가기 버튼 + 현재 점수 */}
+                <View style={styles.leftContainer}>
+                    <TouchableOpacity onPress={() => setGameState('MENU')} style={styles.backButton}>
+                        <Ionicons name="chevron-back" size={28} color="#333" />
+                    </TouchableOpacity>
+                    <View style={styles.scoreContainer}>
+                        <AppText style={styles.label}>점수</AppText>
+                        <AppText style={styles.value}>{score}</AppText>
+                    </View>
+                </View>
 
-                <View style={styles.scoreContainer}>
-                    <AppText style={styles.label}>점수</AppText>
-                    <AppText style={styles.value}>{score}</AppText>
-                </View>
-                <View style={{ alignItems: 'center' }}>
+                {/* 중앙 영역: 타이틀 + 최고 점수 */}
+                <View style={styles.centerContainer}>
                     <AppText style={styles.title}>두쫀쿠</AppText>
-                    <AppText style={{ fontSize: 12, color: COLORS.PRIMARY, fontWeight: 'bold' }}>Best: {myBestScore}</AppText>
+                    <AppText style={styles.bestScoreText}>Best: {myBestScore}</AppText>
                 </View>
-                <View style={styles.scoreContainer}>
-                    <AppText style={styles.label}>남은시간</AppText>
-                    <AppText style={[styles.value, timeLeft <= 10 && styles.warning]}>
-                        {timeLeft}
-                    </AppText>
+
+                {/* 오른쪽 영역: 남은 시간 */}
+                <View style={styles.rightContainer}>
+                    <View style={styles.scoreContainer}>
+                        <AppText style={styles.label}>남은시간</AppText>
+                        <AppText style={[styles.value, timeLeft <= 10 && styles.warning]}>
+                            {timeLeft}
+                        </AppText>
+                    </View>
                 </View>
             </View>
 
@@ -171,17 +179,38 @@ const styles = StyleSheet.create({
         paddingBottom: 10,
         backgroundColor: '#f8f9fa',
     },
+    leftContainer: {
+        flex: 1.5, // 뒤로가기 버튼 공간 고려
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+    },
+    centerContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 20, // 오른쪽 컨테이너의 marginRight을 상쇄시켜 완벽한 중앙에 위치하도록 함
+    },
+    rightContainer: {
+        flex: 1.5,
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        marginRight: 20,
+    },
     backButton: {
         padding: 4,
         marginRight: 8,
     },
     title: {
-        fontSize: 18,
+        fontSize: 22,
         fontWeight: 'bold',
         color: '#333',
-        flex: 1,
         textAlign: 'center',
-        marginLeft: -32,
+    },
+    bestScoreText: {
+        fontSize: 12,
+        color: COLORS.PRIMARY,
+        fontWeight: 'bold'
     },
     scoreContainer: {
         alignItems: 'center',
@@ -190,6 +219,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#666',
         fontWeight: 'bold',
+        marginBottom: -10, // 값 텍스트와의 간격 줄이기
     },
     value: {
         fontSize: 24,

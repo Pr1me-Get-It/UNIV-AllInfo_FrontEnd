@@ -34,7 +34,7 @@ const AppleGrid = ({ grid, selectedIndices, firstSelection, onCellPress, cellSiz
                         {!apple.removed && (
                             <>
                                 <Image
-                                    source={require('../../../assets/applegame.png')}
+                                    source={require('../../../assets/applegame.webp')}
                                     style={[
                                         styles.appleImage,
                                         { width: cellSize - 2, height: cellSize - 2 },

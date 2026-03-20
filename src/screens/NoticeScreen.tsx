@@ -227,14 +227,16 @@ export default function NoticeScreen({ navigation, route }: Props) {
   const unreadCount = useMemo(() => {
     return allNotices.filter((item: any) => {
       const sourcePrefix = normalizeSource(item.source);
-      return (!sourcePrefix || selectedSources.includes(sourcePrefix)) && !safeStatus[item.id];
+      const matchesSourceFilter = selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
+      return matchesSourceFilter && !safeStatus[item.id];
     }).length;
   }, [allNotices, selectedSources, safeStatus]);
 
   const displayedData = useMemo(() => {
     return allNotices.filter((item: any) => {
       const sourcePrefix = normalizeSource(item.source);
-      const matchesSourceFilter = !sourcePrefix || selectedSources.includes(sourcePrefix);
+      // 필터가 아예 선택되지 않았으면 모두 숨김, 필터가 선택되었을 때 소속을 모르는 경우 숨김
+      const matchesSourceFilter = selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
 
       const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
       return matchesSourceFilter && matchesReadFilter;
@@ -558,7 +560,9 @@ export default function NoticeScreen({ navigation, route }: Props) {
           ListEmptyComponent={
             !isLoading ? (
               <AppText style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>
-                우상단 필터 버튼을 눌러 공지를 선택해주세요!.
+                {selectedSources.length === 0
+                  ? '우상단 필터 버튼을 눌러 공지를 선택해주세요!'
+                  : '지정된 기간(1개월 등) 내에 해당 조건의 공지사항이 없습니다.'}
               </AppText>
             ) : null
           }
@@ -625,7 +629,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 20,
     marginHorizontal: 20,
-    marginBottom: 130,
+    marginBottom: 10,
     paddingVertical: 10,
   },
   tabsContainer: {

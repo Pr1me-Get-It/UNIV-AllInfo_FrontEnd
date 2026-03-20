@@ -17,19 +17,30 @@ export interface LayedOutEvent {
     isContinuedFromLastWeek: boolean;
     isContinuedToNextWeek: boolean;
     startDate: string; // The date this chunk starts on (for this week)
+    type?: number;
 }
 
 // Helper to get date string YYYY-MM-DD
-const getDateStr = (d: Date) => d.toISOString().split('T')[0];
+const getDateStr = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
+const createDate = (ymd: string) => {
+    const [y, m, d] = ymd.split('T')[0].split('-').map(Number);
+    return new Date(y, m - 1, d);
+};
 
 const addDays = (dateStr: string, days: number) => {
-    const d = new Date(dateStr);
+    const d = createDate(dateStr);
     d.setDate(d.getDate() + days);
     return getDateStr(d);
 };
 
 const getDayIndex = (dateStr: string) => {
-    return new Date(dateStr).getDay(); // 0 (Sun) - 6 (Sat)
+    return createDate(dateStr).getDay(); // 0 (Sun) - 6 (Sat)
 };
 
 export const processCalendarEvents = (
@@ -65,19 +76,19 @@ export const processCalendarEvents = (
 
         if (isGoogleAllDay && event.end?.date) {
             // Adjust exclusive end date for all-day events (Google only)
-            const endDateObj = new Date(endStr);
+            const endDateObj = createDate(endStr);
             endDateObj.setDate(endDateObj.getDate() - 1);
             endStr = getDateStr(endDateObj);
         }
 
         if (!startStr) return;
 
-        let currDate = new Date(startStr);
-        const finalEndDate = new Date(endStr);
+        let currDate = createDate(startStr);
+        const finalEndDate = createDate(endStr);
 
         // Determine color based on type
-        const color = event.type === 1 ? '#F3F4F6' : event.type === 0 ? '#FEE2E2' : '#E3F2FD';
-        const textColor = event.type === 1 ? '#111827' : event.type === 0 ? '#b91c1c' : '#0284c7';
+        const color = event.type === 1 ? '#F3F4F6' : (event.type === 0 || event.type === 2) ? '#FEE2E2' : '#E3F2FD';
+        const textColor = event.type === 1 ? '#111827' : (event.type === 0 || event.type === 2) ? '#b91c1c' : '#0284c7';
 
         // Split event into weekly chunks
         while (currDate <= finalEndDate) {
@@ -105,6 +116,7 @@ export const processCalendarEvents = (
                 isContinuedFromLastWeek: getDateStr(currDate) !== startStr,
                 isContinuedToNextWeek: daysLeftInEvent > daysLeftInWeek,
                 startDate: currDateStr,
+                type: event.type,
             };
 
             // Register this chunk to the start date of this segment

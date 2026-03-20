@@ -219,7 +219,9 @@ export default function RankingScreen() {
             <View style={styles.tabContainer}>
                 {Object.values(GAMES).map((game) => renderGameTab(game))}
             </View>
-
+            <View style={styles.warningContainer}>
+                <AppText style={styles.warningText}>부적절한 닉네임시 랭킹이 삭제될 수 있습니다</AppText>
+            </View>
             <View style={styles.myScoreContainer}>
                 <AppText style={styles.myScoreLabel}>내 최고 점수</AppText>
                 <AppText style={styles.myScoreValue}>{myBestScore.toLocaleString()}점</AppText>
@@ -275,6 +277,14 @@ const styles = StyleSheet.create({
     },
     activeTabText: {
         color: '#fff',
+    },
+    warningText: {
+        fontSize: 12,
+        color: '#666',
+        alignSelf: 'center',
+    },
+    warningContainer: {
+        padding: 1,
     },
     listContent: {
         padding: 16,
@@ -333,7 +343,7 @@ const styles = StyleSheet.create({
         padding: 16,
         backgroundColor: '#F0F9FF', // Light blue background
         marginHorizontal: 16,
-        marginTop: 16,
+        marginTop: 4,
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#BAE6FD',

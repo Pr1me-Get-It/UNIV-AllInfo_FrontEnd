@@ -358,9 +358,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     controlBtn: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
+        width: 70,
+        height: 70,
+        borderRadius: 35,
         backgroundColor: 'rgba(255, 255, 255, 0.1)', // Glassmorphism-ish
         justifyContent: 'center',
         alignItems: 'center',
@@ -370,9 +370,9 @@ const styles = StyleSheet.create({
     rotateBtn: {
         backgroundColor: 'rgba(90, 24, 154, 0.3)', // Subtle Purple tint
         borderColor: '#5A189A',
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 70,
+        height: 70,
+        borderRadius: 35,
     },
     dropBtn: {
         width: 70, // Main action larger

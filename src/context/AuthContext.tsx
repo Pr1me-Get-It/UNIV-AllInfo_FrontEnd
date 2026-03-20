@@ -177,6 +177,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (savedNickname) {
         setNickname(savedNickname);
+        // USER_INFO 캐시에도 닉네임 반영 (다음 앱 재시작 시 즉시 복원)
+        try {
+          const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
+          if (cachedUser) {
+            await saveData(STORAGE_KEYS.USER_INFO, { ...cachedUser, nickname: savedNickname });
+          }
+        } catch (_) {}
       } else {
         if (__DEV__) console.log(`🔍 [AuthDebug] 저장된 닉네임이 없어 userInfo.name 사용 예정`);
         setNickname(null);
@@ -222,11 +229,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       try {
+        // 로컬에서 유저 정보 복구 시도 (앱 껐다 켰을 때 즉시 로그인 유지)
+        const cachedUser = await getData<{ userEmail: string, userInfo: UserInfo, nickname?: string }>(STORAGE_KEYS.USER_INFO);
+        if (cachedUser?.userEmail) {
+          setUserEmail(cachedUser.userEmail);
+          setUserInfo(cachedUser.userInfo);
+          // 캐시된 닉네임도 즉시 복원 (ProfileScreen 모달 방지)
+          if (cachedUser.nickname) {
+            setNickname(cachedUser.nickname);
+          }
+          syncUserToBackend(cachedUser.userEmail);
+        }
+
         const silentResponse = await GoogleSignin.signInSilently();
         if (silentResponse.data?.user) {
           const { user } = silentResponse.data;
+          const newInfo = { name: user.name || '', email: user.email, picture: user.photo };
           setUserEmail(user.email);
-          setUserInfo({ name: user.name || '', email: user.email, picture: user.photo });
+          setUserInfo(newInfo);
+          await saveData(STORAGE_KEYS.USER_INFO, { userEmail: user.email, userInfo: newInfo });
 
           const tokens = await GoogleSignin.getTokens();
           if (tokens.accessToken) await saveToken(tokens.accessToken);
@@ -234,7 +255,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (e) {
         if (__DEV__) console.error('❌ [Auth] 세션 복구 실패 (상세):', e);
-        await logout();
+        // signInSilently가 실패해도 토큰/캐시가 있으면 로그인 유지
+        const cachedUser = await getData(STORAGE_KEYS.USER_INFO);
+        if (!cachedUser) {
+          await logout();
+        }
       } finally {
         setIsLoading(false);
       }
@@ -255,8 +280,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { accessToken } = await GoogleSignin.getTokens();
 
         if (accessToken) await saveToken(accessToken);
+        const newInfo = { name: user.name || '', email: user.email, picture: user.photo };
         setUserEmail(user.email);
-        setUserInfo({ name: user.name || '', email: user.email, picture: user.photo });
+        setUserInfo(newInfo);
+        await saveData(STORAGE_KEYS.USER_INFO, { userEmail: user.email, userInfo: newInfo });
         await syncUserToBackend(user.email);
       }
     } catch (error: any) {
@@ -276,12 +303,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       await saveToken(DEV_TOKEN);
-      setUserEmail(targetEmail);
-      setUserInfo({
+      const newInfo = {
         name: `개발자(${targetEmail.split('@')[0]})`,
         email: targetEmail,
         picture: 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
-      });
+      };
+      setUserEmail(targetEmail);
+      setUserInfo(newInfo);
+      await saveData(STORAGE_KEYS.USER_INFO, { userEmail: targetEmail, userInfo: newInfo });
       await syncUserToBackend(targetEmail);
     } finally {
       setIsLoading(false);
@@ -306,6 +335,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       if (__DEV__) console.log('📡 [AuthContext] 로컬 토큰 삭제 및 상태 초기화 시작'); // 추가
       await removeToken();
+      await removeData(STORAGE_KEYS.USER_INFO);
       setUserEmail(null);
       setUserInfo(null);
       setNickname(null); // 닉네임 상태 초기화
@@ -349,6 +379,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       await removeToken();
+      await removeData(STORAGE_KEYS.USER_INFO);
       setUserEmail(null);
       setUserInfo(null);
       setNickname(null); // 닉네임 상태 초기화
@@ -374,6 +405,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await saveData(STORAGE_KEYS.NICKNAME(safeEmail), name);
       if (__DEV__) console.log(`✅ [AuthDebug] 닉네임 저장 완료`);
       setNickname(name);
+      // USER_INFO 캐시에도 닉네임 반영 (앱 재시작 시 즉시 복원)
+      const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
+      if (cachedUser) {
+        await saveData(STORAGE_KEYS.USER_INFO, { ...cachedUser, nickname: name });
+      }
     } catch (e) {
       if (__DEV__) console.error("❌ [AuthDebug] 닉네임 저장 중 에러:", e);
     }

@@ -33,9 +33,11 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
 
   // 1. 프로젝트 ID 확보
   // Expo Config에서 EAS 프로젝트 ID를 가져옵니다.
+  const HARDCODED_PROJECT_ID = '6120be3f-b18d-4531-af3f-af3f6db51bca'; // app.config.js 의 projectId
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ||
-    (Constants.manifest as any)?.extra?.eas?.projectId;
+    (Constants.manifest as any)?.extra?.eas?.projectId ||
+    HARDCODED_PROJECT_ID; // 릴리즈 빌드 fallback
 
   if (__DEV__) console.log('🔍 [NotificationDebug] Project ID:', projectId);
 

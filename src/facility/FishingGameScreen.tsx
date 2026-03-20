@@ -226,7 +226,6 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#fff',
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     header: {
         flexDirection: 'row',
@@ -257,9 +256,10 @@ const styles = StyleSheet.create({
     },
     infoArea: {
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         alignItems: 'center',
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingTop: 60, // 적당한 상단 여백으로 조절
     },
     guideText: {
         fontSize: moderateScale(18, 0.3),

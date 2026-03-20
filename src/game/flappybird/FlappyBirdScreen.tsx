@@ -39,6 +39,10 @@ const FlappyBirdScreen = () => {
 
     const onEvent = React.useCallback((e: any) => {
         if (e.type === 'game_over') {
+            // runningRef를 즉시 false로 설정하여 게임 루프가 다음 프레임을 실행하지 않도록 함
+            if (gameEngineRef.current?.stopLoop) {
+                gameEngineRef.current.stopLoop();
+            }
             setRunning(false);
             setIsRestartable(false); // Lock restarting immediately
             const finalScore = scoreRef.current; // Read from ref
@@ -51,10 +55,10 @@ const FlappyBirdScreen = () => {
                 setMyBestScore(finalScore);
             }
 
-            // Enable restart after 0.5 second
+            // Enable restart after 0.25 second
             setTimeout(() => {
                 setIsRestartable(true);
-            }, 500);
+            }, 250);
 
         } else if (e.type === 'score') {
             scoreRef.current += 1; // Update ref directly

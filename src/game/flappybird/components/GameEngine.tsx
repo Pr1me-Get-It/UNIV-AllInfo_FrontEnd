@@ -19,6 +19,7 @@ interface GameEngineProps {
 
 export interface GameEngineRef {
     swap: (newEntities: any) => void;
+    stopLoop: () => void;
 }
 
 const SimpleGameEngine = forwardRef<GameEngineRef, GameEngineProps>(({ systems, entities: initialEntities, running, onEvent, style, children }, ref) => {
@@ -27,13 +28,26 @@ const SimpleGameEngine = forwardRef<GameEngineRef, GameEngineProps>(({ systems, 
     const loopRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number>(0);
     const touchesRef = useRef<Touch[]>([]);
+    const runningRef = useRef(running);
+
+    // running 상태를 ref에 동기적으로 반영
+    useEffect(() => {
+        runningRef.current = running;
+    }, [running]);
 
     // 외부에서 swap 호출 시 엔티티 초기화
     useImperativeHandle(ref, () => ({
         swap: (newEntities: any) => {
             entitiesRef.current = newEntities;
             setEntities(newEntities);
-        }
+        },
+        stopLoop: () => {
+            runningRef.current = false;
+            if (loopRef.current) {
+                cancelAnimationFrame(loopRef.current);
+                loopRef.current = null;
+            }
+        },
     }), []);
 
     // 터치 핸들러
@@ -55,6 +69,9 @@ const SimpleGameEngine = forwardRef<GameEngineRef, GameEngineProps>(({ systems, 
             lastTimeRef.current = Date.now();
 
             const loop = () => {
+                // running이 false로 바뀌었으면 즉시 루프 중단
+                if (!runningRef.current) return;
+
                 const now = Date.now();
                 const delta = now - lastTimeRef.current;
                 lastTimeRef.current = now;
@@ -79,6 +96,10 @@ const SimpleGameEngine = forwardRef<GameEngineRef, GameEngineProps>(({ systems, 
                 });
 
                 entitiesRef.current = currentEntities;
+
+                // dispatch에서 setRunning(false)가 호출되었을 수 있으므로 다시 체크
+                if (!runningRef.current) return;
+
                 setEntities({ ...currentEntities }); // 리렌더링 트리거
 
                 loopRef.current = requestAnimationFrame(loop);
