@@ -1,6 +1,6 @@
 {
-  "name": "test",
-  "version": "0.10.1",
+  "name": "univ-allinfo",
+  "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "expo start --dev-client",
@@ -24,6 +24,7 @@
     "badwords-ko": "^1.0.4",
     "expo": "~54.0.31",
     "expo-auth-session": "~7.0.10",
+    "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.10",
     "expo-crypto": "~15.0.8",
     "expo-dev-client": "~6.0.20",

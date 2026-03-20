@@ -6,7 +6,7 @@ export default {
     scheme: 'univ-allinfo',
     name: IS_DEV ? 'UNIV-AllInfo (Dev)' : 'UNIV-AllInfo', // 개발버전은 이름에 (Dev) 표시
     slug: 'univ-allinfo',
-    version: '0.10.1',
+    version: '1.0.0',
     orientation: 'portrait',
     icon: './src/assets/icon.png',
     userInterfaceStyle: 'light',
@@ -33,6 +33,14 @@ export default {
       'expo-web-browser',
       'expo-secure-store',
       '@react-native-google-signin/google-signin',
+      [
+        'expo-build-properties',
+        {
+          android: {
+            usesCleartextTraffic: true,
+          },
+        },
+      ],
       [
         '@mj-studio/react-native-naver-map',
         {
