@@ -60,10 +60,10 @@ export const AlarmContext = createContext<AlarmContextType>({
   addMockEvent: () => { },
 });
 
-// 🔒 SecureStore 키 안전화 함수: AuthContext와 통일 (점(.)을 언더바(_)로 치환), 비로그인 시 'guest'
+// 🔒 SecureStore 키 안전화 함수: 특수문자(@ 등)를 언더바로 치환
 const sanitizeKey = (email: string | null) => {
-  if (!email) return 'guest';
-  return email.replace(/\./g, '_');
+  if (!email) return '';
+  return email.replace(/[^a-zA-Z0-9.\-_]/g, '_');
 };
 
 export const AlarmProvider = ({ children }: AlarmProviderProps) => {
@@ -75,7 +75,8 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
   // 데이터 로드 로직 수정: 이메일 치환 적용
   const loadUserData = useCallback(async (email: string | null) => {
     const safeEmail = sanitizeKey(email);
-    // guest도 로딩 진행
+    if (!safeEmail) return; // 키가 비어있으면 실행 방지
+
     try {
       const bookmarkKey = STORAGE_KEYS.BOOKMARK(safeEmail);
       const readKey = STORAGE_KEYS.READ(safeEmail);
@@ -99,13 +100,11 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
   const markAsRead = useCallback(
     (id: string | number, isRead: boolean = true) => {
       const safeEmail = sanitizeKey(userEmail);
+      if (!safeEmail) return;
 
       setReadStatus((prev: Record<string, boolean>) => {
         const newStatus = { ...prev, [String(id)]: isRead };
-        // 비동기 스토리지 저장을 setState 콜백에서 분리 (데이터 유실 방지)
-        setTimeout(() => {
-          saveData(STORAGE_KEYS.READ(safeEmail), newStatus);
-        }, 0);
+        saveData(STORAGE_KEYS.READ(safeEmail), newStatus);
         return newStatus;
       });
     },
@@ -116,7 +115,7 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
   const toggleBookmark = useCallback(
     (item: AlarmItem) => {
       const safeEmail = sanitizeKey(userEmail);
-      if (safeEmail === 'guest') return; // 비로그인: DetailScreen에서 CustomAlert로 처리됨
+      if (!safeEmail) return; // 비로그인: DetailScreen에서 CustomAlert로 처리됨
 
       setBookmarkStatus((prev: Record<string, AlarmItem>) => {
         const newStatus = { ...prev };
@@ -124,10 +123,7 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
         if (newStatus[idKey]) delete newStatus[idKey];
         else newStatus[idKey] = item;
 
-        // 비동기 스토리지 저장을 setState 콜백에서 분리
-        setTimeout(() => {
-          saveData(STORAGE_KEYS.BOOKMARK(safeEmail), newStatus);
-        }, 0);
+        saveData(STORAGE_KEYS.BOOKMARK(safeEmail), newStatus);
         return newStatus;
       });
     },

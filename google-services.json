@@ -12,7 +12,20 @@
           "package_name": "com.univallinfo.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "313585172406-c3jv58qvr91ielm9vvasgft6s4b8uuqg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.univallinfo.app",
+            "certificate_hash": "6adfcdffd3ea024ae18553e5c85cbbc539bbb98d"
+          }
+        },
+        {
+          "client_id": "313585172406-92fs87v6vf088qu5o7vofic6d4unam30.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC3p8cUFl0xFvAIreD6MH-27W5dV0Qt9EI"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "313585172406-92fs87v6vf088qu5o7vofic6d4unam30.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
