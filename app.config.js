@@ -6,7 +6,7 @@ export default {
     scheme: 'univ-allinfo',
     name: IS_DEV ? 'UNIV-AllInfo (Dev)' : 'UNIV-AllInfo', // 개발버전은 이름에 (Dev) 표시
     slug: 'univ-allinfo',
-    version: '1.0.1',
+    version: '1.0.4',
     orientation: 'portrait',
     icon: './src/assets/icon.png',
     userInterfaceStyle: 'light',

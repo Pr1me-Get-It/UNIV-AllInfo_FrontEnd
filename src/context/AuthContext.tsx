@@ -183,7 +183,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (cachedUser) {
             await saveData(STORAGE_KEYS.USER_INFO, { ...cachedUser, nickname: savedNickname });
           }
-        } catch (_) {}
+        } catch (_) { }
       } else {
         if (__DEV__) console.log(`🔍 [AuthDebug] 저장된 닉네임이 없어 userInfo.name 사용 예정`);
         setNickname(null);
@@ -287,9 +287,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await syncUserToBackend(user.email);
       }
     } catch (error: any) {
+      Alert.alert(
+        "구글 로그인 에러 발생",
+        `코드: ${error.code}\n메시지: ${error.message}\nID: ${process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'ID 없음'}`
+      );
+
       if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
-        console.error('[GoogleLoginError]', error); // ADB 로그 확인용
-        throw error; // UI에서 예외 처리하도록 전파
+        console.error('[GoogleLoginError]', error);
       }
     } finally {
       setIsLoading(false);
