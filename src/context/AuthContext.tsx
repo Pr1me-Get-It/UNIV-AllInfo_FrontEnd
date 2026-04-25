@@ -185,8 +185,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch (_) { }
       } else {
-        if (__DEV__) console.log(`🔍 [AuthDebug] 저장된 닉네임이 없어 userInfo.name 사용 예정`);
-        setNickname(null);
+        // 기존 닉네임이 없을 경우, 무조건 '호반우+4자리숫자' 랜덤 발급
+        const randomNum = Math.floor(1000 + Math.random() * 9000); // 1000 ~ 9999
+        const generatedNickname = `호반우${randomNum}`;
+        if (__DEV__) console.log(`🔍 [AuthDebug] 생성된 닉네임이 없어 '${generatedNickname}'(으)로 초기화합니다.`);
+        
+        setNickname(generatedNickname);
+        await saveData(STORAGE_KEYS.NICKNAME(safeEmail), generatedNickname);
+        
+        // USER_INFO 캐시에도 닉네임 반영
+        try {
+          const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
+          if (cachedUser) {
+            await saveData(STORAGE_KEYS.USER_INFO, { ...cachedUser, nickname: generatedNickname });
+          }
+        } catch (_) { }
       }
     } catch (e) {
       if (__DEV__) console.warn("닉네임 로드 실패:", e);

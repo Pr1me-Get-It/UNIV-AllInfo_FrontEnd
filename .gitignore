@@ -37,6 +37,8 @@ yarn-error.*
 *.keystore
 *.jks
 google-services.json
+android/gradle.properties
+testOutput*.json
 *.log
 *.txt
 
