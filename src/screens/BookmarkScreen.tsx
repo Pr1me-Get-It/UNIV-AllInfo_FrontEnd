@@ -1,14 +1,13 @@
 // screen/BookmarkScreen.jsx
-import React, { useContext } from 'react';
+import React from 'react';
 import { View, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
-import { AlarmContext } from '../data/Alarm';
-import { useAuth } from '../context/AuthContext';
 import LoginPlaceholder from '../components/ui/LoginPlaceholder';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { useBookmarkLogic } from '../hooks/screens/useBookmarkLogic';
 
 type BookmarkScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Bookmark'>;
 
@@ -16,23 +15,8 @@ interface Props {
   navigation: BookmarkScreenNavigationProp;
 }
 
-// 타입 정의 추가
-interface BookmarkItem {
-  id: string | number;
-  title: string;
-  image: any;
-  [key: string]: any; // 다른 속성 허용
-}
-
 export default function BookmarkScreen({ navigation }: Props) {
-  // 1. Context에서 필요한 데이터와 인증 상태를 가져옵니다.
-  const context = useContext(AlarmContext);
-  const { bookmarkStatus } = context || { bookmarkStatus: {} };
-
-  // AuthContext가 제공하는 isAuthenticated를 사용하여 로그인 여부를 판단합니다.
-  const { userEmail, isAuthenticated } = useAuth();
-
-  const bookmarkedItems = bookmarkStatus ? (Object.values(bookmarkStatus) as BookmarkItem[]) : [];
+  const { isAuthenticated, bookmarkedItems, handlePressItem } = useBookmarkLogic(navigation);
 
   // 2. 비로그인 상태일 때의 처리
   if (!isAuthenticated) {
@@ -59,7 +43,7 @@ export default function BookmarkScreen({ navigation }: Props) {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.itemRow}
-              onPress={() => navigation.navigate('Detail', { item })}>
+              onPress={() => handlePressItem(item)}>
               <View style={styles.iconBackground}>
                 <Image source={item.image} style={styles.customIcon} contentFit="contain" />
               </View>

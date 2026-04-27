@@ -1,156 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import AppText from '../components/AppText';
 import { COLORS } from '../constants/colors';
 import { GAMES } from '../constants/games';
-import { getTopScores, getBestScore, GameScore, deleteScore } from '../api/gameScore';
+import { GameScore } from '../api/gameScore';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/navigation';
-import { useAuth } from '../context/AuthContext';
-import { AUTH_CONFIG } from '../constants/config';
+import { useRankingLogic } from '../hooks/screens/useRankingLogic';
 
 export default function RankingScreen() {
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { userEmail, gameBestScores, updateGameBestScore } = useAuth(); // Added gameBestScores
-    const [selectedGameId, setSelectedGameId] = useState<number>(GAMES.FLAPPY_BIRD.id);
-    const [scores, setScores] = useState<GameScore[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [myBestScore, setMyBestScore] = useState<number>(0);
-
-    const isAdmin = userEmail === AUTH_CONFIG.DEV_EMAIL;
-
-    // 화면이 포커스될 때마다 데이터 갱신
-    React.useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
-            loadScores(selectedGameId);
-            // Local score priority
-            if (gameBestScores && typeof gameBestScores[selectedGameId] === 'number') {
-                setMyBestScore(gameBestScores[selectedGameId]);
-            }
-            loadMyBestScore(selectedGameId);
-        });
-
-        return unsubscribe;
-    }, [navigation, selectedGameId, gameBestScores]);
-
-    // 게임 탭 변경 시에도 갱신
-    useEffect(() => {
-        setMyBestScore(0);
-        if (gameBestScores && typeof gameBestScores[selectedGameId] === 'number') {
-            setMyBestScore(gameBestScores[selectedGameId]);
-        }
-        loadScores(selectedGameId);
-        loadMyBestScore(selectedGameId);
-    }, [selectedGameId, gameBestScores]);
-
-    const loadMyBestScore = async (gameId: number) => {
-        if (!userEmail) return;
-        try {
-            // Use getBestScore API
-            const bestResponse = await getBestScore(gameId, userEmail);
-
-
-            if (bestResponse.data && typeof bestResponse.data.bestScore === 'number') {
-                const serverBest = bestResponse.data.bestScore;
-
-                // Compare with local
-                const localBest = gameBestScores[gameId] || 0;
-                if (serverBest > localBest) {
-                    setMyBestScore(serverBest);
-                    // Sync to local context (without sending back to server ideally, but updateGameBestScore sends to server)
-                    // For now, just update local display. 
-                    // To strictly sync, we would need a pure 'setLocalBest' in context. 
-                    // But 'updateGameBestScore' is fine, it will just re-save.
-                    updateGameBestScore(gameId, serverBest, false);
-                } else {
-                    setMyBestScore(localBest);
-                }
-            } else {
-                if (gameBestScores[gameId]) {
-                    setMyBestScore(gameBestScores[gameId]);
-                } else {
-
-                    setMyBestScore(0);
-                }
-            }
-        } catch (error: any) {
-            // ... error handling
-            if (gameBestScores[gameId]) {
-                setMyBestScore(gameBestScores[gameId]);
-            } else {
-                setMyBestScore(0);
-            }
-        }
-    };
-
-    const loadScores = async (gameId: number) => {
-        setLoading(true);
-        try {
-            const response = await getTopScores(gameId, 50); // Get top 50
-
-
-            if (response.data && Array.isArray(response.data)) {
-                // 중복 제거 로직: user_id(또는 email)별로 가장 높은 점수만 남김
-                const uniqueScoresMap = new Map<string, GameScore>();
-
-                response.data.forEach((scoreItem: GameScore) => {
-                    const key = scoreItem.user_id ? String(scoreItem.user_id) : scoreItem.email;
-                    if (!uniqueScoresMap.has(key)) {
-                        uniqueScoresMap.set(key, scoreItem);
-                    } else {
-                        const existing = uniqueScoresMap.get(key)!;
-                        if (scoreItem.score > existing.score) {
-                            uniqueScoresMap.set(key, scoreItem);
-                        }
-                    }
-                });
-
-                // Map 값을 배열로 변환하고 점수 내림차순 정렬
-                const sortedUniqueScores = Array.from(uniqueScoresMap.values()).sort((a, b) => b.score - a.score);
-
-
-                setScores(sortedUniqueScores);
-            }
-            else if (response.data && (response.data as any).scores) { // Check if wrapped in object
-                setScores((response.data as any).scores);
-            } else {
-                setScores([]);
-            }
-        } catch (error) {
-            console.error('Failed to load ranking:', error);
-            setScores([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // ... (handleDelete and renderGameTab remain same)
-
-    const handleDelete = (scoreId: number) => {
-        Alert.alert(
-            '랭킹 삭제',
-            '이 점수를 정말 삭제하시겠습니까? 복구할 수 없습니다.',
-            [
-                { text: '취소', style: 'cancel' },
-                {
-                    text: '삭제',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteScore(scoreId);
-                            Alert.alert('삭제 완료', '점수가 삭제되었습니다.');
-                            loadScores(selectedGameId); // Reload list
-                        } catch (error) {
-                            console.error('Failed to delete score:', error);
-                            Alert.alert('오류', '삭제에 실패했습니다.');
-                        }
-                    },
-                },
-            ]
-        );
-    };
+    const {
+        selectedGameId,
+        setSelectedGameId,
+        scores,
+        loading,
+        myBestScore,
+        isAdmin,
+        handleDelete,
+    } = useRankingLogic();
 
     const renderGameTab = (game: { id: number; name: string }) => (
         <TouchableOpacity

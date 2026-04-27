@@ -1,25 +1,18 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React from 'react';
 import {
   View,
   StyleSheet,
-  Button,
   TouchableOpacity,
-  Linking,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import AppText from '../components/AppText';
 import CustomAlert from '../components/ui/CustomAlert';
-import { AlarmContext } from '../data/Alarm';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../api/client';
-import { getToken } from '../utils/storage';
-import { useAuth } from '../context/AuthContext';
-import SOURCE_LABELS from '../constants/labeltag.json';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
+import { useDetailLogic, stripHtml, formatDate } from '../hooks/screens/useDetailLogic';
 
 type DetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Detail'>;
 type DetailScreenRouteProp = RouteProp<RootStackParamList, 'Detail'>;
@@ -29,205 +22,25 @@ interface Props {
   route: DetailScreenRouteProp;
 }
 
-const DEV_TOKEN = 'DEV_MODE_ACCESS_TOKEN';
-const stripHtml = text => {
-  if (!text) return '';
-  return text
-    .replace(/<[^>]*>?/gm, '') // <태그> 제거
-    .replace(/&nbsp;/g, ' ') // 공백 엔티티 변환
-    .replace(/&amp;/g, '&') // & 엔티티 변환
-    .replace(/&lt;/g, '<') // < 엔티티 변환
-    .replace(/&gt;/g, '>'); // > 엔티티 변환
-};
-
 export default function DetailScreen({ route, navigation }: Props) {
-  const params = route.params || { item: null };
-  const item = params.item || null;
-  const context = useContext(AlarmContext);
-  const { markAsRead, toggleBookmark, bookmarkStatus, addMockEvent } = context || {};
-  const { isAuthenticated } = useAuth();
-  // [수정] API 응답의 notice_id를 우선 사용
-  const itemId = item ? item.notice_id || item.id : null;
-  const sourcePrefix = item?.source ? item.source.split('/')[0] : '';
-  const displaySource = SOURCE_LABELS[sourcePrefix] || item?.source || '출처 없음';
-
-  // 현재 북마크 여부 확인
-  const isBookmarked = bookmarkStatus && itemId ? !!bookmarkStatus[itemId] : false;
-
-  // 👇 [수정] 좋아요 숫자를 State로 관리 (초기값: 목록에서 가져온 값)
-  const [likeCount, setLikeCount] = useState(item?.like || 0);
-
-  const [deadlineInfo, setDeadlineInfo] = useState(null);
-  const [loadingDeadline, setLoadingDeadline] = useState(false);
-
-  // Custom Alert 상태
-  const [alertVisible, setAlertVisible] = useState(false);
-  const [alertTitle, setAlertTitle] = useState('');
-  const [alertMessage, setAlertMessage] = useState('');
-  const [alertOnConfirm, setAlertOnConfirm] = useState<(() => void) | undefined>(undefined);
-  const [alertButtons, setAlertButtons] = useState<any[] | undefined>(undefined);
-
-  const showAlert = (title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertOnConfirm(() => onConfirm);
-    setAlertButtons(buttons);
-    setAlertVisible(true);
-  };
-
-  const closeAlert = () => {
-    setAlertVisible(false);
-    setAlertOnConfirm(undefined);
-    setAlertButtons(undefined);
-  };
-
-  useEffect(() => {
-    if (!item || !itemId || !markAsRead) return;
-    markAsRead(itemId, true);
-    fetchDeadline();
-  }, [item, itemId, markAsRead]);
-
-  const fetchDeadline = async () => {
-    if (!itemId) return; // ID가 없으면 중단
-    setLoadingDeadline(true);
-    try {
-      // [수정] item.id 대신 itemId 사용
-      const response = await api.get(`/notice/${itemId}/deadline`);
-
-      // [수정] 실제 API 응답 구조에 맞춰 파싱 (response.data 자체가 객체임)
-      // 예: {"deadline": "...", "kickoff": "...", ...}
-      if (response.data && (response.data.deadline || response.data.kickoff)) {
-        setDeadlineInfo(response.data);
-      } else {
-        setDeadlineInfo(null);
-      }
-    } catch (e) {
-      console.log('마감일 조회 실패 (없을 수 있음):', e);
-      setDeadlineInfo(null);
-    } finally {
-      setLoadingDeadline(false);
-    }
-  };
-
-  // 👇 [추가] 좋아요(북마크) 토글 핸들러
-  const handleLikeToggle = async () => {
-    if (!isAuthenticated) {
-      showAlert(
-        '로그인 필요',
-        '북마크 기능은 로그인이 필요합니다.',
-        undefined,
-        [
-          { text: '닫기', style: 'cancel' },
-          {
-            text: '로그인 하러가기',
-            onPress: () => navigation.navigate('Profile'),
-          },
-        ]
-      );
-      return;
-    }
-
-    if (toggleBookmark) {
-      // 1. 서버 통신 및 상태 변경 요청
-      toggleBookmark(item);
-
-      // 2. 화면의 숫자 즉시 업데이트 (낙관적 업데이트)
-      if (isBookmarked) {
-        // 이미 좋아요 상태였으면 -> 취소 (-1)
-        setLikeCount(prev => Math.max(0, prev - 1));
-      } else {
-        // 아니었으면 -> 추가 (+1)
-        setLikeCount(prev => prev + 1);
-      }
-    }
-  };
-
-  // ... (handleMarkUnread, openLink, addToCalendar 등 기존 함수 유지) ...
-  const handleMarkUnread = () => {
-    if (markAsRead) {
-      markAsRead(item.id, false);
-      navigation.goBack();
-    }
-  };
-
-  const openLink = () => {
-    if (item?.link) {
-      Linking.openURL(item.link).catch(err => console.error('링크 열기 실패', err));
-    }
-  };
-
-  const addToCalendar = async () => {
-    if (!deadlineInfo) return;
-
-    if (!isAuthenticated) {
-      showAlert(
-        '로그인 필요',
-        '캘린더에 등록하려면 로그인이 필요합니다.',
-        undefined,
-        [
-          { text: '닫기', style: 'cancel' },
-          {
-            text: '로그인 하러가기',
-            onPress: () => navigation.navigate('Profile'),
-          },
-        ]
-      );
-      return;
-    }
-
-    try {
-      const token = await getToken();
-
-      if (token === DEV_TOKEN) {
-        const newEvent = {
-          id: `dev-${Date.now()}`,
-          summary: `[개발] ${item.title}`,
-          location: item.source,
-          start: {
-            date: deadlineInfo.end || deadlineInfo.start,
-          },
-        };
-        addMockEvent(newEvent);
-        Alert.alert('성공', '개발자용 캘린더에 등록되었습니다.');
-        return;
-      }
-
-      // [수정] deadlineInfo의 실제 프로퍼티(kickoff, deadline) 사용 및 날짜 포맷팅
-      const startDate = (deadlineInfo.kickoff || deadlineInfo.deadline)?.split('T')[0];
-      const endDate = (deadlineInfo.deadline || deadlineInfo.kickoff)?.split('T')[0];
-
-      const event = {
-        summary: item.title,
-        description: `참조링크 : ${item.link}`,
-        start: {
-          date: startDate,
-        },
-        end: {
-          date: endDate,
-        },
-      };
-      const response = await fetch(
-        'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(event),
-        },
-      );
-
-      if (response.ok) {
-        Alert.alert('성공', '구글 캘린더에 일정이 등록되었습니다!');
-      } else {
-        Alert.alert('실패', '캘린더 등록 중 오류가 발생했습니다.');
-      }
-    } catch (e) {
-      console.error('[Calendar Debug] Error:', e);
-      Alert.alert('오류', '네트워크 오류가 발생했습니다.');
-    }
-  };
+  const {
+    item,
+    displaySource,
+    isBookmarked,
+    likeCount,
+    deadlineInfo,
+    loadingDeadline,
+    alertVisible,
+    alertTitle,
+    alertMessage,
+    alertOnConfirm,
+    alertButtons,
+    closeAlert,
+    handleLikeToggle,
+    handleMarkUnread,
+    openLink,
+    addToCalendar,
+  } = useDetailLogic(route, navigation);
 
   if (!item) {
     return (
@@ -236,10 +49,6 @@ export default function DetailScreen({ route, navigation }: Props) {
       </View>
     );
   }
-  const formatDate = dateStr => {
-    if (!dateStr) return null;
-    return dateStr.split('T')[0];
-  };
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>

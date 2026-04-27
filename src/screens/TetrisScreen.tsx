@@ -1,26 +1,16 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Dimensions, Alert, ScrollView } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// Custom Hooks
-import { useInterval } from '../game/tetris/hooks/useInterval';
-import { usePlayer } from '../game/tetris/hooks/usePlayer';
-import { useStage } from '../game/tetris/hooks/useStage';
-import { useGameStatus } from '../game/tetris/hooks/useGameStatus';
 
 // Components
 import Cell from '../game/tetris/components/Cell';
 import Display from '../game/tetris/components/Display';
 import CustomAlert from '../components/ui/CustomAlert';
 
-// Helpers
-import { createStage, checkCollision } from '../game/tetris/gameHelpers';
-import { useAuth } from '../context/AuthContext'; // Added import
-import { GAMES } from '../constants/games'; // Added import
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { useTetrisLogic, BOARD_COLS, BOARD_ROWS } from '../hooks/screens/useTetrisLogic';
 
 type TetrisScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Tetris'>;
 
@@ -28,135 +18,26 @@ interface Props {
     navigation: TetrisScreenNavigationProp;
 }
 
-const { width, height } = Dimensions.get('window');
-const BOARD_WIDTH_RATIO = 0.65; // Width constraint
-const BOARD_HEIGHT_RATIO = 0.75; // Height constraint
-
-const CELL_SIZE_W = (width * BOARD_WIDTH_RATIO) / 12; // 12 Columns
-const CELL_SIZE_H = (height * BOARD_HEIGHT_RATIO) / 20; // 20 Rows
-
-const CELL_SIZE = Math.min(CELL_SIZE_W, CELL_SIZE_H);
-
 export default function TetrisScreen({ navigation }: Props) {
-    const insets = useSafeAreaInsets();
-    const [dropTime, setDropTime] = useState<number | null>(null);
-    const [gameOver, setGameOver] = useState(false);
-    const [alertVisible, setAlertVisible] = useState(false);
-
-    const { userEmail, gameBestScores, updateGameBestScore } = useAuth(); // Added useAuth
-    const [myBestScore, setMyBestScore] = useState(0);
-    const GAME_ID = GAMES.TETRIS.id;
-
-    const { player, updatePlayerPos, resetPlayer, playerRotate, setPlayer, nextTetromino } = usePlayer();
-    const { stage, setStage, rowsCleared } = useStage(player, resetPlayer);
-    const { score, setScore, rows, setRows, level, setLevel } = useGameStatus(rowsCleared);
-
-    // Load local best score
-    React.useEffect(() => {
-        if (gameBestScores && typeof gameBestScores[GAME_ID] === 'number') {
-            setMyBestScore(gameBestScores[GAME_ID]);
-        }
-    }, [gameBestScores]);
-
-    const movePlayer = (dir: number) => {
-        if (!checkCollision(player, stage, { x: dir, y: 0 })) {
-            updatePlayerPos({ x: dir, y: 0, collided: false });
-        }
-    };
-
-    // Calculate dynamic CELL_SIZE
-    const screenHeight = height;
-    const screenWidth = width;
-
-    // Layout Constants
-    const HEADER_HEIGHT = 40; // Reduced from 60
-    const CONTROLS_HEIGHT = 220; // Reduced from 250
-    const PADDING_V = 20; // Reduced from 40
-    const TAB_BAR_HEIGHT = 50; // Approximate TabBar height
-
-    // Available height for the board
-    const availableHeight = screenHeight - insets.top - insets.bottom - HEADER_HEIGHT - CONTROLS_HEIGHT - PADDING_V - TAB_BAR_HEIGHT;
-    const availableWidth = screenWidth * 0.98; // Increased from 95% to 98%
-
-    // Board Dimensions
-    const BOARD_COLS = 12;
-    const BOARD_ROWS = 20;
-
-    // Calculate max cell size that fits both width and height constraints
-    const cellSizeByHeight = availableHeight / BOARD_ROWS;
-    const cellSizeByWidth = (availableWidth * 0.70) / BOARD_COLS; // Increased width ratio from 0.65 to 0.70
-
-    // Use the smaller of the two to ensure fit
-    const CELL_SIZE = Math.min(cellSizeByHeight, cellSizeByWidth, 35); // Max cap increased to 35
-    // Min cap could be added but usually not needed as mobile screens are small
-
-    const startGame = () => {
-        // Reset everything
-        setStage(createStage());
-        setDropTime(1000);
-        resetPlayer();
-        setGameOver(false);
-        setScore(0);
-        setRows(0);
-        setLevel(0);
-    };
-
-    const drop = () => {
-        // Increase level when player has cleared 10 rows
-        if (rows > (level + 1) * 10) {
-            setLevel(prev => prev + 1);
-            // Also increase speed
-            setDropTime(1000 / (level + 1) + 200);
-        }
-
-        if (!checkCollision(player, stage, { x: 0, y: 1 })) {
-            updatePlayerPos({ x: 0, y: 1, collided: false });
-        } else {
-            // Game Over
-            if (player.pos.y < 1) {
-                setGameOver(true);
-                setDropTime(null);
-                setAlertVisible(true);
-
-                // Save Score
-                updateGameBestScore(GAME_ID, score);
-                if (score > myBestScore) {
-                    setMyBestScore(score);
-                }
-            }
-            updatePlayerPos({ x: 0, y: 0, collided: true });
-        }
-    };
-
-    // Custom hook by Dan Abramov
-    useInterval(() => {
-        drop();
-    }, dropTime);
-
-    const getDropTime = (lvl: number) => {
-        return 1000 / (lvl + 1) + 200;
-    };
-
-    const dropPlayer = () => {
-        setDropTime(null);
-        drop();
-    };
-
-    const startFastDrop = () => {
-        setDropTime(50);
-    };
-
-    const stopFastDrop = () => {
-        setDropTime(getDropTime(level));
-    };
-
-    const move = ({ x, y }: { x: number, y: number }) => {
-        if (!gameOver) {
-            if (x !== 0) {
-                movePlayer(x);
-            }
-        }
-    };
+    const {
+        insets,
+        dropTime,
+        gameOver,
+        alertVisible,
+        setAlertVisible,
+        myBestScore,
+        player,
+        stage,
+        score,
+        level,
+        nextTetromino,
+        CELL_SIZE,
+        startGame,
+        playerRotate,
+        move,
+        startFastDrop,
+        stopFastDrop,
+    } = useTetrisLogic();
 
     return (
         <View style={[styles.container, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
