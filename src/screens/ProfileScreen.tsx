@@ -1,286 +1,81 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState, useEffect, useRef } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import React from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
   Switch,
   ScrollView,
   Modal,
   TextInput,
-  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
-import { useAuth } from '../context/AuthContext';
-import { registerUser } from '../api/userService';
-import { registerForPushNotificationsAsync, sendTestNotification } from '../utils/notifications';
+import { sendTestNotification } from '../utils/notifications';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import CustomAlert from '../components/ui/CustomAlert';
-import { saveData, getData } from '../utils/storage';
-import { STORAGE_KEYS } from '../constants/storageKeys';
 import { COLORS } from '../constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { moderateScale } from '../utils/responsive';
-import { isValidNickname } from '../utils/filter';
-import { sendFeedback } from '../api/feedbackService';
+import { useProfileLogic } from '../hooks/screens/useProfileLogic';
 
 const PRIMARY = 'rgb(219, 31, 38)';
-const DEV_PASSWORD = '1557';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
 
-  // 1. 모든 훅(useState, useAuth 등)은 반드시 최상단에 모여야 합니다.
   const {
     userEmail,
     userInfo,
-    nickname, // from Context
+    nickname,
     isAuthenticated,
-    loginWithGoogle, // 구글 로그인 함수
-    loginDev, // 개발자 로그인 함수
-    logout,
-    withdraw, // 회원 탈퇴
-    updateNickname, // 닉네임 업데이트 함수
-    isLoading, // 로딩 상태
-  } = useAuth(); //
-
-  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-
-  // 닉네임 관련 상태
-  const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
-  const [nicknameInput, setNicknameInput] = useState('');
-  const [isForcedNickname, setIsForcedNickname] = useState(false);
-
-  // Focus 시점에 닉네임 여부 검사
-  useFocusEffect(
-    React.useCallback(() => {
-      // 로딩 중이 아니고, 로그인은 완료되었으나 닉네임이 없는 경우
-      if (!isLoading && isAuthenticated && nickname === null && userInfo !== null) {
-        setIsForcedNickname(true);
-        setIsNicknameModalVisible(true);
-      } else {
-        setIsForcedNickname(false);
-      }
-    }, [isLoading, isAuthenticated, nickname, userInfo])
-  );
-
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [nightPushOnly, setNightPushOnly] = useState(false);
-  const [marketingEnabled, setMarketingEnabled] = useState(false);
-  const [devClickCount, setDevClickCount] = useState(0); // 개발자 모드 진입을 위한 클릭 카운트
-
-  // 커스텀 알림 상태
-  const [alertVisible, setAlertVisible] = useState(false);
-  const [alertTitle, setAlertTitle] = useState('');
-  const [alertMessage, setAlertMessage] = useState('');
-  const [alertOnConfirm, setAlertOnConfirm] = useState<(() => void) | undefined>(undefined);
-  const [alertButtons, setAlertButtons] = useState<any[] | undefined>(undefined);
-
-  const showAlert = (title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertOnConfirm(() => onConfirm);
-    setAlertButtons(buttons);
-    setAlertVisible(true);
-  };
-
-  const closeAlert = () => {
-    setAlertVisible(false);
-    setAlertOnConfirm(undefined);
-    setAlertButtons(undefined);
-  };
-
-  // 피드백 관련 상태
-  const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
-  const [feedbackInput, setFeedbackInput] = useState('');
-  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
-
-  // 라이선스 모달 상태
-  const [isLicenseModalVisible, setIsLicenseModalVisible] = useState(false);
-
-  // 피드백 전송 핸들러
-  const handleFeedbackSubmit = async () => {
-    if (!feedbackInput.trim()) {
-      showAlert('알림', '내용을 입력해주세요.');
-      return;
-    }
-
-    setIsSendingFeedback(true);
-    try {
-      // 실제 백엔드 API 호출
-      await sendFeedback(feedbackInput);
-
-      setIsFeedbackModalVisible(false);
-      setFeedbackInput('');
-      showAlert('감사합니다', '소중한 의견이 전달되었습니다. 🙇‍♂️');
-    } catch (error: any) {
-      console.error('[Feedback] 전송 실패 ❌', error?.response?.data ?? error?.message ?? error);
-      showAlert('전송 실패', '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      setIsSendingFeedback(false);
-    }
-  };
-
-  const appVersion = Constants.expoConfig?.version || '1.0.0';
-
-  // 2. 핸들러 함수들 (기존 로직 유지)
-  const handlePasswordSubmit = () => {
-    if (passwordInput === DEV_PASSWORD) {
-      setIsPasswordModalVisible(false);
-      setPasswordInput('');
-
-      // 계정 선택 Alert 띄우기
-      showAlert('테스트 계정 선택', '로그인할 테스트 계정을 선택해주세요.', undefined, [
-        {
-          text: 'Test 1 (기본)',
-          onPress: () => loginDev(),
-          style: 'default',
-        },
-        {
-          text: 'Test 2 (추가)',
-          onPress: () => loginDev('test2@knu.ac.kr'),
-          style: 'default',
-        },
-        {
-          text: '취소',
-          style: 'cancel',
-        },
-      ]);
-    } else {
-      showAlert('오류', '비밀번호가 틀렸습니다.');
-    }
-  };
-
-  const handleLogout = () => {
-    console.log('🚩 [ProfileScreen] 로그아웃 버튼 클릭됨');
-    // [변경] 커스텀 알림창으로 로그아웃 확인
-    showAlert('로그아웃', '로그아웃 하시겠습니까?', () => {
-      console.log("🚩 [ProfileScreen] 로그아웃 '확인' 누름 -> AuthContext.logout 호출");
-      setPushEnabled(false); // [수정] 로그아웃 시 푸시 알림 비활성화
-      logout();
-    });
-  };
-
-  // [New] Load saved push setting
-  useEffect(() => {
-    const loadPushSetting = async () => {
-      if (userEmail) {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        const savedSetting = await getData(STORAGE_KEYS.PUSH_SETTING(safeEmail));
-        if (savedSetting !== null) {
-          setPushEnabled(savedSetting === 'true');
-        }
-      } else {
-        setPushEnabled(false);
-      }
-    };
-    loadPushSetting();
-  }, [userEmail]);
-
-  // 닉네임 저장 핸들러
-  const handleNicknameSave = async () => {
-    const input = nicknameInput.trim();
-    if (!input) {
-      showAlert('오류', '닉네임을 입력해주세요.');
-      return;
-    }
-
-    if (!isValidNickname(input)) {
-      showAlert('부적절한 닉네임', '비속어나 제한된 단어가 포함되어 있습니다.');
-      return;
-    }
-
-    if (userEmail) {
-      await updateNickname(input);
-      setIsNicknameModalVisible(false);
-      setNicknameInput('');
-      showAlert('알림', '닉네임이 설정되었습니다.');
-    }
-  };
-
-  // 회원 탈퇴 버튼 핸들러
-  const handleWithdraw = () => {
-    showAlert('회원 탈퇴', '정말 탈퇴하시겠습니까?\n모든 데이터가 삭제됩니다.', async () => {
-      try {
-        await withdraw();
-        showAlert('알림', '회원 탈퇴가 완료되었습니다.');
-      } catch (error) {
-        showAlert('오류', '회원 탈퇴 처리에 실패했습니다.\n잠시 후 다시 시도해주세요.');
-      }
-    });
-  };
-
-  // [New] 구글 로그인 핸들러 (에러 핸들링 추가)
-  const handleGoogleLogin = async () => {
-    try {
-      await loginWithGoogle();
-    } catch (e) {
-      // AuthContext에서 throw된 에러를 여기서 잡아서 커스텀 알림 표시
-      showAlert('로그인 오류', '구글 로그인에 실패했습니다.\n잠시 후 다시 시도해주세요.');
-    }
-  };
-
-  const handlePushToggle = async value => {
-    if (!isAuthenticated) {
-      showAlert('로그인 필요', '푸시 알림을 받으려면 로그인이 필요합니다.');
-      setPushEnabled(false);
-      return;
-    }
-
-    setPushEnabled(value);
-
-    // [New] Save setting
-    if (userEmail) {
-      const safeEmail = userEmail.replace(/\./g, '_');
-      await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), String(value));
-    }
-
-    if (value) {
-      try {
-        const token = await registerForPushNotificationsAsync();
-
-        if (token) {
-          // 백엔드 등록 시도 (실패해도 푸시 토큰 자체는 유효하므로 성공 처리)
-          try {
-            await registerUser(userEmail, token);
-          } catch (apiError: any) {
-            // 409 (이미 등록됨) 또는 기타 서버 에러 모두 무시
-            // 푸시 토큰은 이미 Expo 서버에 등록되었으므로 알림 수신은 가능
-            if (__DEV__) console.warn('🔔 [PushDebug] registerUser 실패 (무시):', apiError?.response?.status || apiError?.message);
-          }
-          showAlert('알림', '푸시 알림 설정이 완료되었습니다.');
-        } else {
-          showAlert('오류', '푸시 토큰을 가져올 수 없습니다.');
-          setPushEnabled(false);
-          if (userEmail) {
-            const safeEmail = userEmail.replace(/\./g, '_');
-            await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), 'false');
-          }
-        }
-      } catch (e) {
-        console.error('🚀 [PushDebug] 에러 발생:', e);
-        setPushEnabled(false);
-        if (userEmail) {
-          const safeEmail = userEmail.replace(/\./g, '_');
-          await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), 'false');
-        }
-        showAlert('오류', '푸시 알림 설정 중 문제가 발생했습니다.');
-      }
-    }
-  };
-
-  // 3. UI 렌더링 (기존 배치 100% 유지)
-  const insets = useSafeAreaInsets();
+    isPasswordModalVisible,
+    setIsPasswordModalVisible,
+    passwordInput,
+    setPasswordInput,
+    isNicknameModalVisible,
+    setIsNicknameModalVisible,
+    nicknameInput,
+    setNicknameInput,
+    isForcedNickname,
+    setIsForcedNickname,
+    pushEnabled,
+    soundEnabled,
+    setSoundEnabled,
+    nightPushOnly,
+    setNightPushOnly,
+    marketingEnabled,
+    setMarketingEnabled,
+    devClickCount,
+    setDevClickCount,
+    alertVisible,
+    alertTitle,
+    alertMessage,
+    alertOnConfirm,
+    alertButtons,
+    closeAlert,
+    showAlert,
+    isFeedbackModalVisible,
+    setIsFeedbackModalVisible,
+    feedbackInput,
+    setFeedbackInput,
+    isSendingFeedback,
+    isLicenseModalVisible,
+    setIsLicenseModalVisible,
+    appVersion,
+    handleFeedbackSubmit,
+    handlePasswordSubmit,
+    handleLogout,
+    handleNicknameSave,
+    handleWithdraw,
+    handleGoogleLogin,
+    handlePushToggle,
+  } = useProfileLogic();
 
   return (
     <LinearGradient
@@ -624,10 +419,16 @@ export default function ProfileScreen() {
       </ScrollView>
     </LinearGradient>
   );
-} // 👈 ProfileScreen 함수 끝 (여기서 닫아줘야 스타일이 적용됩니다.)
+}
 
 // 헬퍼 컴포넌트
-function SettingRow({ label, description, value, onValueChange }) {
+interface SettingRowProps {
+  label: string;
+  description?: string;
+  value: boolean;
+  onValueChange: (val: boolean) => void;
+}
+function SettingRow({ label, description, value, onValueChange }: SettingRowProps) {
   return (
     <View style={styles.settingRow}>
       <View style={{ flex: 1 }}>
@@ -799,10 +600,9 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderRadius: 8,
     padding: 12,
+    fontSize: 14,
     marginBottom: 20,
-    fontSize: 15,
-    backgroundColor: '#f9fafb',
-    color: '#111',
+    textAlignVertical: 'top',
   },
   modalButtons: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', gap: 10 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
@@ -810,12 +610,4 @@ const styles = StyleSheet.create({
   modalConfirmBtn: { backgroundColor: PRIMARY },
   modalCancelText: { color: '#333', fontWeight: '600' },
   modalConfirmText: { color: '#fff', fontWeight: '600' },
-  topActionBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 22,
-    marginBottom: 15,
-    marginTop: -10,
-  },
 });

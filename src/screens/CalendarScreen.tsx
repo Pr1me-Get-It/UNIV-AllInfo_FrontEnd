@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,63 +9,26 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import AppText from '../components/AppText';
-
-const MIN_HEIGHT = 50;
-const MAX_HEIGHT = 80;
-
-import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
-import LoginPlaceholder from '../components/ui/LoginPlaceholder';
-import academicSchedule from '../constants/academic_schedule.json';
 import { moderateScale } from '../utils/responsive';
-import { useQuery } from '@tanstack/react-query';
-import { fetchGoogleEvents } from '../api/calendarService';
 import CalendarDay from '../components/CalendarDay';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RouteProp } from '@react-navigation/native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { CalendarHeightProvider } from '../context/CalendarHeightContext';
-import { processCalendarEvents, LayedOutEvent } from '../utils/calendarLayout';
-import { getData, saveData } from '../utils/storage';
-import { STORAGE_KEYS } from '../constants/storageKeys';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCalendarLogic } from '../hooks/screens/useCalendarLogic';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 
 // 한국어 설정
 LocaleConfig.locales['kr'] = {
   monthNames: [
-    '1월',
-    '2월',
-    '3월',
-    '4월',
-    '5월',
-    '6월',
-    '7월',
-    '8월',
-    '9월',
-    '10월',
-    '11월',
-    '12월',
+    '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월',
   ],
   monthNamesShort: [
-    '1월',
-    '2월',
-    '3월',
-    '4월',
-    '5월',
-    '6월',
-    '7월',
-    '8월',
-    '9월',
-    '10월',
-    '11월',
-    '12월',
+    '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월',
   ],
   dayNames: ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'],
   dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
@@ -73,22 +36,10 @@ LocaleConfig.locales['kr'] = {
 };
 LocaleConfig.defaultLocale = 'kr';
 
-const getTodayStr = () => {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-const TODAY_STR = getTodayStr();
 const screenWidth = Dimensions.get('window').width;
 const dayWidth = (screenWidth - 32) / 7;
 
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/navigation';
-
 type CalendarScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTab'>;
-
 type CalendarScreenRouteProp = RouteProp<RootStackParamList, 'MainTab'>;
 
 interface Props {
@@ -97,163 +48,28 @@ interface Props {
 }
 
 export default function CalendarScreen({ navigation, route }: Props) {
-  const [selectedDate, setSelectedDate] = useState(TODAY_STR);
-  const [filterMode, setFilterMode] = useState<string | null>(null);
-  const [isFilterModalVisible, setFilterModalVisible] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Reanimated Shared Value
-  const itemHeight = useSharedValue(MIN_HEIGHT);
-  const startHeight = useSharedValue(MIN_HEIGHT);
-
-  const { userEmail, isAuthenticated } = useAuth();
-
-  // Gesture Handler
-  const panGesture = Gesture.Pan()
-    // 캘린더가 접혀있을 때는 아래로만(10) 제스처 활성화하여, 위로 스와이프 시 아래의 ScrollView가 스크롤되도록 함
-    // 캘린더가 펼쳐져 있을 때는 위로도(-10) 제스처를 활성화하여 캘린더를 접을 수 있게 함
-    .activeOffsetY(isExpanded ? [-10, 10] : 10)
-    .onStart(() => {
-      startHeight.value = itemHeight.value;
-    })
-    .onUpdate((e) => {
-      const sensitivity = 0.4; // 적당한 드래그 감도
-      let newHeight = startHeight.value + e.translationY * sensitivity;
-      if (newHeight < MIN_HEIGHT) newHeight = MIN_HEIGHT;
-      if (newHeight > MAX_HEIGHT) newHeight = MAX_HEIGHT;
-      itemHeight.value = newHeight;
-    })
-    .onEnd(() => {
-      // Snap logic
-      if (itemHeight.value > (MIN_HEIGHT + MAX_HEIGHT) / 2) {
-        itemHeight.value = withSpring(MAX_HEIGHT, { damping: 70 });
-        runOnJS(setIsExpanded)(true);
-      } else {
-        itemHeight.value = withSpring(MIN_HEIGHT, { damping: 70 });
-        runOnJS(setIsExpanded)(false);
-      }
-    });
-
   const {
-    data: googleEvents = [],
+    selectedDate,
+    setSelectedDate,
+    filterMode,
+    isFilterModalVisible,
+    setFilterModalVisible,
+    isExpanded,
+    currentMonth,
+    setCurrentMonth,
+    itemHeight,
+    panGesture,
     isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ['calendarEvents', userEmail],
-    queryFn: fetchGoogleEvents,
-    enabled: !!userEmail && isAuthenticated,
-    staleTime: 1000 * 60 * 10,
-  });
-
-  useFocusEffect(
-    useCallback(() => {
-      if (userEmail && isAuthenticated) refetch();
-    }, [userEmail, isAuthenticated, refetch]),
-  );
-
-  const events = useMemo(() => {
-    return [...googleEvents, ...academicSchedule] as any[];
-  }, [googleEvents]);
-
-
-
-
-
-  const getDatesInRange = (startDate: string, endDate: string) => {
-    const dates = [];
-    const [sYr, sMo, sDa] = startDate.split('T')[0].split('-').map(Number);
-    const [eYr, eMo, eDa] = endDate.split('T')[0].split('-').map(Number);
-    
-    let curr = new Date(sYr, sMo - 1, sDa);
-    const end = new Date(eYr, eMo - 1, eDa);
-    
-    while (curr <= end) {
-      const y = curr.getFullYear();
-      const m = String(curr.getMonth() + 1).padStart(2, '0');
-      const d = String(curr.getDate()).padStart(2, '0');
-      dates.push(`${y}-${m}-${d}`);
-      curr.setDate(curr.getDate() + 1);
-    }
-    return dates;
-  };
-
-  const visibleEvents = useMemo(() => {
-    if (filterMode === null) return [];
-    return events.filter((event: any) => {
-      if (filterMode === 'all') return true;
-      const type = event.hasOwnProperty('type') ? event.type : -1;
-      // type 2(공휴일)는 학부/대학원 필터에 관계없이 항상 표시
-      if (type === 2) return true;
-      return filterMode === 'undergraduate' ? type === 0 : type === 1;
-    });
-  }, [events, filterMode]);
-
-  const holidayDates = useMemo(() => {
-    const holidays = new Set<string>();
-    visibleEvents.forEach((ev: any) => {
-      if (ev.type === 2) {
-        const s = ev.start.date || ev.start.dateTime?.split('T')[0];
-        let end = ev.end?.date || ev.end?.dateTime?.split('T')[0] || s;
-
-        const isGoogleAllDay = ev.start.date && !ev.id.startsWith('knu_');
-        if (isGoogleAllDay && ev.end?.date) {
-          const [eYr, eMo, eDa] = end.split('T')[0].split('-').map(Number);
-          const endDateObj = new Date(eYr, eMo - 1, eDa);
-          endDateObj.setDate(endDateObj.getDate() - 1);
-          const y = endDateObj.getFullYear();
-          const m = String(endDateObj.getMonth() + 1).padStart(2, '0');
-          const d = String(endDateObj.getDate()).padStart(2, '0');
-          end = `${y}-${m}-${d}`;
-        }
-
-        const dates = getDatesInRange(s, end);
-        dates.forEach(d => holidays.add(d));
-      }
-    });
-    return holidays;
-  }, [visibleEvents]);
-
-  const [currentMonth, setCurrentMonth] = useState(TODAY_STR);
-
-  const processedEvents = useMemo(() => {
-    // We pass 'visibleEvents' which are already filtered by type (Undergrad/Grad)
-    // Use currentMonth substring(0, 7) instead of selectedDate
-    return processCalendarEvents(visibleEvents, currentMonth.substring(0, 7));
-  }, [visibleEvents, currentMonth]); // Re-calc only when events change or month changes
-
-  const updatedMarkedDates = useMemo(() => {
-    const obj: any = {};
-    Object.keys(processedEvents).forEach(date => {
-      obj[date] = { marked: true };
-    });
-    holidayDates.forEach(date => {
-      obj[date] = { ...obj[date], isHoliday: true };
-    });
-    obj[selectedDate] = { ...obj[selectedDate], selected: true };
-    return obj;
-  }, [processedEvents, holidayDates, selectedDate]);
-
-  // 2. Events for the List View (Selected Date) - Keep existing logic
-  const daySelectedEvents = useMemo(() => {
-    return visibleEvents.filter((e: any) => {
-      const s = e.start.date || e.start.dateTime?.split('T')[0];
-      let end = e.end?.date || e.end?.dateTime?.split('T')[0] || s;
-
-      const isGoogleAllDay = e.start.date && !e.id.startsWith('knu_');
-      if (isGoogleAllDay && e.end?.date) {
-        const endDateObj = new Date(end);
-        endDateObj.setDate(endDateObj.getDate() - 1);
-        end = endDateObj.toISOString().split('T')[0];
-      }
-
-      return selectedDate >= s && selectedDate <= end;
-    });
-  }, [visibleEvents, selectedDate]);
+    processedEvents,
+    updatedMarkedDates,
+    daySelectedEvents,
+    holidayDates,
+    handleFilterSelect,
+  } = useCalendarLogic(navigation, route);
 
   const renderDay = useCallback(
     ({ date, state }: any) => {
       const dateStr = date.dateString;
-      // Get the layout chunks starting on this day
       const dayEvents = processedEvents[dateStr] || [];
       const isSelected = dateStr === selectedDate;
 
@@ -266,15 +82,12 @@ export default function CalendarScreen({ navigation, route }: Props) {
           isHolidayDate={holidayDates.has(dateStr)}
           onPress={(d) => {
             setSelectedDate(d);
-            // Optional: If user selects a date, ensure currentMonth is synced if it somehow drifted
-            // But usually onMonthChange handles the drift.
-            // If we really want to force sync, we can do it here, but let's stick to standard behavior.
           }}
           dayWidth={dayWidth}
         />
       );
     },
-    [processedEvents, selectedDate, holidayDates],
+    [processedEvents, selectedDate, holidayDates, setSelectedDate],
   );
 
   const formatTime = (dateTime: string) => {
@@ -343,13 +156,12 @@ export default function CalendarScreen({ navigation, route }: Props) {
                   },
                 } as any
               }
-              disableMonthChange={true} // Swiping handled by gesture
-              enableSwipeMonths={false} // Disable default swipe to avoid conflict
+              disableMonthChange={true}
+              enableSwipeMonths={false}
               hideExtraDays={true}
             />
           </CalendarHeightProvider>
 
-          {/* Drag Handle */}
           <View style={styles.dragHandleContainer}>
             <View style={styles.dragHandle} />
             <AppText style={styles.dragText}>
@@ -370,46 +182,6 @@ export default function CalendarScreen({ navigation, route }: Props) {
       </View>
     </>
   );
-
-  // 0. Load saved filter mode on mount
-  React.useEffect(() => {
-    const loadFilter = async () => {
-      if (userEmail && isAuthenticated) {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        const savedFilter = (await getData(STORAGE_KEYS.FILTER_MODE(safeEmail))) as string;
-        setFilterMode(savedFilter || 'all');
-      } else {
-        setFilterMode('all');
-      }
-    };
-    loadFilter();
-  }, [userEmail, isAuthenticated]);
-
-  // 외부(홈 화면 검색 등)에서 넘어온 날짜 파라미터 처리
-  useFocusEffect(
-    useCallback(() => {
-      const params = route.params as any;
-      if (params?.initialDate) {
-        const targetDate = params.initialDate;
-        setSelectedDate(targetDate);
-        setCurrentMonth(targetDate);
-
-        // 파라미터 사용 후 초기화
-        navigation.setParams({ initialDate: undefined } as any);
-      }
-    }, [route.params, navigation])
-  );
-
-  const handleFilterSelect = async (m: string) => {
-    setFilterMode(m);
-    setFilterModalVisible(false);
-    if (userEmail) {
-      const safeEmail = userEmail.replace(/\./g, '_');
-      await saveData(STORAGE_KEYS.FILTER_MODE(safeEmail), m);
-    }
-  };
-
-
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

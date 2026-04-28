@@ -24,7 +24,7 @@ export default function TabNavigator() {
         tabBarStyle: {
           backgroundColor: COLORS.background,
           borderTopLeftRadius: 20,
-          borderTopRightRadius: 50,
+          borderTopRightRadius: 20,
           borderTopWidth: 0,
           elevation: 8,
           shadowColor: '#000',

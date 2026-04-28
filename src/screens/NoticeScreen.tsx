@@ -1,6 +1,4 @@
-/* screen/NoticeScreen.tsx */
-
-import React, { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React from 'react';
 import {
   View,
   FlatList,
@@ -13,21 +11,14 @@ import {
 } from 'react-native';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
-import { AlarmContext } from '../data/Alarm';
 import SOURCE_LABELS from '../constants/labeltag.json';
-import { saveData, getData } from '../utils/storage';
-import { STORAGE_KEYS } from '../constants/storageKeys';
 import { COLORS } from '../constants/colors';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../context/AuthContext';
-import { syncKeywords } from '../api/userService';
 import NoticeItem from '../components/NoticeItem';
-import { fetchNotices } from '../api/noticeService';
 import { COMMON_TAGS } from '../constants/noticeCategories';
 import { moderateScale } from '../utils/responsive';
-import debounce from 'lodash.debounce';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { useNoticeLogic } from '../hooks/screens/useNoticeLogic';
 
 type NoticeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTab'>;
 
@@ -37,215 +28,39 @@ interface Props {
 }
 
 export default function NoticeScreen({ navigation, route }: Props) {
-  const queryClient = useQueryClient();
-  const { readStatus } = useContext(AlarmContext) || { readStatus: {} };
-  const { userEmail } = useAuth(); // 유저 이메일 가져오기
-  const safeStatus = readStatus || {};
-
-  const [query, setQuery] = useState('');
-  const [inputText, setInputText] = useState(''); // 타이핑용 로컬 상태
-  const [filterMode, setFilterMode] = useState('all');
-  const [isFilterModalVisible, setFilterModalVisible] = useState(false);
-  const [modalSearchQuery, setModalSearchQuery] = useState('');
-  const [selectedSources, setSelectedSources] = useState<string[]>([]);
-  const [isCommonExpanded, setIsCommonExpanded] = useState(false);
-  const [isDeptExpanded, setIsDeptExpanded] = useState(false);
-
-  // Date Range, Sort State
-  const [dateRange, setDateRange] = useState('1m'); // '1w', '1m', '3m'
-  const [sortOrder, setSortOrder] = useState('DESC'); // 'DESC', 'ASC'
-  const [isDateModalVisible, setDateModalVisible] = useState(false);
-
-  // 1. 앱 시작 시 저장된 필터 데이터 불러오기
-  useEffect(() => {
-    const initFilters = async () => {
-      try {
-        const filterKey = STORAGE_KEYS.FILTER_SETTINGS || 'filter_settings';
-        const saved = await getData(filterKey);
-
-        if (saved && Array.isArray(saved) && saved.length > 0) {
-          setSelectedSources(saved as string[]);
-        } else {
-          setSelectedSources([]);
-        }
-      } catch (e) {
-        console.error('필터 로딩 에러:', e);
-        setSelectedSources([]);
-      }
-    };
-    initFilters();
-  }, []);
-
-  // 1-1. 외부(홈 화면 등)에서 넘어온 검색어 처리
-  useEffect(() => {
-    if (route.params?.initialQuery) {
-      const initial = route.params.initialQuery;
-      // 로컬 인풋과 실제 쿼리 상태 모두 업데이트
-      setInputText(initial);
-      setQuery(initial);
-
-      // 파라미터 사용 후 속성 제거 (뒤로가기 등 재진입 시 중복 방지)
-      (navigation as any).setParams({ initialQuery: undefined });
-    }
-  }, [route.params?.initialQuery]);
-
-  // 검색 인풋 디바운스 적용
-  const debouncedSetQuery = useRef(
-    debounce((text: string) => {
-      setQuery(text);
-    }, 500) // 500ms 지연
-  ).current;
-
-  // 컴포넌트 언마운트 시 메모리 누수 방지
-  useEffect(() => {
-    return () => {
-      debouncedSetQuery.cancel();
-    };
-  }, [debouncedSetQuery]);
-
-  // 필터 저장 함수
-  const persistFilters = async (newList: string[]) => {
-    try {
-      const filterKey = STORAGE_KEYS.FILTER_SETTINGS || 'filter_settings';
-      await saveData(filterKey, newList);
-    } catch (e) {
-      console.error('필터 저장 에러:', e);
-    }
-  };
-
-  // --- 3. React Query: useQuery 사용 (한 달치 데이터 모두 로드) ---
   const {
-    data: allNotices = [],
+    inputText,
+    setInputText,
+    filterMode,
+    setFilterMode,
+    isFilterModalVisible,
+    setFilterModalVisible,
+    modalSearchQuery,
+    setModalSearchQuery,
+    selectedSources,
+    isCommonExpanded,
+    setIsCommonExpanded,
+    isDeptExpanded,
+    setIsDeptExpanded,
+    dateRange,
+    setDateRange,
+    sortOrder,
+    setSortOrder,
+    isDateModalVisible,
+    setDateModalVisible,
+    debouncedSetQuery,
     isLoading,
-    refetch,
     isRefetching,
-  } = useQuery({
-    queryKey: ['notices', query, dateRange, sortOrder],
-    queryFn: fetchNotices,
-  });
-
-  const handleClearCache = async () => {
-    if (__DEV__) console.log('Refresh button pressed. Refetching...');
-    try {
-      await refetch();
-      if (__DEV__) console.log('Refetch command sent.');
-    } catch (error) {
-      console.error('Refetch failed:', error);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setModalSearchQuery('');
-    setFilterModalVisible(false);
-  };
-
-  const toggleSource = async (code: string) => {
-    const isAdding = !selectedSources.includes(code);
-    const updated = isAdding ? [...selectedSources, code] : selectedSources.filter(c => c !== code);
-
-    setSelectedSources(updated);
-    persistFilters(updated);
-
-    // [키워드 연동] 필터 선택 시 키워드 자동 추가/삭제
-    if (userEmail) {
-      try {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        const localKeywords = (await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail))) || [];
-        let newKeywords = [...localKeywords];
-
-        if (isAdding) {
-          if (!newKeywords.includes(code)) newKeywords.push(code);
-        } else {
-          newKeywords = newKeywords.filter(k => k !== code);
-        }
-
-        // 로컬 저장 및 서버 동기화
-        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-        await syncKeywords(userEmail, newKeywords);
-        if (__DEV__) console.log(`🔗 [필터-키워드 연동] ${code} ${isAdding ? '추가' : '삭제'}됨.`);
-      } catch (e) {
-        console.error('키워드 연동 실패:', e);
-      }
-    }
-  };
-
-  const toggleAll = async () => {
-    const allCodes = Object.keys(SOURCE_LABELS);
-    const isSelectingAll = selectedSources.length !== allCodes.length;
-    const updated = isSelectingAll ? allCodes : [];
-
-    setSelectedSources(updated);
-    persistFilters(updated);
-
-    // [키워드 연동] 전체 선택/해제 시 키워드 일괄 처리
-    if (userEmail) {
-      try {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        const localKeywords = (await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail))) || [];
-        let newKeywords = [...localKeywords];
-
-        if (isSelectingAll) {
-          // 전체 추가: 없는 것들만 추가
-          allCodes.forEach(code => {
-            if (!newKeywords.includes(code)) newKeywords.push(code);
-          });
-        } else {
-          // 전체 해제: 학과 코드들만 제거 (사용자 정의 키워드는 유지)
-          newKeywords = newKeywords.filter(k => !allCodes.includes(k));
-        }
-
-        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-        await syncKeywords(userEmail, newKeywords);
-        if (__DEV__) console.log(`🔗 [필터-키워드 연동] 전체 ${isSelectingAll ? '추가' : '해제'} 완료.`);
-      } catch (e) {
-        console.error('키워드 전체 연동 실패:', e);
-      }
-    }
-  };
-
-  const onRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
-  const normalizeSource = useCallback((source: string) => {
-    if (!source) return null;
-    const key = source.split(/[\/|]/)[0].toUpperCase().trim();
-
-    // 1. 코드로 찾기 (예: "CSE")
-    if ((SOURCE_LABELS as any)[key]) return key;
-
-    // 2. 이름으로 찾기 (예: "음악학과학사공지" -> "음악학과" -> "MUS")
-    const foundCode = Object.keys(SOURCE_LABELS).find(
-      code => source.startsWith((SOURCE_LABELS as any)[code]),
-    );
-
-    return foundCode || null;
-  }, []);
-
-  // --- 5. 클라이언트 사이드 필터링 & 카운트 ---
-  // 주의: 서버 페이지네이션을 사용하므로, unreadCount는 '현재 로드된 데이터' 기준입니다.
-  const unreadCount = useMemo(() => {
-    return allNotices.filter((item: any) => {
-      const sourcePrefix = normalizeSource(item.source);
-      const matchesSourceFilter = selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
-      return matchesSourceFilter && !safeStatus[item.id];
-    }).length;
-  }, [allNotices, selectedSources, safeStatus]);
-
-  const displayedData = useMemo(() => {
-    return allNotices.filter((item: any) => {
-      const sourcePrefix = normalizeSource(item.source);
-      // 필터가 아예 선택되지 않았으면 모두 숨김, 필터가 선택되었을 때 소속을 모르는 경우 숨김
-      const matchesSourceFilter = selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
-
-      const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
-      return matchesSourceFilter && matchesReadFilter;
-    });
-  }, [allNotices, selectedSources, safeStatus, filterMode]);
-
-  const handleNoticePress = useCallback((item: any) => {
-    navigation.navigate('Detail', { item });
-  }, [navigation]);
+    handleClearCache,
+    handleCloseModal,
+    toggleSource,
+    toggleAll,
+    onRefresh,
+    unreadCount,
+    displayedData,
+    handleNoticePress,
+    safeStatus,
+  } = useNoticeLogic(navigation, route);
 
   return (
     <View style={styles.container}>
@@ -520,7 +335,7 @@ export default function NoticeScreen({ navigation, route }: Props) {
           returnKeyType="search"
         />
         {inputText.length > 0 && (
-          <TouchableOpacity onPress={() => { setInputText(''); setQuery(''); }}>
+          <TouchableOpacity onPress={() => { setInputText(''); debouncedSetQuery(''); }}>
             <Ionicons name="close-circle" size={20} color="#ccc" />
           </TouchableOpacity>
         )}

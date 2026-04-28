@@ -1,32 +1,25 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ScrollView,
-  Linking,
   Dimensions,
   Animated,
   Modal,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { AVAILABLE_LINKS, ExternalLink } from '../constants/links';
 import { COLORS } from '../constants/colors';
 import AppText from '../components/AppText';
-import { useAuth } from '../context/AuthContext';
 import { moderateScale } from '../utils/responsive';
-import { isValidNickname } from '../utils/filter';
 import CustomAlert from '../components/ui/CustomAlert';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import MealWidget from '../components/home/MealWidget';
 import BusWidget from '../components/home/BusWidget';
-import academicSchedule from '../constants/academic_schedule.json';
+import { useHomeLogic } from '../hooks/screens/useHomeLogic';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTab'>;
 
@@ -36,209 +29,33 @@ interface Props {
 
 const { width } = Dimensions.get('window');
 const CARD_SPACING = 15;
-const CARD_WIDTH = (width - 40 - CARD_SPACING) / 2; // 2 columns
+const CARD_WIDTH = (width - 40 - CARD_SPACING) / 2;
 
 export default function HomeScreen({ navigation }: Props) {
-  const { nickname, userInfo, isAuthenticated, updateNickname } = useAuth();
-  const [customLinks, setCustomLinks] = useState<ExternalLink[]>(AVAILABLE_LINKS.slice(0, 4));
-
-  // 닉네임 모달 상태
-  const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
-  const [nicknameInput, setNicknameInput] = useState('');
-  const [searchText, setSearchText] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-
-  // 1. 통합 검색 인덱스 정의
-  const searchIndex = useMemo(() => {
-    // 내부 스크린 및 기능
-    const internalFeatures = [
-      { id: 'map', title: '학교 지도', type: 'internal', screen: 'Map', icon: 'map' },
-      { id: 'applegame', title: '두쫀쿠게임', type: 'internal', screen: 'AppleGame', icon: 'nutrition' },
-      { id: 'flappybird', title: '플래피 버드', type: 'internal', screen: 'FlappyBird', icon: 'rocket' },
-      { id: 'keyword', title: '키워드 알림 설정', type: 'internal', screen: 'Keyword', icon: 'notifications-outline' },
-      { id: 'bookmark', title: '즐겨찾기(북마크)', type: 'internal', screen: 'Bookmark', icon: 'bookmark-outline' },
-    ];
-
-    // 프로필 설정 항목들
-    const profileSettings = [
-      { id: 'push_setting', title: '푸시 알림 설정', type: 'internal', screen: 'Profile', icon: 'notifications' },
-      { id: 'sound_setting', title: '알림 소리 설정', type: 'internal', screen: 'Profile', icon: 'volume-high' },
-      { id: 'feedback', title: '피드백 보내기', type: 'internal', screen: 'Profile', icon: 'mail-unread' },
-      { id: 'license', title: '오픈소스 라이선스', type: 'internal', screen: 'Profile', icon: 'document-text' },
-      { id: 'nickname_setting', title: '닉네임 변경', type: 'action', action: 'nickname', icon: 'person-outline' },
-      { id: 'logout', title: '로그아웃', type: 'internal', screen: 'Profile', icon: 'log-out' },
-    ];
-
-    // 외부 링크들
-    const externalLinks = AVAILABLE_LINKS.map(link => ({
-      ...link,
-      type: 'external',
-    }));
-
-    // 학사 일정들
-    const academicEvents = academicSchedule.map((event: any) => ({
-      id: event.id,
-      title: `[학사일정] ${event.summary}`,
-      type: 'academic',
-      date: event.start.date || event.start.dateTime?.split('T')[0],
-      icon: 'calendar',
-    }));
-
-    return [...internalFeatures, ...profileSettings, ...externalLinks, ...academicEvents];
-  }, []);
-
-  // 2. 실시간 검색 결과 필터링
-  useEffect(() => {
-    const query = searchText.trim().toLowerCase();
-    if (!query) {
-      setSearchResults([]);
-      return;
-    }
-
-    const filtered = searchIndex.filter(item =>
-      item.title.toLowerCase().includes(query)
-    ).slice(0, 8); // 제안 목록을 8개로 소폭 확장
-
-    setSearchResults(filtered);
-  }, [searchText, searchIndex]);
-
-  // 3. 검색 결과 클릭 핸들러
-  const handleSearchResultPress = (item: any) => {
-    setSearchText('');
-    setSearchResults([]);
-
-    if (item.type === 'external') {
-      handleOpenLink(item.url);
-    } else if (item.type === 'internal') {
-      if (item.screen === 'Map') {
-        navigation.navigate('MainTab', { screen: 'Map' } as any);
-      } else {
-        navigation.navigate(item.screen as any);
-      }
-    } else if (item.type === 'academic') {
-      // 캘린더 화면으로 해당 날짜와 함께 이동
-      navigation.navigate('MainTab', {
-        screen: 'Calendar',
-        params: { initialDate: item.date }
-      } as any);
-    } else if (item.type === 'action') {
-      if (item.action === 'nickname') {
-        handleNicknamePress();
-      }
-    }
-  };
-
-
-  // 커스텀 알림 상태
-  const [alertVisible, setAlertVisible] = useState(false);
-  const [alertTitle, setAlertTitle] = useState('');
-  const [alertMessage, setAlertMessage] = useState('');
-  const [alertOnConfirm, setAlertOnConfirm] = useState<(() => void) | undefined>(undefined);
-  const [alertButtons, setAlertButtons] = useState<any[] | undefined>(undefined);
-
-  const showAlert = (title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertOnConfirm(() => onConfirm);
-    setAlertButtons(buttons);
-    setAlertVisible(true);
-  };
-
-  const closeAlert = () => {
-    setAlertVisible(false);
-    setAlertOnConfirm(undefined);
-    setAlertButtons(undefined);
-  };
-
-  // 닉네임 저장 핸들러
-  const handleNicknameSave = async () => {
-    const input = nicknameInput.trim();
-    if (!input) {
-      showAlert('오류', '닉네임을 입력해주세요.');
-      return;
-    }
-
-    if (!isValidNickname(input)) {
-      showAlert('부적절한 닉네임', '비속어나 제한된 단어가 포함되어 있습니다.');
-      return;
-    }
-
-    if (isAuthenticated) {
-      await updateNickname(input);
-      setIsNicknameModalVisible(false);
-      setNicknameInput('');
-      showAlert('알림', '닉네임이 성공적으로 변경되었습니다.');
-    }
-  };
-
-  const handleNicknamePress = () => {
-    if (!isAuthenticated) {
-      showAlert('로그인 필요', '로그인이 필요합니다.', () => {
-        navigation.navigate('Profile');
-      });
-      return;
-    }
-    setNicknameInput(nickname || userInfo?.name || '');
-    setIsNicknameModalVisible(true);
-  };
-
-  useFocusEffect(
-    React.useCallback(() => {
-      const loadLinks = async () => {
-        try {
-          const stored = await AsyncStorage.getItem('CUSTOM_LINKS');
-          if (stored) {
-            const ids = JSON.parse(stored) as string[];
-            const filtered = ids
-              .map(id => AVAILABLE_LINKS.find(link => link.id === id))
-              .filter(Boolean) as ExternalLink[];
-            setCustomLinks(filtered);
-          } else {
-            setCustomLinks(AVAILABLE_LINKS.slice(0, 4));
-          }
-        } catch (error) {
-          console.error('Failed to load custom links on home', error);
-        }
-      };
-      loadLinks();
-    }, []),
-  );
-
-  // Animation for greeting
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-
-  React.useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000, // 1 second fade-in
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
-  const handleOpenLink = async (url: string) => {
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('에러', '연결할 수 없는 링크입니다.');
-      }
-    } catch (error) {
-      if (__DEV__) console.error('An error occurred', error);
-    }
-  };
-
-  const handleSearchSubmit = () => {
-    const trimmedQuery = searchText.trim();
-    if (trimmedQuery) {
-      // Navigate to Notice tab with search query
-      navigation.navigate('MainTab', {
-        screen: 'Notice',
-        params: { initialQuery: trimmedQuery }
-      } as any);
-      setSearchText(''); // Clear search bar after navigation
-    }
-  };
+  const {
+    nickname,
+    customLinks,
+    isNicknameModalVisible,
+    setIsNicknameModalVisible,
+    nicknameInput,
+    setNicknameInput,
+    searchText,
+    setSearchText,
+    searchResults,
+    setSearchResults,
+    alertVisible,
+    alertTitle,
+    alertMessage,
+    alertOnConfirm,
+    alertButtons,
+    closeAlert,
+    fadeAnim,
+    handleSearchResultPress,
+    handleNicknamePress,
+    handleNicknameSave,
+    handleOpenLink,
+    handleSearchSubmit,
+  } = useHomeLogic(navigation);
 
   return (
     <LinearGradient
@@ -481,7 +298,6 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    // backgroundColor: '#fff', // Removed for gradient
     paddingTop: 60, // Status bar area
   },
   header: {
@@ -590,7 +406,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     marginBottom: 25,
-    // 섀도우 효과 추가
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -644,13 +459,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingHorizontal: 12, // Reduced from 16
-    paddingVertical: 6, // Reduced from 10
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999, // Pill shape
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginRight: 8, // Reduced from 10
-    // Shadow for depth
+    marginRight: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -658,7 +472,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   pillText: {
-    fontSize: moderateScale(13, 0.3), // Reduced from 14
+    fontSize: moderateScale(13, 0.3),
     fontWeight: '600',
     color: '#333',
     includeFontPadding: false,
@@ -715,3 +529,4 @@ const styles = StyleSheet.create({
   modalCancelText: { color: '#333', fontWeight: '600' },
   modalConfirmText: { color: '#fff', fontWeight: '600' },
 });
+
