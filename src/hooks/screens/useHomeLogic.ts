@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { AVAILABLE_LINKS, ExternalLink } from '../../constants/links';
 import { isValidNickname } from '../../utils/filter';
 import academicSchedule from '../../constants/academic_schedule.json';
+import { sendFeedback } from '../../api/feedbackService';
 
 export function useHomeLogic(navigation: any) {
   const { nickname, userInfo, isAuthenticated, updateNickname } = useAuth();
@@ -18,6 +19,11 @@ export function useHomeLogic(navigation: any) {
   // 검색 상태
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  // 피드백 관련 상태
+  const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
+  const [feedbackInput, setFeedbackInput] = useState('');
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
 
   // 커스텀 알림 상태
   const [alertVisible, setAlertVisible] = useState(false);
@@ -151,6 +157,26 @@ export function useHomeLogic(navigation: any) {
     }
   };
 
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackInput.trim()) {
+      showAlert('알림', '내용을 입력해주세요.');
+      return;
+    }
+
+    setIsSendingFeedback(true);
+    try {
+      await sendFeedback(feedbackInput);
+      setIsFeedbackModalVisible(false);
+      setFeedbackInput('');
+      showAlert('감사합니다', '소중한 의견이 전달되었습니다. 🙇‍♂️');
+    } catch (error: any) {
+      console.error('[Feedback] 전송 실패 ❌', error?.response?.data ?? error?.message ?? error);
+      showAlert('전송 실패', '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsSendingFeedback(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       const loadLinks = async () => {
@@ -216,6 +242,11 @@ export function useHomeLogic(navigation: any) {
     setSearchText,
     searchResults,
     setSearchResults,
+    isFeedbackModalVisible,
+    setIsFeedbackModalVisible,
+    feedbackInput,
+    setFeedbackInput,
+    isSendingFeedback,
     alertVisible,
     alertTitle,
     alertMessage,
@@ -226,6 +257,7 @@ export function useHomeLogic(navigation: any) {
     handleSearchResultPress,
     handleNicknamePress,
     handleNicknameSave,
+    handleFeedbackSubmit,
     handleOpenLink,
     handleSearchSubmit,
   };

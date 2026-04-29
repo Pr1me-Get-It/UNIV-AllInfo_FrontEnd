@@ -13,7 +13,7 @@ import {
 import { Image } from 'expo-image';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
-import { sendTestNotification } from '../utils/notifications';
+
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -34,10 +34,6 @@ export default function ProfileScreen() {
     userInfo,
     nickname,
     isAuthenticated,
-    isPasswordModalVisible,
-    setIsPasswordModalVisible,
-    passwordInput,
-    setPasswordInput,
     isNicknameModalVisible,
     setIsNicknameModalVisible,
     nicknameInput,
@@ -51,8 +47,6 @@ export default function ProfileScreen() {
     setNightPushOnly,
     marketingEnabled,
     setMarketingEnabled,
-    devClickCount,
-    setDevClickCount,
     alertVisible,
     alertTitle,
     alertMessage,
@@ -69,7 +63,6 @@ export default function ProfileScreen() {
     setIsLicenseModalVisible,
     appVersion,
     handleFeedbackSubmit,
-    handlePasswordSubmit,
     handleLogout,
     handleNicknameSave,
     handleWithdraw,
@@ -83,47 +76,15 @@ export default function ProfileScreen() {
       style={{ flex: 1 }}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 0.8 }}>
+      {/* 뒤로가기 버튼 */}
+      <TouchableOpacity
+        style={[styles.backButton, { top: Math.max(insets.top + 10, 20) }]}
+        onPress={() => navigation.goBack()}>
+        <Ionicons name="chevron-back" size={28} color="#111827" />
+      </TouchableOpacity>
       <ScrollView
         style={styles.page}
         contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}>
-        {/* 개발자 모드 비밀번호 모달 */}
-        <Modal
-          visible={isPasswordModalVisible}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setIsPasswordModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <AppText style={styles.modalTitle}>개발자 모드 인증</AppText>
-              <AppText style={styles.modalDesc}>비밀번호를 입력하세요.</AppText>
-              <TextInput
-                style={styles.passwordInput}
-                secureTextEntry
-                placeholder="비밀번호"
-                keyboardType="number-pad"
-                value={passwordInput}
-                onChangeText={setPasswordInput}
-                maxLength={4}
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalBtn, styles.modalCancelBtn]}
-                  onPress={() => {
-                    setIsPasswordModalVisible(false);
-                    setPasswordInput('');
-                  }}>
-                  <AppText style={styles.modalCancelText}>취소</AppText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalBtn, styles.modalConfirmBtn]}
-                  onPress={handlePasswordSubmit}>
-                  <AppText style={styles.modalConfirmText}>확인</AppText>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
         {/* 닉네임 설정 모달 */}
         <Modal
           visible={isNicknameModalVisible}
@@ -348,29 +309,11 @@ export default function ProfileScreen() {
         {/* 앱 정보 섹션 */}
         <View style={styles.section}>
           <AppText style={styles.sectionTitle}>앱 정보</AppText>
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.menuRowStatic}
-            onPress={() => {
-              setDevClickCount(prev => {
-                const newCount = prev + 1;
-                if (newCount >= 7) {
-                  setIsPasswordModalVisible(true);
-                  return 0;
-                }
-                return newCount;
-              });
-            }}>
+          <View style={styles.menuRowStatic}>
             <AppText style={styles.menuLabel}>버전</AppText>
             <AppText style={styles.menuDescription}>v{appVersion}</AppText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuRow} onPress={() => sendTestNotification()}>
-            <View>
-              <AppText style={styles.menuLabel}>푸시 알림 테스트</AppText>
-              <AppText style={styles.menuDescription}>내 폰으로 테스트 알림을 보냅니다.</AppText>
-            </View>
-            <Ionicons name="notifications" size={20} color="#ccc" />
-          </TouchableOpacity>
+          </View>
+
         </View>
 
         {/* 회원 탈퇴 (최하단) */}
@@ -448,6 +391,14 @@ function SettingRow({ label, description, value, onValueChange }: SettingRowProp
 // 스타일 시트
 const styles = StyleSheet.create({
   page: { flex: 1, paddingHorizontal: 20, paddingTop: 100 },
+  backButton: {
+    position: 'absolute',
+    left: 15,
+    zIndex: 10,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
   section: { marginBottom: 18 },
   sectionTitle: {
     fontSize: moderateScale(18, 0.3),
@@ -576,16 +527,6 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
   modalDesc: { fontSize: 14, color: '#666', marginBottom: 20 },
-  passwordInput: {
-    width: '100%',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    fontSize: 15,
-    textAlign: 'center',
-    marginBottom: 30,
-    paddingVertical: 10,
-    letterSpacing: 5,
-  },
   nicknameInput: {
     width: '100%',
     borderBottomWidth: 1,

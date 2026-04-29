@@ -18,9 +18,6 @@ import { AUTH_CONFIG } from '../constants/config';
 import { Alert } from 'react-native';
 import { syncKeywords } from '../api/userService';
 
-const DEV_TOKEN = 'DEV_MODE_ACCESS_TOKEN';
-const DEV_EMAIL = AUTH_CONFIG.DEV_EMAIL;
-
 // 1. 사용자 정보 타입 정의
 interface UserInfo {
   name: string | null;
@@ -38,7 +35,6 @@ interface AuthContextType {
   gameBestScores: { [key: number]: number }; // 게임별 최고 점수 (로컬 관리)
   updateGameBestScore: (gameId: number, score: number, shouldSaveToServer?: boolean) => Promise<void>; // 점수 업데이트
   loginWithGoogle: () => Promise<void>; // 구글 로그인 로직 내장
-  loginDev: (customEmail?: string) => Promise<void>; // 개발자 로그인 로직 내장 (이메일 선택 가능)
   logout: () => Promise<void>; // 통합 로그아웃
   withdraw: () => Promise<void>; // 회원 탈퇴
   updateNickname: (name: string) => Promise<void>; // 닉네임 업데이트 함수
@@ -228,18 +224,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      if (token === DEV_TOKEN) {
-        setUserEmail(DEV_EMAIL);
-        setUserInfo({
-          name: '개발자',
-          email: DEV_EMAIL,
-          picture: 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
-        });
-        setIsLoading(false);
-        // 개발자 모드라도 저장된 닉네임은 불러와야 함
-        await syncUserToBackend(DEV_EMAIL);
-        return;
-      }
+
 
       try {
         // 로컬에서 유저 정보 복구 시도 (앱 껐다 켰을 때 즉시 로그인 유지)
@@ -313,33 +298,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // 개발자 로그인 실행 함수
-  const loginDev = async (customEmail?: string) => {
-    setIsLoading(true);
-    const targetEmail = customEmail || DEV_EMAIL; // 인자가 없으면 기본값 사용
 
-    try {
-      await saveToken(DEV_TOKEN);
-      const newInfo = {
-        name: `개발자(${targetEmail.split('@')[0]})`,
-        email: targetEmail,
-        picture: 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
-      };
-      setUserEmail(targetEmail);
-      setUserInfo(newInfo);
-      await saveData(STORAGE_KEYS.USER_INFO, { userEmail: targetEmail, userInfo: newInfo });
-      await syncUserToBackend(targetEmail);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // 통합 로그아웃 함수
   const logout = useCallback(async () => {
     if (__DEV__) console.log('📡 [AuthContext] logout 함수 시작'); // 추가
     setIsLoading(true);
     try {
-      if (userEmail && userEmail !== DEV_EMAIL) {
+      if (userEmail) {
         if (__DEV__) console.log('📡 [AuthContext] 구글 세션 해제 시도 중...'); // 추가
         try {
           await GoogleSignin.revokeAccess();
@@ -366,7 +332,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (__DEV__) console.log('📡 [AuthContext] withdraw 함수 시작');
     setIsLoading(true);
     try {
-      if (userEmail && userEmail !== DEV_EMAIL) {
+      if (userEmail) {
         // 1. 백엔드에 회원 탈퇴 요청
         await withdrawUser(userEmail);
         if (__DEV__) console.log('📡 [AuthContext] 백엔드 회원 탈퇴 성공');
@@ -443,7 +409,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         gameBestScores,
         updateGameBestScore,
         loginWithGoogle,
-        loginDev,
         logout,
         withdraw,
         updateNickname,

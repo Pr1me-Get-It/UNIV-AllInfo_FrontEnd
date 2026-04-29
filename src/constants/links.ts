@@ -66,7 +66,7 @@ export const AVAILABLE_LINKS: ExternalLink[] = [
   {
     id: 'knu_library',
     title: '중앙도서관',
-    url: 'https://knul.knu.ac.kr/',
+    url: 'https://kudos.knu.ac.kr/',
     icon: 'book-outline',
   },
   {

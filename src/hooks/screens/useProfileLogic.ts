@@ -9,8 +9,6 @@ import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { isValidNickname } from '../../utils/filter';
 import { sendFeedback } from '../../api/feedbackService';
 
-const DEV_PASSWORD = '1557';
-
 export function useProfileLogic() {
   const {
     userEmail,
@@ -18,15 +16,11 @@ export function useProfileLogic() {
     nickname,
     isAuthenticated,
     loginWithGoogle,
-    loginDev,
     logout,
     withdraw,
     updateNickname,
     isLoading,
   } = useAuth();
-
-  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
 
   // 닉네임 관련 상태
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
@@ -49,7 +43,6 @@ export function useProfileLogic() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [nightPushOnly, setNightPushOnly] = useState(false);
   const [marketingEnabled, setMarketingEnabled] = useState(false);
-  const [devClickCount, setDevClickCount] = useState(0);
 
   // 커스텀 알림 상태
   const [alertVisible, setAlertVisible] = useState(false);
@@ -101,32 +94,6 @@ export function useProfileLogic() {
   };
 
   const appVersion = Constants.expoConfig?.version || '1.0.0';
-
-  const handlePasswordSubmit = () => {
-    if (passwordInput === DEV_PASSWORD) {
-      setIsPasswordModalVisible(false);
-      setPasswordInput('');
-
-      showAlert('테스트 계정 선택', '로그인할 테스트 계정을 선택해주세요.', undefined, [
-        {
-          text: 'Test 1 (기본)',
-          onPress: () => loginDev(),
-          style: 'default',
-        },
-        {
-          text: 'Test 2 (추가)',
-          onPress: () => loginDev('test2@knu.ac.kr'),
-          style: 'default',
-        },
-        {
-          text: '취소',
-          style: 'cancel',
-        },
-      ]);
-    } else {
-      showAlert('오류', '비밀번호가 틀렸습니다.');
-    }
-  };
 
   const handleLogout = () => {
     showAlert('로그아웃', '로그아웃 하시겠습니까?', () => {
@@ -239,10 +206,6 @@ export function useProfileLogic() {
     userInfo,
     nickname,
     isAuthenticated,
-    isPasswordModalVisible,
-    setIsPasswordModalVisible,
-    passwordInput,
-    setPasswordInput,
     isNicknameModalVisible,
     setIsNicknameModalVisible,
     nicknameInput,
@@ -256,8 +219,6 @@ export function useProfileLogic() {
     setNightPushOnly,
     marketingEnabled,
     setMarketingEnabled,
-    devClickCount,
-    setDevClickCount,
     alertVisible,
     alertTitle,
     alertMessage,
@@ -274,7 +235,6 @@ export function useProfileLogic() {
     setIsLicenseModalVisible,
     appVersion,
     handleFeedbackSubmit,
-    handlePasswordSubmit,
     handleLogout,
     handleNicknameSave,
     handleWithdraw,

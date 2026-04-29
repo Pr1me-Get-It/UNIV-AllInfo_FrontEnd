@@ -8,6 +8,7 @@ import {
   Dimensions,
   Animated,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +44,11 @@ export default function HomeScreen({ navigation }: Props) {
     setSearchText,
     searchResults,
     setSearchResults,
+    isFeedbackModalVisible,
+    setIsFeedbackModalVisible,
+    feedbackInput,
+    setFeedbackInput,
+    isSendingFeedback,
     alertVisible,
     alertTitle,
     alertMessage,
@@ -53,6 +59,7 @@ export default function HomeScreen({ navigation }: Props) {
     handleSearchResultPress,
     handleNicknamePress,
     handleNicknameSave,
+    handleFeedbackSubmit,
     handleOpenLink,
     handleSearchSubmit,
   } = useHomeLogic(navigation);
@@ -235,6 +242,20 @@ export default function HomeScreen({ navigation }: Props) {
                 </AppText>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkCard}
+              onPress={() => setIsFeedbackModalVisible(true)}
+              activeOpacity={0.7}>
+              <View style={styles.iconWrapper}>
+                <Ionicons name="chatbox-ellipses-outline" size={28} color={COLORS.primary} />
+              </View>
+              <View style={styles.textContainer}>
+                <AppText style={styles.linkText} numberOfLines={2}>
+                  피드백 보내기
+                </AppText>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -276,6 +297,57 @@ export default function HomeScreen({ navigation }: Props) {
                 style={[styles.modalBtn, styles.modalConfirmBtn]}
                 onPress={handleNicknameSave}>
                 <AppText style={styles.modalConfirmText}>저장</AppText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 피드백 모달 */}
+      <Modal
+        visible={isFeedbackModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsFeedbackModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { width: '85%' }]}>
+            <AppText style={styles.modalTitle}>피드백 보내기 📮</AppText>
+            <AppText style={styles.modalDesc}>
+              버그 제보, 기능 건의 등 자유롭게 남겨주세요.
+            </AppText>
+
+            <TextInput
+              style={[styles.feedbackInput, { height: 120, textAlignVertical: 'top' }]}
+              multiline
+              placeholder="여기에 내용을 입력하세요..."
+              value={feedbackInput}
+              onChangeText={setFeedbackInput}
+              maxLength={500}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalCancelBtn]}
+                onPress={() => {
+                  setIsFeedbackModalVisible(false);
+                  setFeedbackInput('');
+                }}
+                disabled={isSendingFeedback}>
+                <AppText style={styles.modalCancelText}>취소</AppText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalBtn,
+                  styles.modalConfirmBtn,
+                  isSendingFeedback && { opacity: 0.7 },
+                ]}
+                onPress={handleFeedbackSubmit}
+                disabled={isSendingFeedback}>
+                {isSendingFeedback ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <AppText style={styles.modalConfirmText}>보내기</AppText>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -521,6 +593,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 8,
     marginBottom: 24,
+  },
+  feedbackInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    marginBottom: 20,
+    textAlignVertical: 'top',
   },
   modalButtons: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', gap: 10 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
