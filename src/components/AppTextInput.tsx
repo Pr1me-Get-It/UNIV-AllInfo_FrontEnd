@@ -11,7 +11,7 @@ const AppTextInput: React.FC<AppTextInputProps> = ({ style, ...props }) => {
 
 const styles = StyleSheet.create({
     default: {
-        fontFamily: 'IBMPlexSansKR-Regular',
+        fontFamily: 'Pretendard-Regular',
     },
 });
 

@@ -7,15 +7,15 @@ interface AppTextProps extends TextProps {
 
 const AppText = React.forwardRef<Text, AppTextProps>(({ style, children, ...props }, ref) => {
     const flattenedStyle = StyleSheet.flatten(style) || {};
-    let fontFamily = 'IBMPlexSansKR-Regular';
+    let fontFamily = 'Pretendard-Regular';
     const fontWeight = flattenedStyle.fontWeight;
 
     if (fontWeight === 'bold' || fontWeight === '700') {
-        fontFamily = 'IBMPlexSansKR-Bold';
+        fontFamily = 'Pretendard-Bold';
     } else if (fontWeight === '600') {
-        fontFamily = 'IBMPlexSansKR-SemiBold';
+        fontFamily = 'Pretendard-SemiBold';
     } else if (fontWeight === '500') {
-        fontFamily = 'IBMPlexSansKR-Medium';
+        fontFamily = 'Pretendard-Medium';
     }
 
     return (

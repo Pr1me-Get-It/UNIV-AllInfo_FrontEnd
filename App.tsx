@@ -20,10 +20,10 @@ export default function App() {
       try {
         // 폰트 로드
         await Font.loadAsync({
-          'IBMPlexSansKR-Regular': require('./src/assets/fonts/IBMPlexSansKR-Regular.otf'),
-          'IBMPlexSansKR-Bold': require('./src/assets/fonts/IBMPlexSansKR-Bold.otf'),
-          'IBMPlexSansKR-Medium': require('./src/assets/fonts/IBMPlexSansKR-Medium.otf'),
-          'IBMPlexSansKR-SemiBold': require('./src/assets/fonts/IBMPlexSansKR-SemiBold.otf'),
+          'Pretendard-Regular': require('./src/assets/fonts/Pretendard-Regular.otf'),
+          'Pretendard-Bold': require('./src/assets/fonts/Pretendard-Bold.otf'),
+          'Pretendard-Medium': require('./src/assets/fonts/Pretendard-Medium.otf'),
+          'Pretendard-SemiBold': require('./src/assets/fonts/Pretendard-SemiBold.otf'),
         });
 
         // 주요 이미지 에셋 미리 로드 (캐싱)
