@@ -53,14 +53,23 @@ export default function NoticeScreen({ navigation, route }: Props) {
     isRefetching,
     handleClearCache,
     handleCloseModal,
-    toggleSource,
-    toggleAll,
+    openFilterModal,
+    toggleTempSource,
+    toggleTempAll,
+    handleApplyFilters,
     onRefresh,
     unreadCount,
     displayedData,
     handleNoticePress,
     handleMarkAllAsRead,
     safeStatus,
+    tempSelectedSources,
+    tempDateRange,
+    setTempDateRange,
+    tempSortOrder,
+    setTempSortOrder,
+    openDateModal,
+    handleApplyDateFilters,
   } = useNoticeLogic(navigation, route);
 
   return (
@@ -79,12 +88,12 @@ export default function NoticeScreen({ navigation, route }: Props) {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.filterIconButton, { marginRight: 5 }]}
-            onPress={() => setDateModalVisible(true)}>
+            onPress={openDateModal}>
             <Ionicons name="time-outline" size={24} color="#333" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.filterIconButton}
-            onPress={() => setFilterModalVisible(true)}>
+            onPress={openFilterModal}>
             <Ionicons name="filter-outline" size={24} color="#333" />
           </TouchableOpacity>
         </View>
@@ -101,41 +110,41 @@ export default function NoticeScreen({ navigation, route }: Props) {
           activeOpacity={1}
           onPress={() => setDateModalVisible(false)}
         >
-          <View style={[styles.bottomSheet, { height: 'auto', paddingBottom: 40 }]}>
+          <View style={[styles.bottomSheet, { height: 'auto', paddingBottom: 40 }]} onStartShouldSetResponder={() => true}>
             <View style={styles.sheetHeader}>
               <AppText style={styles.sheetTitle}>기간 설정</AppText>
-              <TouchableOpacity onPress={() => setDateModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
+              <TouchableOpacity style={styles.saveButton} onPress={handleApplyDateFilters}>
+                <AppText style={styles.saveButtonText}>저장</AppText>
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-              style={[styles.filterItem, dateRange === '1w' && styles.filterItemActive]}
-              onPress={() => { setDateRange('1w'); setDateModalVisible(false); }}
+              style={[styles.filterItem, tempDateRange === '1w' && styles.filterItemActive]}
+              onPress={() => setTempDateRange('1w')}
             >
               <View style={styles.filterItemContent}>
-                <AppText style={[styles.filterItemText, dateRange === '1w' && styles.filterItemTextActive]}>1주일</AppText>
-                {dateRange === '1w' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                <AppText style={[styles.filterItemText, tempDateRange === '1w' && styles.filterItemTextActive]}>1주일</AppText>
+                {tempDateRange === '1w' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.filterItem, dateRange === '1m' && styles.filterItemActive]}
-              onPress={() => { setDateRange('1m'); setDateModalVisible(false); }}
+              style={[styles.filterItem, tempDateRange === '1m' && styles.filterItemActive]}
+              onPress={() => setTempDateRange('1m')}
             >
               <View style={styles.filterItemContent}>
-                <AppText style={[styles.filterItemText, dateRange === '1m' && styles.filterItemTextActive]}>1개월</AppText>
-                {dateRange === '1m' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                <AppText style={[styles.filterItemText, tempDateRange === '1m' && styles.filterItemTextActive]}>1개월</AppText>
+                {tempDateRange === '1m' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.filterItem, dateRange === '3m' && styles.filterItemActive]}
-              onPress={() => { setDateRange('3m'); setDateModalVisible(false); }}
+              style={[styles.filterItem, tempDateRange === '3m' && styles.filterItemActive]}
+              onPress={() => setTempDateRange('3m')}
             >
               <View style={styles.filterItemContent}>
-                <AppText style={[styles.filterItemText, dateRange === '3m' && styles.filterItemTextActive]}>3개월</AppText>
-                {dateRange === '3m' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                <AppText style={[styles.filterItemText, tempDateRange === '3m' && styles.filterItemTextActive]}>3개월</AppText>
+                {tempDateRange === '3m' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
               </View>
             </TouchableOpacity>
 
@@ -144,22 +153,22 @@ export default function NoticeScreen({ navigation, route }: Props) {
             <AppText style={[styles.sheetTitle, { marginBottom: 15 }]}>정렬 기준</AppText>
 
             <TouchableOpacity
-              style={[styles.filterItem, sortOrder === 'DESC' && styles.filterItemActive]}
-              onPress={() => { setSortOrder('DESC'); setDateModalVisible(false); }}
+              style={[styles.filterItem, tempSortOrder === 'DESC' && styles.filterItemActive]}
+              onPress={() => setTempSortOrder('DESC')}
             >
               <View style={styles.filterItemContent}>
-                <AppText style={[styles.filterItemText, sortOrder === 'DESC' && styles.filterItemTextActive]}>최신순</AppText>
-                {sortOrder === 'DESC' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                <AppText style={[styles.filterItemText, tempSortOrder === 'DESC' && styles.filterItemTextActive]}>최신순</AppText>
+                {tempSortOrder === 'DESC' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.filterItem, sortOrder === 'ASC' && styles.filterItemActive]}
-              onPress={() => { setSortOrder('ASC'); setDateModalVisible(false); }}
+              style={[styles.filterItem, tempSortOrder === 'ASC' && styles.filterItemActive]}
+              onPress={() => setTempSortOrder('ASC')}
             >
               <View style={styles.filterItemContent}>
-                <AppText style={[styles.filterItemText, sortOrder === 'ASC' && styles.filterItemTextActive]}>오래된순</AppText>
-                {sortOrder === 'ASC' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                <AppText style={[styles.filterItemText, tempSortOrder === 'ASC' && styles.filterItemTextActive]}>오래된순</AppText>
+                {tempSortOrder === 'ASC' && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
               </View>
             </TouchableOpacity>
           </View>
@@ -171,8 +180,12 @@ export default function NoticeScreen({ navigation, route }: Props) {
         transparent={true}
         visible={isFilterModalVisible}
         onRequestClose={handleCloseModal}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.bottomSheet}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={handleCloseModal}
+        >
+          <View style={styles.bottomSheet} onStartShouldSetResponder={() => true}>
             <View style={styles.sheetHeader}>
               <AppText style={styles.sheetTitle}>공지 목록</AppText>
               <View style={styles.modalSearchBox}>
@@ -196,7 +209,7 @@ export default function NoticeScreen({ navigation, route }: Props) {
                   </TouchableOpacity>
                 )}
               </View>
-              <TouchableOpacity style={styles.saveButton} onPress={handleCloseModal}>
+              <TouchableOpacity style={styles.saveButton} onPress={handleApplyFilters}>
                 <AppText style={styles.saveButtonText}>저장</AppText>
               </TouchableOpacity>
             </View>
@@ -206,21 +219,21 @@ export default function NoticeScreen({ navigation, route }: Props) {
                 <TouchableOpacity
                   style={[
                     styles.filterItem,
-                    selectedSources.length === Object.keys(SOURCE_LABELS).length &&
+                    tempSelectedSources.length === Object.keys(SOURCE_LABELS).length &&
                     styles.filterItemActive,
                   ]}
-                  onPress={toggleAll}>
+                  onPress={toggleTempAll}>
                   <View style={styles.filterItemContent}>
                     <AppText style={styles.filterItemText}>전체 선택</AppText>
                     <Ionicons
                       name={
-                        selectedSources.length === Object.keys(SOURCE_LABELS).length
+                        tempSelectedSources.length === Object.keys(SOURCE_LABELS).length
                           ? 'checkbox'
                           : 'square-outline'
                       }
                       size={22}
                       color={
-                        selectedSources.length === Object.keys(SOURCE_LABELS).length
+                        tempSelectedSources.length === Object.keys(SOURCE_LABELS).length
                           ? COLORS.primary
                           : '#ccc'
                       }
@@ -246,12 +259,12 @@ export default function NoticeScreen({ navigation, route }: Props) {
                     .filter(([code]) => COMMON_TAGS.includes(code))
                     .filter(([code, name]) => (name as string).includes(modalSearchQuery))
                     .map(([code, name]) => {
-                      const isChecked = selectedSources.includes(code);
+                      const isChecked = tempSelectedSources.includes(code);
                       return (
                         <TouchableOpacity
                           key={code}
                           style={[styles.filterItem, isChecked && styles.filterItemActive]}
-                          onPress={() => toggleSource(code)}>
+                          onPress={() => toggleTempSource(code)}>
                           <View style={styles.filterItemContent}>
                             <AppText
                               style={[
@@ -288,12 +301,12 @@ export default function NoticeScreen({ navigation, route }: Props) {
                     .filter(([code]) => !COMMON_TAGS.includes(code))
                     .filter(([code, name]) => (name as string).includes(modalSearchQuery))
                     .map(([code, name]) => {
-                      const isChecked = selectedSources.includes(code);
+                      const isChecked = tempSelectedSources.includes(code);
                       return (
                         <TouchableOpacity
                           key={code}
                           style={[styles.filterItem, isChecked && styles.filterItemActive]}
-                          onPress={() => toggleSource(code)}>
+                          onPress={() => toggleTempSource(code)}>
                           <View style={styles.filterItemContent}>
                             <AppText
                               style={[
@@ -314,7 +327,7 @@ export default function NoticeScreen({ navigation, route }: Props) {
               </View>
             </ScrollView>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       <View style={styles.balanceContainer}>
@@ -371,7 +384,7 @@ export default function NoticeScreen({ navigation, route }: Props) {
           data={displayedData}
           keyExtractor={item => String(item.id)}
           showsVerticalScrollIndicator={true}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           onRefresh={onRefresh}
           refreshing={isRefetching}
           initialNumToRender={10}

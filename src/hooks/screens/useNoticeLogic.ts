@@ -23,12 +23,15 @@ export function useNoticeLogic(navigation: any, route: any) {
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [tempSelectedSources, setTempSelectedSources] = useState<string[]>([]);
   const [isCommonExpanded, setIsCommonExpanded] = useState(false);
   const [isDeptExpanded, setIsDeptExpanded] = useState(false);
 
   // Date Range, Sort State
   const [dateRange, setDateRange] = useState('1m'); // '1w', '1m', '3m'
+  const [tempDateRange, setTempDateRange] = useState('1m');
   const [sortOrder, setSortOrder] = useState('DESC'); // 'DESC', 'ASC'
+  const [tempSortOrder, setTempSortOrder] = useState('DESC');
   const [isDateModalVisible, setDateModalVisible] = useState(false);
 
   // 1. 앱 시작 시 저장된 필터 데이터 불러오기
@@ -106,6 +109,52 @@ export function useNoticeLogic(navigation: any, route: any) {
     setModalSearchQuery('');
     setFilterModalVisible(false);
   }, []);
+
+  const openFilterModal = useCallback(() => {
+    setTempSelectedSources([...selectedSources]);
+    setFilterModalVisible(true);
+  }, [selectedSources]);
+
+  const toggleTempSource = (code: string) => {
+    setTempSelectedSources(prev =>
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    );
+  };
+
+  const toggleTempAll = () => {
+    const allCodes = Object.keys(SOURCE_LABELS);
+    setTempSelectedSources(prev => (prev.length === allCodes.length ? [] : allCodes));
+  };
+
+  const handleApplyFilters = async () => {
+    setSelectedSources(tempSelectedSources);
+    await persistFilters(tempSelectedSources);
+
+    if (userEmail) {
+      try {
+        const safeEmail = userEmail.replace(/\./g, '_');
+        // 필터 설정을 키워드와 동기화
+        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), tempSelectedSources);
+        await syncKeywords(userEmail, tempSelectedSources);
+        if (__DEV__) console.log('🔗 [필터-키워드 연동] 저장 완료.');
+      } catch (e) {
+        console.error('키워드 연동 실패:', e);
+      }
+    }
+    handleCloseModal();
+  };
+
+  const openDateModal = useCallback(() => {
+    setTempDateRange(dateRange);
+    setTempSortOrder(sortOrder);
+    setDateModalVisible(true);
+  }, [dateRange, sortOrder]);
+
+  const handleApplyDateFilters = useCallback(() => {
+    setDateRange(tempDateRange);
+    setSortOrder(tempSortOrder);
+    setDateModalVisible(false);
+  }, [tempDateRange, tempSortOrder]);
 
   const toggleSource = async (code: string) => {
     const isAdding = !selectedSources.includes(code);
@@ -245,6 +294,10 @@ export function useNoticeLogic(navigation: any, route: any) {
     isRefetching,
     handleClearCache,
     handleCloseModal,
+    openFilterModal,
+    toggleTempSource,
+    toggleTempAll,
+    handleApplyFilters,
     toggleSource,
     toggleAll,
     onRefresh,
@@ -253,5 +306,12 @@ export function useNoticeLogic(navigation: any, route: any) {
     handleNoticePress,
     handleMarkAllAsRead,
     safeStatus,
+    tempSelectedSources,
+    tempDateRange,
+    setTempDateRange,
+    tempSortOrder,
+    setTempSortOrder,
+    openDateModal,
+    handleApplyDateFilters,
   };
 }
