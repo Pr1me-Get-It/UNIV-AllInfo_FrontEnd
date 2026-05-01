@@ -52,20 +52,40 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
     });
 
     // 물리 엔진 업데이트 (delta 값을 최대 16.666ms로 제한)
-    Matter.Engine.update(engine, Math.min(time.delta, 16.666));
+    const clampedDelta = Math.min(time.delta, 16.666);
+    Matter.Engine.update(engine, clampedDelta);
 
-    // 새 회전 처리 (매 프레임 1도 회전) - 사용자가 5 -> 1로 수정함
-    entities.Bird.angle += 1;
+    // 60fps 기준 정규화 계수 (16.666ms = 1프레임 기준)
+    const deltaFactor = clampedDelta / 16.666;
+
+    // 충돌 감지: Bird 바디가 포함된 쌍에만 game_over 처리 (리스너 중복 등록 방지)
+    if (!entities.physics.collisionHandler) {
+        const birdBody = entities.Bird.body;
+        const handler = (event: any) => {
+            if (entities.physics.gameOver) return;
+            const involved = event.pairs.some(
+                (pair: any) => pair.bodyA === birdBody || pair.bodyB === birdBody
+            );
+            if (!involved) return;
+            entities.physics.gameOver = true;
+            dispatch({ type: 'game_over' });
+        };
+        Matter.Events.on(engine, 'collisionStart', handler);
+        entities.physics.collisionHandler = handler;
+    }
+
+    // 새 회전 처리 - delta 정규화 (60fps 기준 1도/프레임)
+    entities.Bird.angle += 1 * deltaFactor;
 
     // 파이프 이동 및 생성/삭제 로직
     for (let i = 1; i <= 3; i++) {
         const pipeTop = entities[`PipeTop${i}`];
         const pipeBottom = entities[`PipeBottom${i}`];
 
-        // 파이프 이동
+        // 파이프 이동 - delta 정규화 (60fps 기준 2.4px/프레임)
         if (pipeTop && pipeBottom) {
-            Matter.Body.translate(pipeTop.body, { x: -2.4, y: 0 });
-            Matter.Body.translate(pipeBottom.body, { x: -2.4, y: 0 });
+            Matter.Body.translate(pipeTop.body, { x: -2.4 * deltaFactor, y: 0 });
+            Matter.Body.translate(pipeBottom.body, { x: -2.4 * deltaFactor, y: 0 });
         }
 
         // 화면 밖으로 나가면 재활용 (위치 리셋)
@@ -99,23 +119,12 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
         return entities;
     }
 
-    // 충돌 감지 (이벤트 리스너가 중복 등록되지 않도록 체크)
-    if (!entities.physics.hasCollisionListener) {
-        Matter.Events.on(engine, 'collisionStart', (event: any) => {
-            // ✅ 이미 게임오버 상태면 중복 발생 차단
-            if (entities.physics.gameOver) return;
-            entities.physics.gameOver = true; // 🔴 플래그 설정
-            dispatch({ type: 'game_over' });
-        });
-        entities.physics.hasCollisionListener = true;
-    }
 
-    // 미사일 로직
     if (entities.physics.score >= 10) {
         const missile = entities.Missile;
 
-        // 미사일 이동 (왼쪽으로) - 속도를 5에서 3.5로 낮춤
-        Matter.Body.translate(missile.body, { x: -4, y: 0 });
+        // 미사일 이동 - delta 정규화 (60fps 기준 4px/프레임)
+        Matter.Body.translate(missile.body, { x: -4 * deltaFactor, y: 0 });
 
         // 화면 밖으로 나가면 재활용 (딜레이 추가)
         if (missile.body.position.x < -50) {

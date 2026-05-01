@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import Matter from 'matter-js';
 import { Image } from 'expo-image';
 import SimpleGameEngine from './components/GameEngine';
 import { useNavigation } from '@react-navigation/native';
@@ -74,6 +75,15 @@ const FlappyBirdScreen = () => {
         if (!isRestartable) return; // Prevent reset if not ready
 
         if (gameEngineRef.current) {
+            // 이전 충돌 리스너 제거 (누적 방지)
+            const currentEntities = gameEngineRef.current.entities;
+            if (currentEntities?.physics?.engine && currentEntities?.physics?.collisionHandler) {
+                Matter.Events.off(
+                    currentEntities.physics.engine,
+                    'collisionStart',
+                    currentEntities.physics.collisionHandler
+                );
+            }
             gameEngineRef.current.swap(Entities());
         }
         setRunning(true);
