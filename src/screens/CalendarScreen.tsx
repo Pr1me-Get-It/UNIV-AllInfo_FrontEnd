@@ -13,11 +13,7 @@ import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { moderateScale } from '../utils/responsive';
 import CalendarDay from '../components/CalendarDay';
-import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RouteProp } from '@react-navigation/native';
-import Animated from 'react-native-reanimated';
-import { CalendarHeightProvider } from '../context/CalendarHeightContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCalendarLogic } from '../hooks/screens/useCalendarLogic';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -54,11 +50,8 @@ export default function CalendarScreen({ navigation, route }: Props) {
     filterMode,
     isFilterModalVisible,
     setFilterModalVisible,
-    isExpanded,
     currentMonth,
     setCurrentMonth,
-    itemHeight,
-    panGesture,
     isLoading,
     processedEvents,
     updatedMarkedDates,
@@ -95,8 +88,6 @@ export default function CalendarScreen({ navigation, route }: Props) {
     return new Date(dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const insets = useSafeAreaInsets();
-
   const renderHeader = () => (
     <>
       <View style={styles.header}>
@@ -123,53 +114,40 @@ export default function CalendarScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={{ backgroundColor: 'white' }}>
-          <CalendarHeightProvider itemHeight={itemHeight}>
-            <Calendar
-              current={currentMonth}
-              markedDates={updatedMarkedDates}
-              onMonthChange={(month: any) => setCurrentMonth(month.dateString)}
-              dayComponent={renderDay}
-              monthFormat={'yyyy년 M월'}
-              renderArrow={(direction: any) => (
-                <Ionicons
-                  name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
-                  size={28}
-                  color="rgb(219, 31, 38)"
-                />
-              )}
-              theme={
-                {
-                  textMonthFontWeight: 'bold',
-                  textMonthFontSize: 18,
-                  arrowColor: 'rgb(219, 31, 38)',
-                  monthTextColor: '#000',
-                  textDayHeaderFontWeight: 'bold',
-                  todayTextColor: 'rgb(219, 31, 38)',
-                  'stylesheet.calendar.header': {
-                    week: {
-                      marginTop: 5,
-                      flexDirection: 'row',
-                      justifyContent: 'space-around',
-                    },
-                  },
-                } as any
-              }
-              disableMonthChange={true}
-              enableSwipeMonths={false}
-              hideExtraDays={true}
-            />
-          </CalendarHeightProvider>
-
-          <View style={styles.dragHandleContainer}>
-            <View style={styles.dragHandle} />
-            <AppText style={styles.dragText}>
-              {isExpanded ? '위로 올려서 접기' : '아래로 당겨서 펼치기'}
-            </AppText>
-          </View>
-        </Animated.View>
-      </GestureDetector>
+      <Calendar
+        current={currentMonth}
+        markedDates={updatedMarkedDates}
+        onMonthChange={(month: any) => setCurrentMonth(month.dateString)}
+        dayComponent={renderDay}
+        monthFormat={'yyyy년 M월'}
+        renderArrow={(direction: any) => (
+          <Ionicons
+            name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+            size={28}
+            color="rgb(219, 31, 38)"
+          />
+        )}
+        theme={
+          {
+            textMonthFontWeight: 'bold',
+            textMonthFontSize: 18,
+            arrowColor: 'rgb(219, 31, 38)',
+            monthTextColor: '#000',
+            textDayHeaderFontWeight: 'bold',
+            todayTextColor: 'rgb(219, 31, 38)',
+            'stylesheet.calendar.header': {
+              week: {
+                marginTop: 5,
+                flexDirection: 'row',
+                justifyContent: 'space-around',
+              },
+            },
+          } as any
+        }
+        disableMonthChange={true}
+        enableSwipeMonths={false}
+        hideExtraDays={true}
+      />
 
       <View style={styles.listHeaderContainer}>
         <AppText style={styles.listHeader}>{selectedDate} 일정</AppText>
@@ -184,52 +162,50 @@ export default function CalendarScreen({ navigation, route }: Props) {
   );
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.container}>
-        <FlatList
-          data={daySelectedEvents}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View
-                style={[
-                  styles.typeIndicator,
-                  { backgroundColor: item.type === 1 ? '#333' : 'rgb(219, 31, 38)' },
-                ]}
-              />
-              <View style={styles.cardContent}>
-                <AppText style={styles.title}>{item.summary}</AppText>
-                <AppText style={styles.timeLabel}>
-                  {item.start.date ? '하루 종일' : formatTime(item.start.dateTime)}
-                </AppText>
-              </View>
+    <View style={styles.container}>
+      <FlatList
+        data={daySelectedEvents}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View
+              style={[
+                styles.typeIndicator,
+                { backgroundColor: item.type === 1 ? '#333' : 'rgb(219, 31, 38)' },
+              ]}
+            />
+            <View style={styles.cardContent}>
+              <AppText style={styles.title}>{item.summary}</AppText>
+              <AppText style={styles.timeLabel}>
+                {item.start.date ? '하루 종일' : formatTime(item.start.dateTime)}
+              </AppText>
             </View>
-          )}
-          ListHeaderComponent={renderHeader}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={<AppText style={styles.emptyText}>일정이 없습니다.</AppText>}
-        />
+          </View>
+        )}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={<AppText style={styles.emptyText}>일정이 없습니다.</AppText>}
+      />
 
-        <Modal visible={isFilterModalVisible} transparent animationType="fade">
-          <TouchableOpacity style={styles.modalOverlay} onPress={() => setFilterModalVisible(false)}>
-            <View style={styles.modalContent}>
-              <AppText style={styles.modalTitle}>일정 필터</AppText>
-              {['all', 'undergraduate', 'graduate'].map(m => (
-                <TouchableOpacity
-                  key={m}
-                  style={styles.filterOption}
-                  onPress={() => handleFilterSelect(m)}>
-                  <AppText style={filterMode === m ? styles.activeFilterText : styles.filterText}>
-                    {m === 'all' ? '전체' : m === 'undergraduate' ? '학부공통' : '대학원'}
-                  </AppText>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </TouchableOpacity>
-        </Modal>
-      </View>
-    </GestureHandlerRootView>
+      <Modal visible={isFilterModalVisible} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} onPress={() => setFilterModalVisible(false)}>
+          <View style={styles.modalContent}>
+            <AppText style={styles.modalTitle}>일정 필터</AppText>
+            {['all', 'undergraduate', 'graduate'].map(m => (
+              <TouchableOpacity
+                key={m}
+                style={styles.filterOption}
+                onPress={() => handleFilterSelect(m)}>
+                <AppText style={filterMode === m ? styles.activeFilterText : styles.filterText}>
+                  {m === 'all' ? '전체' : m === 'undergraduate' ? '학부공통' : '대학원'}
+                </AppText>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
   );
 }
 
@@ -245,15 +221,6 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginLeft: 10 },
-  dragHandleContainer: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  dragHandle: { width: 40, height: 4, backgroundColor: '#ddd', borderRadius: 2, marginBottom: 4 },
-  dragText: { fontSize: 10, color: '#aaa' },
   listHeaderContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,21 +1,6 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import AppText from './AppText';
-import Animated, {
-  useAnimatedStyle,
-  interpolate,
-  Extrapolation,
-} from 'react-native-reanimated';
-import { useCalendarHeight } from '../context/CalendarHeightContext';
-
-const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
-// AppText is already usable within Animated views if wrapped, but here we animate structure.
-
-// Imports will need to be updated to import LayedOutEvent if strictly typed, 
-// but since I can't easily change imports without viewing top of file again (I have viewed it though),
-// I'll assume LayedOutEvent structure is passed.
-// Actually, I should update the interface definition inside this file or import it.
-// To keep it simple, I'll update the interface here matching what I defined in calendarLayout.
 
 interface LayedOutEvent {
   id: string;
@@ -39,54 +24,41 @@ interface CalendarDayProps {
   isHolidayDate?: boolean;
 }
 
-const EventBlock = memo(({ ev, dayWidth, itemHeight, rTextStyle }: any) => {
-  const EVENT_HEIGHT = 16;
-  const EVENT_MARGIN = 2;
+const EVENT_HEIGHT = 16;
+const EVENT_MARGIN = 2;
+const DATE_HEIGHT = 24;
 
-  const rEventBlockStyle = useAnimatedStyle(() => {
-    const scale = interpolate(itemHeight.value, [50, 100], [0.5, 1], Extrapolation.CLAMP);
-    return {
-      height: EVENT_HEIGHT * scale,
-      top: ev.slotIndex * ((EVENT_HEIGHT + EVENT_MARGIN) * scale),
-      borderRadius: 3 * scale,
-      paddingVertical: 1, // Add tiny padding to prevent text cutoff
-    };
-  });
-
+const EventBlock = memo(({ ev, dayWidth }: { ev: LayedOutEvent; dayWidth: number }) => {
   return (
-    <Animated.View
-      style={[
-        {
-          position: 'absolute',
-          left: 0,
-          width: dayWidth * ev.colSpan - 2, // Slight gap on right
-          backgroundColor: ev.color,
-          paddingHorizontal: 2,
-          justifyContent: 'center',
-          zIndex: 100 + ev.slotIndex,
-        },
-        rEventBlockStyle,
-      ]}
+    <View
+      style={{
+        position: 'absolute',
+        left: 0,
+        width: dayWidth * ev.colSpan - 2,
+        height: EVENT_HEIGHT,
+        top: ev.slotIndex * (EVENT_HEIGHT + EVENT_MARGIN),
+        backgroundColor: ev.color,
+        borderRadius: 3,
+        paddingHorizontal: 2,
+        justifyContent: 'center',
+        zIndex: 100 + ev.slotIndex,
+      }}
     >
-      {/* 축소 시 텍스트만 투명도를 0으로 만들기 위해 rTextStyle 적용 */}
-      <Animated.View style={[rTextStyle, { width: '100%', alignItems: 'center', justifyContent: 'center' }]}>
-        <AppText
-          style={{
-            fontSize: 10,
-            color: ev.textColor,
-            fontWeight: 'bold',
-            textAlign: 'center',
-            width: '100%',
-            includeFontPadding: false,
-            lineHeight: 12,
-            marginTop: 1, // 미세 픽셀 단위 중앙 정렬 조정
-          }}
-          numberOfLines={1}
-        >
-          {ev.summary}
-        </AppText>
-      </Animated.View>
-    </Animated.View>
+      <AppText
+        style={{
+          fontSize: 10,
+          color: ev.textColor,
+          fontWeight: 'bold',
+          textAlign: 'center',
+          width: '100%',
+          includeFontPadding: false,
+          lineHeight: 12,
+        }}
+        numberOfLines={1}
+      >
+        {ev.summary}
+      </AppText>
+    </View>
   );
 });
 
@@ -99,100 +71,58 @@ const CalendarDay = ({
   dayWidth,
   isHolidayDate,
 }: CalendarDayProps) => {
-  const { itemHeight } = useCalendarHeight();
   const isToday = state === 'today';
 
-  // 공휴일 여부 판별 (props로 전달받은 isHolidayDate 이거나, 기본적으로 일요일인 경우)
   const [yr, mo, da] = date.dateString.split('-').map(Number);
   const dayOfWeek = new Date(yr, mo - 1, da).getDay();
   const isHoliday = isHolidayDate || dayOfWeek === 0;
 
-  // Height constants
-  const DATE_HEIGHT = 20; // Height reserved for the date number
-  const EVENT_HEIGHT = 16;
-  const EVENT_MARGIN = 2; // Vertical margin between slots
-
-  // Animated styles
-  const rDayStyle = useAnimatedStyle(() => {
-    return {
-      height: itemHeight.value,
-    };
-  });
-
-  const rTextStyle = useAnimatedStyle(() => {
-    // Opacity: 0 when < 70, 1 when > 90
-    const opacity = interpolate(
-      itemHeight.value,
-      [60, 90],
-      [0, 1],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
-  });
-
-  const rDotStyle = useAnimatedStyle(() => {
-    // Inverse opacity for dots
-    const opacity = interpolate(
-      itemHeight.value,
-      [50, 80],
-      [1, 0],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
-  });
-
   return (
-    <AnimatedTouchableOpacity
+    <TouchableOpacity
       style={[
         styles.dayBox,
-        rDayStyle,
+        { width: dayWidth },
         isSelected && styles.selectedDayBox,
-        // dayWidth is now handled by the parent Calendar, 
-        // but we still need to set width explicitely if we want to be safe, 
-        // though flex layout usually handles it. 
-        // The previous code had { width: dayWidth }
-        { width: dayWidth }
       ]}
       onPress={() => onPress(date.dateString)}
       activeOpacity={0.7}
-    // CRITICAL: Ensure overflow is visible so events can span across
     >
+      {/* 날짜 숫자 */}
       <View style={{ height: DATE_HEIGHT, alignItems: 'center', justifyContent: 'center' }}>
         <AppText
           style={[
             styles.dayText,
-            isHoliday && styles.holidayText, // 공휴일 & 일요일: 빨간색
-            isToday && styles.todayText,     // 오늘: 빨간색 + 볼드 (덮어씌움)
+            isHoliday && styles.holidayText,
+            isToday && styles.todayText,
             isSelected && styles.selectedDayText,
-          ]}>
+          ]}
+        >
           {date.day}
         </AppText>
       </View>
 
-      {/* Expanded View: Absolute Positioned Events */}
-      <View style={[styles.eventContainer]}>
-        {events.map((ev, i) => (
+      {/* 일정 블록들 */}
+      <View style={styles.eventContainer}>
+        {events.map((ev) => (
           <EventBlock
             key={`${ev.id}-${ev.startDate}`}
             ev={ev}
             dayWidth={dayWidth}
-            itemHeight={itemHeight}
-            rTextStyle={rTextStyle}
           />
         ))}
       </View>
-
-    </AnimatedTouchableOpacity>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   dayBox: {
     alignItems: 'center',
-    paddingTop: 5,
-    // overflow: 'hidden' <- REMOVED
+    paddingTop: 4,
     overflow: 'visible',
-    zIndex: 10, // Ensure events are above
+    zIndex: 10,
+    // 고정 높이 지정 (날짜 24 + 최대 3줄 이벤트 = 24 + 3*(16+2) = 78)
+    height: 70,
   },
   selectedDayBox: { backgroundColor: 'rgba(219, 31, 38, 0.05)', borderRadius: 8 },
   dayText: { fontSize: 14, color: '#333' },
@@ -202,23 +132,10 @@ const styles = StyleSheet.create({
   eventContainer: {
     width: '100%',
     position: 'absolute',
-    top: 30, // reserved for date
+    top: DATE_HEIGHT + 4,
     left: 0,
-    overflow: 'visible', // Allow spanning
+    overflow: 'visible',
     zIndex: 20,
-  },
-  dotContainer: {
-    flexDirection: 'row',
-    position: 'absolute',
-    bottom: 5,
-    justifyContent: 'center',
-    width: '100%',
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginHorizontal: 1,
   },
 });
 

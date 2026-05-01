@@ -1,12 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Gesture } from 'react-native-gesture-handler';
-import {
-  useSharedValue,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
 import { useAuth } from '../../context/AuthContext';
 import { fetchGoogleEvents } from '../../api/calendarService';
 import academicSchedule from '../../constants/academic_schedule.json';
@@ -14,8 +8,7 @@ import { processCalendarEvents } from '../../utils/calendarLayout';
 import { getData, saveData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 
-const MIN_HEIGHT = 50;
-const MAX_HEIGHT = 80;
+const FIXED_ITEM_HEIGHT = 72; // 캘린더 각 날짜 셀 고정 높이 (일정 텍스트 표시를 위해 여유 있게 설정)
 
 const getTodayStr = () => {
   const d = new Date();
@@ -30,35 +23,9 @@ export function useCalendarLogic(navigation: any, route: any) {
   const [selectedDate, setSelectedDate] = useState(TODAY_STR);
   const [filterMode, setFilterMode] = useState<string | null>(null);
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(TODAY_STR);
 
-  const itemHeight = useSharedValue(MIN_HEIGHT);
-  const startHeight = useSharedValue(MIN_HEIGHT);
-
   const { userEmail, isAuthenticated } = useAuth();
-
-  const panGesture = Gesture.Pan()
-    .activeOffsetY(isExpanded ? [-10, 10] : 10)
-    .onStart(() => {
-      startHeight.value = itemHeight.value;
-    })
-    .onUpdate((e) => {
-      const sensitivity = 0.4;
-      let newHeight = startHeight.value + e.translationY * sensitivity;
-      if (newHeight < MIN_HEIGHT) newHeight = MIN_HEIGHT;
-      if (newHeight > MAX_HEIGHT) newHeight = MAX_HEIGHT;
-      itemHeight.value = newHeight;
-    })
-    .onEnd(() => {
-      if (itemHeight.value > (MIN_HEIGHT + MAX_HEIGHT) / 2) {
-        itemHeight.value = withSpring(MAX_HEIGHT, { damping: 70 });
-        runOnJS(setIsExpanded)(true);
-      } else {
-        itemHeight.value = withSpring(MIN_HEIGHT, { damping: 70 });
-        runOnJS(setIsExpanded)(false);
-      }
-    });
 
   const {
     data: googleEvents = [],
@@ -207,11 +174,8 @@ export function useCalendarLogic(navigation: any, route: any) {
     filterMode,
     isFilterModalVisible,
     setFilterModalVisible,
-    isExpanded,
     currentMonth,
     setCurrentMonth,
-    itemHeight,
-    panGesture,
     isLoading,
     processedEvents,
     updatedMarkedDates,
