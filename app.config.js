@@ -6,7 +6,7 @@ export default {
     scheme: 'univ-allinfo',
     name: IS_DEV ? 'UNIV-AllInfo (Dev)' : 'UNIV-AllInfo', // 개발버전은 이름에 (Dev) 표시
     slug: 'univ-allinfo',
-    version: '1.0.4',
+    version: '1.1.0',
     orientation: 'portrait',
     icon: './src/assets/icon.png',
     userInterfaceStyle: 'light',
@@ -22,6 +22,7 @@ export default {
     },
     android: {
       package: IS_DEV ? 'com.univallinfo.app.dev' : 'com.univallinfo.app',
+      versionCode: 7,
       googleServicesFile: './google-services.json',
       adaptiveIcon: {
         foregroundImage: './src/assets/adaptive-icon.png',
@@ -41,13 +42,6 @@ export default {
           },
         },
       ],
-      [
-        '@mj-studio/react-native-naver-map',
-        {
-          client_id: 't6jcujdihj',
-        },
-      ],
-      './withNaverMapMaven.js'
     ],
     // [중요] 웹 푸시 설정을 여기에 추가합니다.
     notification: {
