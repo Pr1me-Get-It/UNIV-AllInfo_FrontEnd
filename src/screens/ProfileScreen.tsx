@@ -140,14 +140,14 @@ export default function ProfileScreen() {
             <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
               <AppText style={styles.modalTitle}>오픈소스 라이선스</AppText>
               <ScrollView
-                style={{ maxHeight: 300, width: '100%', marginBottom: 20 }}
+                style={{ maxHeight: 400, width: '100%', marginBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: 20 }}
                 showsVerticalScrollIndicator={false}>
                 <AppText style={{ fontSize: 13, color: '#4b5563', lineHeight: 22 }}>
                   본 애플리케이션은 다음과 같은 핵심 오픈소스 기술 스택을 활용하고 있습니다:{'\n\n'}
-                  • React Native (0.81){'\n'}• Expo (SDK 54){'\n'}• React Navigation (v7){'\n'}• React
+                  • React Native (0.81.5){'\n'}• Expo (SDK 54){'\n'}• React Navigation (v7){'\n'}• React
                   Query (@tanstack/react-query v5){'\n'}• React Native Reanimated (v4){'\n'}•
-                  React Native Naver Map (@mj-studio){'\n'}• Matter.js (물리 엔진)
-                  {'\n'}• React Native Calendars{'\n'}• badwords-ko (비속어 필터){'\n'}• React Native Draggable Grid
+                  Matter.js (물리 엔진){'\n'}• React Native Calendars{'\n'}• badwords-ko (비속어 필터){'\n'}• React Native Draggable Grid
                   {'\n'}• Axios{'\n'}• Expo Image / Linear Gradient / Notifications{'\n'}
                   {'\n'}각 프로젝트의 라이선스 원문은 해당 공식 저장소에서 확인 가능합니다.
                 </AppText>
@@ -309,11 +309,17 @@ export default function ProfileScreen() {
         {/* 앱 정보 섹션 */}
         <View style={styles.section}>
           <AppText style={styles.sectionTitle}>앱 정보</AppText>
+          <TouchableOpacity style={styles.menuRow} onPress={() => setIsLicenseModalVisible(true)}>
+            <View>
+              <AppText style={styles.menuLabel}>오픈소스 라이선스</AppText>
+              <AppText style={styles.menuDescription}>앱에 사용된 오픈소스 기술 스택입니다.</AppText>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
           <View style={styles.menuRowStatic}>
             <AppText style={styles.menuLabel}>버전</AppText>
             <AppText style={styles.menuDescription}>v{appVersion}</AppText>
           </View>
-
         </View>
 
         {/* 회원 탈퇴 (최하단) */}
@@ -328,12 +334,6 @@ export default function ProfileScreen() {
                 <AppText style={styles.menuDescription}>
                   버그 제보, 기능 요청 등을 전달합니다.
                 </AppText>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.menuRow} onPress={() => setIsLicenseModalVisible(true)}>
-              <View>
-                <AppText style={styles.menuLabel}>오픈소스 라이선스</AppText>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#ccc" />
             </TouchableOpacity>
@@ -458,6 +458,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  ossLink: {
+    marginTop: 15,
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  ossLinkText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textDecorationLine: 'underline',
   },
   settingRow: {
     flexDirection: 'row',
