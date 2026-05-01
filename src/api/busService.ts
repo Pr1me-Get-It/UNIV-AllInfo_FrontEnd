@@ -124,6 +124,8 @@ export const fetchMultipleStationArrivals = async (
 
 /** 도착 시간(초)을 사람이 읽기 좋은 문자열로 변환 */
 export const formatArrivalTime = (seconds: number): string => {
+    // 음수이거나 비정상적으로 큰 값(1시간 이상)이면 운행종료 처리
+    if (seconds < 0 || seconds > 3600) return '운행종료';
     if (seconds <= 60) return '곧 도착';
     const minutes = Math.round(seconds / 60);
     return `약 ${minutes}분 후`;

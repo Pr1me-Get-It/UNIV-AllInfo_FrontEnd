@@ -69,27 +69,34 @@ export default function BusWidget() {
         return () => clearInterval(interval);
     }, [loadArrivals]);
 
-    const renderBusItem = (item: BusArrivalItem, index: number) => (
+    const renderBusItem = (item: BusArrivalItem, index: number) => {
+        const arrivalText = formatArrivalTime(item.arrtime);
+        const isEnded = arrivalText === '운행종료';
+
+        return (
         <View key={`${item.routeNo}-${index}`} style={styles.busItem}>
             <View style={styles.busInfoLeft}>
                 <View style={styles.busIconWrapper}>
-                    <Ionicons name="bus" size={20} color="#2196F3" />
+                    <Ionicons name="bus" size={20} color={isEnded ? '#9CA3AF' : '#2196F3'} />
                 </View>
                 <View>
-                    <AppText style={styles.routeName}>{item.routeNo}번</AppText>
+                    <AppText style={[styles.routeName, isEnded && { color: '#9CA3AF' }]}>{item.routeNo}번</AppText>
                     {item.directionDst ? (
                         <AppText style={styles.destination}>{item.directionDst} 방면</AppText>
                     ) : null}
                 </View>
             </View>
             <View style={styles.busInfoRight}>
-                <AppText style={styles.arrivalEstimate}>
-                    {formatArrivalTime(item.arrtime)}
+                <AppText style={[styles.arrivalEstimate, isEnded && { color: '#9CA3AF' }]}>
+                    {arrivalText}
                 </AppText>
-                <AppText style={styles.remainingStops}>{item.stopCnt}번째 전</AppText>
+                {!isEnded && (
+                    <AppText style={styles.remainingStops}>{item.stopCnt}번째 전</AppText>
+                )}
             </View>
         </View>
-    );
+        );
+    };
 
     const selectedStationData = arrivals.find((s) => s.stationId === selectedStationId);
     const displayArrivals: BusArrivalItem[] = selectedStationData
