@@ -45,7 +45,9 @@ export function useCalendarLogic(navigation: any, route: any) {
   );
 
   const events = useMemo(() => {
-    return [...googleEvents, ...academicSchedule] as any[];
+    // 구글 캘린더 이벤트를 '내가 추가한 일정'(type 1)으로 분류
+    const formattedGoogleEvents = googleEvents.map((e: any) => ({ ...e, type: 1 }));
+    return [...formattedGoogleEvents, ...academicSchedule] as any[];
   }, [googleEvents]);
 
   const getDatesInRange = (startDate: string, endDate: string) => {

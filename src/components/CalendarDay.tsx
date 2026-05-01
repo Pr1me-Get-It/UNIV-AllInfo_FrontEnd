@@ -24,9 +24,9 @@ interface CalendarDayProps {
   isHolidayDate?: boolean;
 }
 
-const EVENT_HEIGHT = 16;
+const EVENT_HEIGHT = 14;
 const EVENT_MARGIN = 2;
-const DATE_HEIGHT = 24;
+const DATE_HEIGHT = 20;
 
 const EventBlock = memo(({ ev, dayWidth }: { ev: LayedOutEvent; dayWidth: number }) => {
   return (
@@ -101,15 +101,23 @@ const CalendarDay = ({
         </AppText>
       </View>
 
-      {/* 일정 블록들 */}
+      {/* 일정 블록들 (최대 3개 슬롯만 표시) */}
       <View style={styles.eventContainer}>
-        {events.map((ev) => (
-          <EventBlock
-            key={`${ev.id}-${ev.startDate}`}
-            ev={ev}
-            dayWidth={dayWidth}
-          />
-        ))}
+        {events
+          .filter(ev => ev.slotIndex < 3)
+          .map((ev) => (
+            <EventBlock
+              key={`${ev.id}-${ev.startDate}`}
+              ev={ev}
+              dayWidth={dayWidth}
+            />
+          ))}
+        {/* 4개 이상의 일정이 있을 경우 3번째 슬롯 위치 오른쪽에 + 표시 */}
+        {events.some(ev => ev.slotIndex >= 3) && (
+          <View style={[styles.moreIndicatorContainer, { top: 2 * (EVENT_HEIGHT + EVENT_MARGIN) }]}>
+            <AppText style={styles.moreIndicatorText}>+</AppText>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -118,10 +126,10 @@ const CalendarDay = ({
 const styles = StyleSheet.create({
   dayBox: {
     alignItems: 'center',
-    paddingTop: 4,
+    paddingTop: 2,
     overflow: 'visible',
     zIndex: 10,
-    // 고정 높이 지정 (날짜 24 + 최대 3줄 이벤트 = 24 + 3*(16+2) = 78)
+    // 고정 높이 지정 (날짜 20 + 최대 3줄 이벤트 = 20 + 3*(14+2) = 68 + 패딩 2 = 70)
     height: 70,
   },
   selectedDayBox: { backgroundColor: 'rgba(219, 31, 38, 0.05)', borderRadius: 8 },
@@ -129,10 +137,28 @@ const styles = StyleSheet.create({
   holidayText: { color: 'rgb(219, 31, 38)' },
   todayText: { color: 'rgb(219, 31, 38)', fontWeight: 'bold' },
   selectedDayText: { fontWeight: 'bold' },
+  moreIndicatorContainer: {
+    position: 'absolute',
+    right: 2,
+    width: 14,
+    height: 14,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 7,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  moreIndicatorText: {
+    fontSize: 10,
+    color: '#666',
+    fontWeight: 'bold',
+    includeFontPadding: false,
+    lineHeight: 12,
+  },
   eventContainer: {
     width: '100%',
     position: 'absolute',
-    top: DATE_HEIGHT + 4,
+    top: DATE_HEIGHT + 2,
     left: 0,
     overflow: 'visible',
     zIndex: 20,

@@ -99,11 +99,11 @@ export default function CalendarScreen({ navigation, route }: Props) {
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ marginRight: 15, alignItems: 'flex-end' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                <AppText style={{ fontSize: 12, color: '#666', marginRight: 6 }}>학부공통</AppText>
+                <AppText style={{ fontSize: 12, color: '#666', marginRight: 6 }}>학사일정</AppText>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgb(219, 31, 38)' }} />
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                <AppText style={{ fontSize: 12, color: '#666', marginRight: 6 }}>대학원</AppText>
+                <AppText style={{ fontSize: 12, color: '#666', marginRight: 6 }}>내가 추가한 일정</AppText>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#333' }} />
               </View>
             </View>
@@ -198,7 +198,7 @@ export default function CalendarScreen({ navigation, route }: Props) {
                 style={styles.filterOption}
                 onPress={() => handleFilterSelect(m)}>
                 <AppText style={filterMode === m ? styles.activeFilterText : styles.filterText}>
-                  {m === 'all' ? '전체' : m === 'undergraduate' ? '학부공통' : '대학원'}
+                  {m === 'all' ? '전체' : m === 'undergraduate' ? '학사일정' : '내가 추가한 일정'}
                 </AppText>
               </TouchableOpacity>
             ))}
