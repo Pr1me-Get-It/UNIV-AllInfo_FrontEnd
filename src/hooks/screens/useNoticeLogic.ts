@@ -13,6 +13,7 @@ export function useNoticeLogic(navigation: any, route: any) {
   const queryClient = useQueryClient();
   const alarmContext = useContext(AlarmContext);
   const readStatus = alarmContext ? alarmContext.readStatus : {};
+  const markMultipleAsRead = alarmContext?.markMultipleAsRead;
   const { userEmail } = useAuth();
   const safeStatus = readStatus || {};
 
@@ -190,6 +191,21 @@ export function useNoticeLogic(navigation: any, route: any) {
     }).length;
   }, [allNotices, selectedSources, safeStatus, normalizeSource]);
 
+  const handleMarkAllAsRead = useCallback(() => {
+    if (!markMultipleAsRead) return;
+    const unreadIds = allNotices
+      .filter((item: any) => {
+        const sourcePrefix = normalizeSource(item.source);
+        const matchesSourceFilter = selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
+        return matchesSourceFilter && !safeStatus[item.id];
+      })
+      .map((item: any) => item.id);
+      
+    if (unreadIds.length > 0) {
+      markMultipleAsRead(unreadIds, true);
+    }
+  }, [allNotices, selectedSources, safeStatus, normalizeSource, markMultipleAsRead]);
+
   const displayedData = useMemo(() => {
     return allNotices.filter((item: any) => {
       const sourcePrefix = normalizeSource(item.source);
@@ -235,6 +251,7 @@ export function useNoticeLogic(navigation: any, route: any) {
     unreadCount,
     displayedData,
     handleNoticePress,
+    handleMarkAllAsRead,
     safeStatus,
   };
 }

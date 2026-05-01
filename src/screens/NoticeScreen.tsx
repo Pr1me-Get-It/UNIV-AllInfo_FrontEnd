@@ -59,6 +59,7 @@ export default function NoticeScreen({ navigation, route }: Props) {
     unreadCount,
     displayedData,
     handleNoticePress,
+    handleMarkAllAsRead,
     safeStatus,
   } = useNoticeLogic(navigation, route);
 
@@ -317,8 +318,14 @@ export default function NoticeScreen({ navigation, route }: Props) {
       </Modal>
 
       <View style={styles.balanceContainer}>
-        <AppText style={styles.balanceLabel}>확인하지 않은 공지사항</AppText>
-        <AppText style={styles.balanceText}>{unreadCount} 개</AppText>
+        <View style={styles.balanceLeft}>
+          <AppText style={styles.balanceLabel}>확인하지 않은 공지사항</AppText>
+          <AppText style={styles.balanceText}>{unreadCount} 개</AppText>
+        </View>
+        <TouchableOpacity style={styles.markAllReadButton} onPress={handleMarkAllAsRead}>
+          <Ionicons name="checkmark-done" size={moderateScale(18, 0.3)} color="white" />
+          <AppText style={styles.markAllReadText}>모두 읽음</AppText>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>
@@ -411,8 +418,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: moderateScale(10, 0.3),
     padding: moderateScale(10, 0.3),
+    paddingHorizontal: moderateScale(16, 0.3),
     borderRadius: moderateScale(12, 0.3),
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  balanceLeft: {
+    justifyContent: 'center',
   },
   balanceLabel: {
     color: 'rgba(255,255,255,0.8)',
@@ -424,6 +437,21 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: moderateScale(24, 0.3),
     fontWeight: 'bold',
+    includeFontPadding: false,
+  },
+  markAllReadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: moderateScale(10, 0.3),
+    paddingVertical: moderateScale(8, 0.3),
+    borderRadius: moderateScale(8, 0.3),
+  },
+  markAllReadText: {
+    color: 'white',
+    fontSize: moderateScale(12, 0.3),
+    fontWeight: '600',
+    marginLeft: moderateScale(4, 0.3),
     includeFontPadding: false,
   },
   searchContainer: {

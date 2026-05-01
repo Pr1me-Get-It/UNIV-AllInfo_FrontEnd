@@ -32,6 +32,7 @@ interface AlarmContextType {
   bookmarkStatus: Record<string, AlarmItem>;
   mockEvents: MockEvent[];
   markAsRead: (id: string | number, isRead?: boolean) => void;
+  markMultipleAsRead: (ids: (string | number)[], isRead?: boolean) => void;
   toggleBookmark: (item: AlarmItem) => void;
   addMockEvent: (newEvent: MockEvent) => void;
 }
@@ -56,13 +57,14 @@ export const AlarmContext = createContext<AlarmContextType>({
   bookmarkStatus: {},
   mockEvents: [],
   markAsRead: () => { },
+  markMultipleAsRead: () => { },
   toggleBookmark: () => { },
   addMockEvent: () => { },
 });
 
 // 🔒 SecureStore 키 안전화 함수: 특수문자(@ 등)를 언더바로 치환
 const sanitizeKey = (email: string | null) => {
-  if (!email) return '';
+  if (!email) return 'guest'; // 비회원도 읽음 처리 로컬 저장 가능하도록 'guest' 키 사용
   return email.replace(/[^a-zA-Z0-9.\-_]/g, '_');
 };
 
@@ -75,16 +77,15 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
   // 데이터 로드 로직 수정: 이메일 치환 적용
   const loadUserData = useCallback(async (email: string | null) => {
     const safeEmail = sanitizeKey(email);
-    if (!safeEmail) return; // 키가 비어있으면 실행 방지
 
     try {
+      // 북마크는 로그인한 유저만 로드 (guest일 경우 빈 객체)
       const bookmarkKey = STORAGE_KEYS.BOOKMARK(safeEmail);
+      const savedBookmarks = email ? await getData<Record<string, AlarmItem>>(bookmarkKey) : {};
+      
       const readKey = STORAGE_KEYS.READ(safeEmail);
+      const savedReads = await getData<Record<string, boolean>>(readKey);
 
-      const [savedBookmarks, savedReads] = await Promise.all([
-        getData<Record<string, AlarmItem>>(bookmarkKey),
-        getData<Record<string, boolean>>(readKey),
-      ]);
       setBookmarkStatus(savedBookmarks || {});
       setReadStatus(savedReads || {});
     } catch (e) {
@@ -100,7 +101,6 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
   const markAsRead = useCallback(
     (id: string | number, isRead: boolean = true) => {
       const safeEmail = sanitizeKey(userEmail);
-      if (!safeEmail) return;
 
       setReadStatus((prev: Record<string, boolean>) => {
         const newStatus = { ...prev, [String(id)]: isRead };
@@ -111,11 +111,28 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
     [userEmail],
   );
 
+  const markMultipleAsRead = useCallback(
+    (ids: (string | number)[], isRead: boolean = true) => {
+      const safeEmail = sanitizeKey(userEmail);
+      if (ids.length === 0) return;
+
+      setReadStatus((prev: Record<string, boolean>) => {
+        const newStatus = { ...prev };
+        ids.forEach(id => {
+          newStatus[String(id)] = isRead;
+        });
+        saveData(STORAGE_KEYS.READ(safeEmail), newStatus);
+        return newStatus;
+      });
+    },
+    [userEmail],
+  );
+
   // 북마크 토글 로직 수정: 이메일 치환 적용
   const toggleBookmark = useCallback(
     (item: AlarmItem) => {
+      if (!userEmail) return; // 비로그인: DetailScreen에서 CustomAlert로 처리됨
       const safeEmail = sanitizeKey(userEmail);
-      if (!safeEmail) return; // 비로그인: DetailScreen에서 CustomAlert로 처리됨
 
       setBookmarkStatus((prev: Record<string, AlarmItem>) => {
         const newStatus = { ...prev };
@@ -141,6 +158,7 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
         bookmarkStatus,
         mockEvents,
         markAsRead,
+        markMultipleAsRead,
         toggleBookmark,
         addMockEvent,
       }}>
