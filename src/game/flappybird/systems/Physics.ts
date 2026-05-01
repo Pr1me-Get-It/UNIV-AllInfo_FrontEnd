@@ -84,8 +84,8 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
 
         // 파이프 이동 - delta 정규화 (60fps 기준 2.4px/프레임)
         if (pipeTop && pipeBottom) {
-            Matter.Body.translate(pipeTop.body, { x: -2.4 * deltaFactor, y: 0 });
-            Matter.Body.translate(pipeBottom.body, { x: -2.4 * deltaFactor, y: 0 });
+            Matter.Body.translate(pipeTop.body, { x: -3 * deltaFactor, y: 0 });
+            Matter.Body.translate(pipeBottom.body, { x: -3 * deltaFactor, y: 0 });
         }
 
         // 화면 밖으로 나가면 재활용 (위치 리셋)
@@ -124,7 +124,7 @@ export const Physics = (entities: any, { touches, time, dispatch }: any) => {
         const missile = entities.Missile;
 
         // 미사일 이동 - delta 정규화 (60fps 기준 4px/프레임)
-        Matter.Body.translate(missile.body, { x: -4 * deltaFactor, y: 0 });
+        Matter.Body.translate(missile.body, { x: -6 * deltaFactor, y: 0 });
 
         // 화면 밖으로 나가면 재활용 (딜레이 추가)
         if (missile.body.position.x < -50) {

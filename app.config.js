@@ -6,7 +6,7 @@ export default {
     scheme: 'univ-allinfo',
     name: IS_DEV ? 'UNIV-AllInfo (Dev)' : 'UNIV-AllInfo', // 개발버전은 이름에 (Dev) 표시
     slug: 'univ-allinfo',
-    version: '1.1.0',
+    version: '1.1.1',
     orientation: 'portrait',
     icon: './src/assets/icon.png',
     userInterfaceStyle: 'light',
@@ -53,7 +53,6 @@ export default {
       eas: {
         projectId: '6120be3f-b18d-4531-af3f-af3f6db51bca',
       },
-      naverMapClientId: 't6jcujdihj',
     },
   },
 };
