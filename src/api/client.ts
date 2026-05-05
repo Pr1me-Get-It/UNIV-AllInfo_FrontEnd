@@ -2,7 +2,7 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { Alert } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { getToken, removeToken, saveToken } from '../utils/storage';
+import { getToken, removeToken, saveToken, getRefreshToken, saveRefreshToken, removeRefreshToken } from '../utils/storage';
 import { API_CONFIG } from '../constants/config';
 
 // 1. 커스텀 요청 설정을 위한 인터페이스 확장
@@ -43,27 +43,26 @@ api.interceptors.response.use(
       try {
         if (__DEV__) console.log('🔄 토큰 만료됨. 서버에 토큰 갱신을 요청합니다...');
 
-        // TODO: (1) 저장소에 저장해둔 refreshToken을 가져옵니다.
-        // const currentRefreshToken = await getRefreshToken(); 
+        // (1) 저장소에 저장해둔 refreshToken을 가져옵니다.
+        const currentRefreshToken = await getRefreshToken(); 
         
-        // TODO: (2) /auth/refresh 호출로 새 토큰 발급
-        // 순환 참조 방지를 위해 api 인스턴스 대신 axios를 직접 사용하는 것을 권장합니다.
-        /*
+        if (!currentRefreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        // (2) /auth/refresh 호출로 새 토큰 발급
         const refreshResponse = await axios.post(
           `${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/refresh`,
-          { refreshToken: currentRefreshToken } // 실제 백엔드 요구 스펙에 맞게 넣으세요
+          { refreshToken: currentRefreshToken },
+          { headers: { Authorization: `Bearer ${currentRefreshToken}` } }
         );
         const newAccessToken = refreshResponse.data.accessToken;
-        // const newRefreshToken = refreshResponse.data.refreshToken;
-        */
-
-        // 임시 테스트용 가짜 변수 (실제로 위 코드를 사용할 때 지우세요)
-        const newAccessToken = "TEMPORARY_NEW_ACCESS_TOKEN";
+        const newRefreshToken = refreshResponse.data.refreshToken;
 
         if (newAccessToken) {
           // (3) 새 토큰 저장 및 헤더 업데이트
           await saveToken(newAccessToken);
-          // await saveRefreshToken(newRefreshToken); // 리프레시 토큰도 새로 오면 저장
+          if (newRefreshToken) await saveRefreshToken(newRefreshToken);
 
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -76,7 +75,7 @@ api.interceptors.response.use(
         // 갱신 실패 시 로그아웃 처리
         if (__DEV__) console.error('❌ 토큰 갱신 실패:', refreshError);
         await removeToken();
-        // await removeRefreshToken(); // 리프레시 토큰도 같이 삭제
+        await removeRefreshToken();
         Alert.alert('알림', '세션이 만료되었습니다. 다시 로그인해 주세요.');
       }
     }

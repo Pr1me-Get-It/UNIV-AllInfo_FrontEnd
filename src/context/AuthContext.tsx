@@ -10,7 +10,7 @@ import React, {
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { gameService } from '../api/gameScore';
 import { authService } from '../api/authService';
-import { getToken, saveToken, removeToken, getData, saveData, removeData } from '../utils/storage';
+import { getToken, saveToken, removeToken, saveRefreshToken, removeRefreshToken, getData, saveData, removeData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { GAMES } from '../constants/games'; // Added games for iteration
 import { registerForPushNotificationsAsync } from '../utils/notifications';
@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const game = gameList.find(g => g.id === gameId);
           if (game) {
             if (__DEV__) console.log(`🎮 [Auth] 신기록 달성! 서버 저장 시도: ${score}점`);
-            await gameService.postScore(game.type, score, { nickname: nicknameToSave });
+            await gameService.postScore(game.type, score);
           }
         } catch (e) {
           console.warn('Failed to save score to server:', e);
@@ -166,16 +166,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const safeEmail = email.replace(/\./g, '_');
       if (__DEV__) console.log(`🔍 [AuthDebug] 닉네임 로드 시도: Key=${STORAGE_KEYS.NICKNAME(safeEmail)}`);
-      const savedNickname = (await getData(STORAGE_KEYS.NICKNAME(safeEmail))) as string | null;
-      if (__DEV__) console.log(`🔍 [AuthDebug] 로드된 닉네임: ${savedNickname}`);
+      
+      let fetchedNickname: string | null = null;
+      try {
+        const { userService } = await import('../api/userService');
+        const profileRes = await userService.getMyProfile();
+        if (profileRes.data && profileRes.data.nickname) {
+           fetchedNickname = profileRes.data.nickname;
+           if (__DEV__) console.log(`🔍 [AuthDebug] 백엔드에서 닉네임 동기화 완료: ${fetchedNickname}`);
+        }
+      } catch (err: any) {
+        if (__DEV__) console.warn('서버에서 닉네임 가져오기 실패 (초기 가입이거나 네트워크 오류 등):', err.message);
+      }
 
-      if (savedNickname) {
-        setNickname(savedNickname);
+      const savedNickname = (await getData(STORAGE_KEYS.NICKNAME(safeEmail))) as string | null;
+      const finalNickname = fetchedNickname || savedNickname;
+
+      if (finalNickname) {
+        setNickname(finalNickname);
+        await saveData(STORAGE_KEYS.NICKNAME(safeEmail), finalNickname);
         // USER_INFO 캐시에도 닉네임 반영 (다음 앱 재시작 시 즉시 복원)
         try {
           const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
           if (cachedUser) {
-            await saveData(STORAGE_KEYS.USER_INFO, { ...cachedUser, nickname: savedNickname });
+            await saveData(STORAGE_KEYS.USER_INFO, { ...cachedUser, nickname: finalNickname });
           }
         } catch (_) { }
       } else {
@@ -275,19 +289,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { user, idToken } = response.data;
         const { accessToken } = await GoogleSignin.getTokens();
 
+        let backendToken = null;
+        let backendRefreshToken = null;
+        let backendNickname = null;
+        
         if (idToken) {
           try {
-            await authService.loginWithGoogle(idToken);
-          } catch (e) {
+            const authResponse = await authService.loginWithGoogle(idToken);
+            if (authResponse.data && authResponse.data.accessToken) {
+              backendToken = authResponse.data.accessToken;
+              backendRefreshToken = authResponse.data.refreshToken;
+              
+              // 백엔드 응답에서 닉네임 추출 (authResponse.data 구조에 따라 유연하게 추출)
+              backendNickname = authResponse.data.nickname || 
+                                authResponse.data.user?.nickname || 
+                                authResponse.data.profile?.nickname;
+            }
+          } catch (e: any) {
             console.error('Failed to send idToken to backend:', e);
+            let errorMessage = '백엔드 서버 인증에 실패했습니다.';
+            if (e.response && e.response.data) {
+                console.error('Backend error response:', e.response.data);
+                errorMessage += `\n상세: ${JSON.stringify(e.response.data)}`;
+            }
+            Alert.alert('로그인 오류', `${errorMessage}\n상태 코드: ${e.response?.status}`);
+            setIsLoading(false);
+            return;
           }
         }
 
-        if (accessToken) await saveToken(accessToken);
+        if (backendToken) {
+          await saveToken(backendToken);
+          if (backendRefreshToken) await saveRefreshToken(backendRefreshToken);
+        } else if (accessToken) {
+          await saveToken(accessToken);
+        }
+
         const newInfo = { name: user.name || '', email: user.email, picture: user.photo };
         setUserEmail(user.email);
         setUserInfo(newInfo);
-        await saveData(STORAGE_KEYS.USER_INFO, { userEmail: user.email, userInfo: newInfo });
+        
+        // 백엔드 응답에서 닉네임을 찾은 경우 로컬 스토리지에 캐싱
+        if (backendNickname) {
+          const safeEmail = user.email.replace(/\./g, '_');
+          await saveData(STORAGE_KEYS.NICKNAME(safeEmail), backendNickname);
+        }
+
+        await saveData(STORAGE_KEYS.USER_INFO, { 
+          userEmail: user.email, 
+          userInfo: newInfo,
+          ...(backendNickname ? { nickname: backendNickname } : {})
+        });
+        
         await syncUserToBackend(user.email);
       }
     } catch (error: any) {
@@ -324,6 +377,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       if (__DEV__) console.log('📡 [AuthContext] 로컬 토큰 삭제 및 상태 초기화 시작'); // 추가
       await removeToken();
+      await removeRefreshToken();
       await removeData(STORAGE_KEYS.USER_INFO);
       setUserEmail(null);
       setUserInfo(null);
@@ -368,6 +422,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       await removeToken();
+      await removeRefreshToken();
       await removeData(STORAGE_KEYS.USER_INFO);
       setUserEmail(null);
       setUserInfo(null);

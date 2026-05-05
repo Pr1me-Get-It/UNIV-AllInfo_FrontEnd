@@ -51,6 +51,31 @@ export const removeToken = async (): Promise<void> => {
   }
 };
 
+export const saveRefreshToken = async (token: string): Promise<void> => {
+  if (!token) return;
+  if (Platform.OS === 'web') {
+    try { localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, token); } catch (e) {}
+  } else {
+    await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, token);
+  }
+};
+
+export const getRefreshToken = async (): Promise<string | null> => {
+  if (Platform.OS === 'web') {
+    try { return localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN); } catch (e) { return null; }
+  } else {
+    return await SecureStore.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+  }
+};
+
+export const removeRefreshToken = async (): Promise<void> => {
+  if (Platform.OS === 'web') {
+    try { localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN); } catch (e) {}
+  } else {
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+  }
+};
+
 /**
  * [일반 저장소] 데이터 저장 (공지사항 캐시 등) - AsyncStorage로 변경
  */

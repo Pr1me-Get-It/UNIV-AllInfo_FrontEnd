@@ -67,8 +67,8 @@ export const gameService = {
      * 서버에 스코어 올리기
      * POST /games/:type/scores
      */
-    postScore: async (type: string, score: number, metadata?: any) => {
-        return await api.post(`/games/${type}/scores`, { score, metadata });
+    postScore: async (type: string, score: number) => {
+        return await api.post(`/games/${type}/scores`, { score });
     }
 };
 

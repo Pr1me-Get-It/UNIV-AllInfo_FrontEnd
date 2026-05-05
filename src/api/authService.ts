@@ -1,5 +1,6 @@
 /* src/api/authService.ts */
 import { api } from './client';
+import axios from 'axios';
 
 // TODO: 응답 및 요청 데이터 타입은 백엔드 명세서에 맞게 상세히 정의하세요.
 export interface AuthResponse {
@@ -21,7 +22,7 @@ export const authService = {
    * POST /auth/google
    */
   loginWithGoogle: async (idToken: string) => {
-    return await api.post('/auth/google', { idToken });
+    return await axios.post(`${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/google`, { idToken });
   },
 
   /**
