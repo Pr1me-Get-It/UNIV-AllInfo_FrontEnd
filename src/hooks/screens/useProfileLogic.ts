@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { useAuth } from '../../context/AuthContext';
-import { registerUser } from '../../api/userService';
 import { registerForPushNotificationsAsync } from '../../utils/notifications';
 import { saveData, getData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
@@ -74,23 +73,9 @@ export function useProfileLogic() {
   const [isLicenseModalVisible, setIsLicenseModalVisible] = useState(false);
 
   const handleFeedbackSubmit = async () => {
-    if (!feedbackInput.trim()) {
-      showAlert('알림', '내용을 입력해주세요.');
-      return;
-    }
-
-    setIsSendingFeedback(true);
-    try {
-      await sendFeedback(feedbackInput);
-      setIsFeedbackModalVisible(false);
-      setFeedbackInput('');
-      showAlert('감사합니다', '소중한 의견이 전달되었습니다. 🙇‍♂️');
-    } catch (error: any) {
-      console.error('[Feedback] 전송 실패 ❌', error?.response?.data ?? error?.message ?? error);
-      showAlert('전송 실패', '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      setIsSendingFeedback(false);
-    }
+    showAlert('준비중', '백엔드 개편으로 인해 준비중인 기능입니다.');
+    setIsFeedbackModalVisible(false);
+    setFeedbackInput('');
   };
 
   const appVersion = Constants.expoConfig?.version || '1.0.0';
@@ -176,9 +161,10 @@ export function useProfileLogic() {
 
         if (token) {
           try {
-            await registerUser(userEmail!, token);
+            // await registerUser(userEmail!, token); // TODO: 백엔드 푸시 토큰 저장 API 연동 필요
+            if (__DEV__) console.log('🔔 [PushDebug] 푸시 토큰 발급 완료 (API 연동 준비중):', token);
           } catch (apiError: any) {
-            if (__DEV__) console.warn('🔔 [PushDebug] registerUser 실패 (무시):', apiError?.response?.status || apiError?.message);
+            if (__DEV__) console.warn('🔔 [PushDebug] 푸시 토큰 저장 실패 (무시):', apiError?.response?.status || apiError?.message);
           }
           showAlert('알림', '푸시 알림 설정이 완료되었습니다.');
         } else {

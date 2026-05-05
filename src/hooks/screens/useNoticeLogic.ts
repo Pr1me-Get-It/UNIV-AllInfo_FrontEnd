@@ -221,7 +221,7 @@ export function useNoticeLogic(navigation: any, route: any) {
 
   const normalizeSource = useCallback((source: string) => {
     if (!source) return null;
-    const key = source.split(/[\/|]/)[0].toUpperCase().trim();
+    const key = source.split(/[\/|_]/)[0].toUpperCase().trim();
 
     if ((SOURCE_LABELS as any)[key]) return key;
 

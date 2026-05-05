@@ -41,28 +41,42 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        if (__DEV__) console.log('🔄 토큰 만료됨. 자동으로 갱신을 시도합니다...');
+        if (__DEV__) console.log('🔄 토큰 만료됨. 서버에 토큰 갱신을 요청합니다...');
 
-        // 1. 구글 Silent Sign-in으로 세션 갱신
-        await GoogleSignin.signInSilently();
-        const tokens = await GoogleSignin.getTokens();
-        const accessToken = tokens.accessToken;
+        // TODO: (1) 저장소에 저장해둔 refreshToken을 가져옵니다.
+        // const currentRefreshToken = await getRefreshToken(); 
+        
+        // TODO: (2) /auth/refresh 호출로 새 토큰 발급
+        // 순환 참조 방지를 위해 api 인스턴스 대신 axios를 직접 사용하는 것을 권장합니다.
+        /*
+        const refreshResponse = await axios.post(
+          `${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/refresh`,
+          { refreshToken: currentRefreshToken } // 실제 백엔드 요구 스펙에 맞게 넣으세요
+        );
+        const newAccessToken = refreshResponse.data.accessToken;
+        // const newRefreshToken = refreshResponse.data.refreshToken;
+        */
 
-        if (accessToken) {
-          // 2. 새 토큰 저장 및 헤더 업데이트
-          await saveToken(accessToken);
+        // 임시 테스트용 가짜 변수 (실제로 위 코드를 사용할 때 지우세요)
+        const newAccessToken = "TEMPORARY_NEW_ACCESS_TOKEN";
+
+        if (newAccessToken) {
+          // (3) 새 토큰 저장 및 헤더 업데이트
+          await saveToken(newAccessToken);
+          // await saveRefreshToken(newRefreshToken); // 리프레시 토큰도 새로 오면 저장
 
           if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           }
 
-          // 3. 원래 하려던 요청 재시도
+          // (4) 실패했던 원래 요청을 새 토큰으로 재시도
           return api(originalRequest);
         }
       } catch (refreshError) {
         // 갱신 실패 시 로그아웃 처리
         if (__DEV__) console.error('❌ 토큰 갱신 실패:', refreshError);
         await removeToken();
+        // await removeRefreshToken(); // 리프레시 토큰도 같이 삭제
         Alert.alert('알림', '세션이 만료되었습니다. 다시 로그인해 주세요.');
       }
     }

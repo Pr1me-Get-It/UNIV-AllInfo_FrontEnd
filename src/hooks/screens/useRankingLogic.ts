@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { getTopScores, getBestScore, GameScore, deleteScore } from '../../api/gameScore';
+import { gameService, GameScore, deleteScore } from '../../api/gameScore';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
@@ -42,7 +42,11 @@ export const useRankingLogic = () => {
     const loadMyBestScore = async (gameId: number) => {
         if (!userEmail) return;
         try {
-            const bestResponse = await getBestScore(gameId, userEmail);
+            const gameList = Object.values(GAMES);
+            const game = gameList.find(g => g.id === gameId);
+            if (!game) return;
+
+            const bestResponse = await gameService.getMyRanking(game.type);
 
             if (bestResponse.data && typeof bestResponse.data.bestScore === 'number') {
                 const serverBest = bestResponse.data.bestScore;
@@ -73,13 +77,17 @@ export const useRankingLogic = () => {
     const loadScores = async (gameId: number) => {
         setLoading(true);
         try {
-            const response = await getTopScores(gameId, 50);
+            const gameList = Object.values(GAMES);
+            const game = gameList.find(g => g.id === gameId);
+            if (!game) return;
+
+            const response = await gameService.getGlobalRankings(game.type, { limit: 50 });
 
             if (response.data && Array.isArray(response.data)) {
                 const uniqueScoresMap = new Map<string, GameScore>();
 
                 response.data.forEach((scoreItem: GameScore) => {
-                    const key = scoreItem.user_id ? String(scoreItem.user_id) : scoreItem.email;
+                    const key = scoreItem.userId ? String(scoreItem.userId) : (scoreItem.user_id ? String(scoreItem.user_id) : scoreItem.email || String(Math.random()));
                     if (!uniqueScoresMap.has(key)) {
                         uniqueScoresMap.set(key, scoreItem);
                     } else {
@@ -106,27 +114,7 @@ export const useRankingLogic = () => {
     };
 
     const handleDelete = (scoreId: number) => {
-        Alert.alert(
-            '랭킹 삭제',
-            '이 점수를 정말 삭제하시겠습니까? 복구할 수 없습니다.',
-            [
-                { text: '취소', style: 'cancel' },
-                {
-                    text: '삭제',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteScore(scoreId);
-                            Alert.alert('삭제 완료', '점수가 삭제되었습니다.');
-                            loadScores(selectedGameId);
-                        } catch (error) {
-                            console.error('Failed to delete score:', error);
-                            Alert.alert('오류', '삭제에 실패했습니다.');
-                        }
-                    },
-                },
-            ]
-        );
+        Alert.alert('준비중', '백엔드 개편으로 인해 준비중인 기능입니다.');
     };
 
     return {

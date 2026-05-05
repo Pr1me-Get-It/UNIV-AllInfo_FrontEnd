@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { syncKeywords, deleteUserKeyword } from '../../api/userService';
 import { getData, saveData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import SOURCE_LABELS from '../../constants/labeltag.json';
@@ -79,85 +78,11 @@ export const useKeywordLogic = () => {
   }, [userEmail, fetchKeywords]);
 
   const addKeyword = async (input: any) => {
-    const keywordToAdd = typeof input === 'object' ? input.value : input;
-
-    if (!keywordToAdd || !keywordToAdd.trim()) return;
-
-    const trimmedKeyword = keywordToAdd.trim();
-
-    if (Array.isArray(keywords) && keywords.includes(trimmedKeyword)) {
-      showAlert('알림', '이미 등록된 키워드입니다.');
-      return;
-    }
-
-    const prevKeywords = [...keywords];
-    const newKeywords = [...prevKeywords, trimmedKeyword];
-
-    setKeywords(newKeywords);
-    setInputText('');
-
-    if (userEmail) {
-      const safeEmail = userEmail.replace(/\./g, '_');
-    }
-
-    try {
-      const response = await syncKeywords(userEmail, newKeywords);
-
-      if (response.data && response.data.success) {
-        const serverKeywords = response.data.keywords;
-        if (serverKeywords && serverKeywords.length > 0) {
-          setKeywords(serverKeywords);
-          const safeEmail = userEmail.replace(/\./g, '_');
-          await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), serverKeywords);
-        }
-      } else {
-        throw new Error('Server indicated failure');
-      }
-    } catch (error) {
-      console.error(`❌ [추가 에러]`, error);
-      setKeywords(prevKeywords);
-      if (userEmail) {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords);
-      }
-      showAlert('오류', '서버 문제로 키워드를 추가할 수 없습니다.');
-    }
+    showAlert('준비중', '백엔드 개편으로 인해 준비중인 기능입니다.');
   };
 
   const deleteKeyword = async (keywordToDelete: string) => {
-    if (!userEmail) return;
-
-    if ((SOURCE_LABELS as any)[keywordToDelete]) {
-      showAlert('알림', '학과 키워드는 [공지사항 필터]에서 해제해주세요.');
-      return;
-    }
-
-    const prevKeywords = [...keywords];
-    const newKeywords = keywords.filter(k => k !== keywordToDelete);
-
-    setKeywords(newKeywords);
-
-    const safeEmail = userEmail.replace(/\./g, '_');
-    await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-
-    try {
-      const response = await deleteUserKeyword(userEmail, keywordToDelete);
-
-      if (response.data.success) {
-        if (response.data.keywords) {
-          setKeywords(response.data.keywords);
-          await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), response.data.keywords);
-        }
-      } else {
-        setKeywords(prevKeywords);
-        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords);
-        showAlert('오류', '키워드 삭제 실패');
-      }
-    } catch (e) {
-      setKeywords(prevKeywords);
-      await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), prevKeywords);
-      showAlert('오류', '네트워크 오류로 삭제 실패');
-    }
+    showAlert('준비중', '백엔드 개편으로 인해 준비중인 기능입니다.');
   };
 
   const sortedKeywords = useMemo(() => {

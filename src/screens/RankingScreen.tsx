@@ -39,6 +39,8 @@ export default function RankingScreen() {
     );
 
     const getDisplayName = (item: GameScore) => {
+        if (item.nickname) return item.nickname;
+        if (item.name) return item.name; // For group rankings
         try {
             if (typeof item.metadata === 'string') {
                 const parsed = JSON.parse(item.metadata);
@@ -66,8 +68,13 @@ export default function RankingScreen() {
                     <AppText style={styles.emailText} numberOfLines={1}>
                         {getDisplayName(item)}
                     </AppText>
+                    {item.college && (
+                        <AppText style={{ fontSize: 12, color: '#888' }} numberOfLines={1}>
+                            {item.college} {item.department && `- ${item.department}`}
+                        </AppText>
+                    )}
                 </View>
-                <AppText style={styles.scoreText}>{item.score.toLocaleString()}점</AppText>
+                <AppText style={styles.scoreText}>{(item.score || item.totalScore || 0).toLocaleString()}점</AppText>
                 {isAdmin && item.id && (
                     <TouchableOpacity
                         style={styles.deleteButton}

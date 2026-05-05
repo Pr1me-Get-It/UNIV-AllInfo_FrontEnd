@@ -3,12 +3,19 @@ import { AxiosResponse } from 'axios';
 
 // 게임 점수 데이터 인터페이스
 export interface GameScore {
-    id?: number; // Added optional id
-    user_id?: number; // Added optional user_id for dedup
-    email: string;
-    gameId: number;
+    id?: number; 
+    user_id?: number; 
+    userId?: string; 
+    email?: string;
+    gameId?: number;
     score: number;
-    metadata?: object;
+    rank?: number;
+    nickname?: string;
+    college?: string;
+    department?: string;
+    name?: string; 
+    totalScore?: number;
+    metadata?: object | string;
     createdAt?: string;
 }
 
@@ -30,6 +37,40 @@ export interface BestScoreResponse {
     gameId: number;
     bestScore: number;
 }
+
+export const gameService = {
+    /**
+     * limit만큼의 top 랭킹 가져오기
+     * GET /games/:type/rankings/global
+     */
+    getGlobalRankings: async (type: string, limit?: number) => {
+        return await api.get(`/games/${type}/rankings/global`, { params: { limit } });
+    },
+
+    /**
+     * 각 그룹의 랭킹
+     * GET /games/:type/rankings/:group
+     */
+    getGroupRankings: async (type: string, group: string, limit?: number) => {
+        return await api.get(`/games/${type}/rankings/${group}`, { params: { limit } });
+    },
+
+    /**
+     * 내 랭킹 가져오기
+     * GET /games/:type/rankings/me
+     */
+    getMyRanking: async (type: string) => {
+        return await api.get(`/games/${type}/rankings/me`);
+    },
+
+    /**
+     * 서버에 스코어 올리기
+     * POST /games/:type/scores
+     */
+    postScore: async (type: string, score: number, metadata?: any) => {
+        return await api.post(`/games/${type}/scores`, { score, metadata });
+    }
+};
 
 
 /**

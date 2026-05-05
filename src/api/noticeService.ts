@@ -15,11 +15,29 @@ export interface Notice {
   image: any;
 }
 
+export const noticeService = {
+  /**
+   * 공지사항을 cursor 기반으로 불러옴
+   * GET /notices
+   */
+  getNotices: async (cursor?: number, limit: number = 20) => {
+    return await api.get('/notices', { params: { cursor, limit } });
+  },
+
+  /**
+   * 공지사항 단건조회
+   * GET /notices/:id
+   */
+  getNoticeById: async (id: number) => {
+    return await api.get(`/notices/${id}`);
+  }
+};
+
 export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
   console.log('Using fetchNotices...');
   const [_, keyword, dateRange = '1m', sortOrder = 'DESC'] = queryKey;
 
-  let pageNum = 1;
+  let cursorParam: string | undefined = undefined;
   let allFetchedData: Notice[] = [];
   let shouldContinue = true;
 
@@ -34,12 +52,13 @@ export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
   }
 
   while (shouldContinue) {
-    const params: any = { p: pageNum, order: 'DESC', limit: 20 };
+    const params: any = { order: 'DESC', limit: 20 };
     if (keyword) params.keyword = keyword;
+    if (cursorParam) params.cursor = cursorParam;
 
     try {
-      const response = await api.get('/notice', { params });
-      const rawData = response.data;
+      const response = await api.get('/notices', { params });
+      const rawData = response.data.items || response.data || [];
       const safeNotices = Array.isArray(rawData) ? rawData : [];
 
       if (safeNotices.length === 0) break;
@@ -48,8 +67,8 @@ export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
       const processedBatch = safeNotices.map((item: any) => {
         const rawSource = item.source || '';
 
-        // 1. 구분자(/ 또는 |)로 분리 시도
-        const parts = rawSource.split(/[\/|]/);
+        // 1. 구분자(/ 또는 | 또는 _)로 분리 시도
+        const parts = rawSource.split(/[\/|_]/);
         const splitKey = parts[0]?.toUpperCase().trim();
 
         let deptName = (SOURCE_LABELS as any)[splitKey];
@@ -66,8 +85,6 @@ export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
             suffix = rawSource.substring(deptName.length);
           }
         }
-
-
 
         let displaySource;
         if (deptName) {
@@ -93,11 +110,16 @@ export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
           displaySource = rawSource.replace(/\|/g, '/');
         }
 
+        const postedTime = item.postedAt || item.posted_at;
+
         return {
           ...item,
-          id: item.notice_id, // Use notice_id as id
+          id: item.id || item.notice_id, 
+          notice_id: item.id || item.notice_id,
           displaySource: displaySource,
-          date: item.posted_at ? item.posted_at.split('T')[0] : '',
+          posted_at: postedTime,
+          date: postedTime ? postedTime.split('T')[0] : '',
+          link: item.url || item.link,
           image: DEFAULT_IMAGE,
         };
       });
@@ -106,11 +128,14 @@ export const fetchNotices = async ({ queryKey }: any): Promise<Notice[]> => {
 
       // 마지막 데이터가 지정된 기간보다 오래됐으면 중단
       if (safeNotices.length > 0) {
-        const oldestInBatch = new Date(safeNotices[safeNotices.length - 1].posted_at);
-        if (oldestInBatch < cutoffDate || safeNotices.length < 20) {
+        const lastItemTime = safeNotices[safeNotices.length - 1].postedAt || safeNotices[safeNotices.length - 1].posted_at;
+        const oldestInBatch = new Date(lastItemTime);
+        
+        if (oldestInBatch < cutoffDate || safeNotices.length < 20 || !response.data.hasMore) {
           shouldContinue = false;
         } else {
-          pageNum++;
+          cursorParam = response.data.nextCursor;
+          if (!cursorParam) shouldContinue = false;
         }
       } else {
         shouldContinue = false;

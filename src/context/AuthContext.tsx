@@ -8,15 +8,14 @@ import React, {
   ReactNode,
 } from 'react';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { registerUser, withdrawUser } from '../api/userService';
-import { saveScore } from '../api/gameScore'; // Added import
+import { gameService } from '../api/gameScore';
+import { authService } from '../api/authService';
 import { getToken, saveToken, removeToken, getData, saveData, removeData } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { GAMES } from '../constants/games'; // Added games for iteration
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { AUTH_CONFIG } from '../constants/config';
 import { Alert } from 'react-native';
-import { syncKeywords } from '../api/userService';
 
 // 1. 사용자 정보 타입 정의
 interface UserInfo {
@@ -64,8 +63,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await Promise.all(
         gameList.map(async (game) => {
           try {
-            const { getBestScore } = await import('../api/gameScore');
-            const response = await getBestScore(game.id, email);
+            const { gameService } = await import('../api/gameScore');
+            const response = await gameService.getMyRanking(game.type);
             if (response.data && typeof response.data.bestScore === 'number') {
               newScores[game.id] = response.data.bestScore;
             } else {
@@ -114,8 +113,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (shouldSaveToServer) {
         const nicknameToSave = nickname || '사용자';
         try {
-          if (__DEV__) console.log(`🎮 [Auth] 신기록 달성! 서버 저장 시도: ${score}점`);
-          await saveScore(userEmail, gameId, score, { nickname: nicknameToSave });
+          const gameList = Object.values(GAMES);
+          const game = gameList.find(g => g.id === gameId);
+          if (game) {
+            if (__DEV__) console.log(`🎮 [Auth] 신기록 달성! 서버 저장 시도: ${score}점`);
+            await gameService.postScore(game.type, score, { nickname: nicknameToSave });
+          }
         } catch (e) {
           console.warn('Failed to save score to server:', e);
         }
@@ -138,8 +141,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
     try {
-      await registerUser(email, expoPushToken);
-
+      // await registerUser(email, expoPushToken);
+      if (__DEV__) console.log('🔔 푸시 토큰 서버 저장 API 준비중');
     } catch (e: any) {
       if (e.response && e.response.status === 409) {
 
@@ -153,13 +156,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const safeEmail = email.replace(/\./g, '_');
       const localKeywords = (await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail))) || [];
-      const response = await syncKeywords(email, localKeywords);
-
-      if (response.data.success) {
-        const serverKeywords = response.data.keywords;
-        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), serverKeywords);
-        if (__DEV__) console.log(`📡 [Auth] 키워드 동기화 완료:`, serverKeywords);
-      }
+      // const response = await syncKeywords(email, localKeywords);
+      if (__DEV__) console.log('🔔 키워드 동기화 API 준비중');
     } catch (e) {
       if (__DEV__) console.error('❌ [Auth] 키워드 동기화 에러:', e);
     }
@@ -274,8 +272,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await GoogleSignin.signIn();
 
       if (response.data?.user) {
-        const { user } = response.data;
+        const { user, idToken } = response.data;
         const { accessToken } = await GoogleSignin.getTokens();
+
+        if (idToken) {
+          try {
+            await authService.loginWithGoogle(idToken);
+          } catch (e) {
+            console.error('Failed to send idToken to backend:', e);
+          }
+        }
 
         if (accessToken) await saveToken(accessToken);
         const newInfo = { name: user.name || '', email: user.email, picture: user.photo };
@@ -334,7 +340,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (userEmail) {
         // 1. 백엔드에 회원 탈퇴 요청
-        await withdrawUser(userEmail);
+        await authService.withdrawUser();
         if (__DEV__) console.log('📡 [AuthContext] 백엔드 회원 탈퇴 성공');
 
         // 2. 구글 연동 해제 (선택)
