@@ -32,6 +32,19 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+.env
+
+# Security / Sensitive
+*.keystore
+*.jks
+google-services.json
+android/gradle.properties
+testOutput*.json
+*.log
+*.txt
 
 # typescript
 *.tsbuildinfo
+
+# Temporary Analysis
+temp_analysis/
