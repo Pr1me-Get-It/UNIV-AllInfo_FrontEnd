@@ -8,28 +8,28 @@ React Native와 Expo를 사용하여 개발된 대학 정보 통합 관리 애�
 
 ## ✨ 주요 기능
 
-*   **🔑 로그인 및 인증**: Google Sign-In을 통한 간편하고 안전한 로그인 기능을 제공합니다.
-*   **📅 캘린더 통합**: 학사 일정 및 개인 일정을 관리하고 확인할 수 있는 캘린더 기능을 제공합니다.
-*   **🗺️ 지도 및 위치 서비스**: 캠퍼스 맵을 통해 건물 위치를 확인하고, 검색 및 핀 기능을 통해 원하는 장소를 쉽게 찾을 수 있습니다.
-*   **🔍 확대/축소 가능한 뷰**: 상세 정보를 확인하기 위해 이미지나 콘텐츠를 자유롭게 확대하고 축소할 수 있습니다.
-*   **🔔 알림 시스템**: 중요한 공지사항이나 일정에 대한 푸시 알림을 받을 수 있습니다.
-*   **🎮 미니게임**: 사과 게임, 테트리스, 플래피버드 등 다양한 미니게임을 통해 즐길 거리를 제공합니다.
-*   **📮 피드백 기능**: 프로필 화면에서 앱에 대한 의견이나 버그 제보를 간편하게 보낼 수 있습니다. (Mock API 연동)
-*   **📱 반응형 UI**: 다양한 기기 화면 크기에 최적화된 레이아웃을 제공합니다.
-*   **🛡️ 비속어 필터**: 비속어 필터링 시스템을 적용하여 안심하고 사용할 수 있는 닉네임 환경을 제공합니다.
+- **🔑 로그인 및 인증**: Google Sign-In을 통한 간편하고 안전한 로그인 기능을 제공합니다.
+- **📅 캘린더 통합**: 학사 일정 및 개인 일정을 관리하고 확인할 수 있는 캘린더 기능을 제공합니다.
+- **🗺️ 지도 및 위치 서비스**: 캠퍼스 맵을 통해 건물 위치를 확인하고, 검색 및 핀 기능을 통해 원하는 장소를 쉽게 찾을 수 있습니다.
+- **🔍 확대/축소 가능한 뷰**: 상세 정보를 확인하기 위해 이미지나 콘텐츠를 자유롭게 확대하고 축소할 수 있습니다.
+- **🔔 알림 시스템**: 중요한 공지사항이나 일정에 대한 푸시 알림을 받을 수 있습니다.
+- **🎮 미니게임**: 사과 게임, 테트리스, 플래피버드 등 다양한 미니게임을 통해 즐길 거리를 제공합니다.
+- **📮 피드백 기능**: 프로필 화면에서 앱에 대한 의견이나 버그 제보를 간편하게 보낼 수 있습니다. (Mock API 연동)
+- **📱 반응형 UI**: 다양한 기기 화면 크기에 최적화된 레이아웃을 제공합니다.
+- **🛡️ 비속어 필터**: 비속어 필터링 시스템을 적용하여 안심하고 사용할 수 있는 닉네임 환경을 제공합니다.
 
 ## 🛠️ 기술 스택
 
 이 프로젝트는 다음의 기술들을 사용하여 개발되었습니다.
 
-*   **Framework**: [React Native](https://reactnative.dev/), [Expo](https://expo.dev/)
-*   **Navigation**: [React Navigation](https://reactnavigation.org/) (Native Stack, Bottom Tabs)
-*   **State & Data Management**: [React Query](https://tanstack.com/query/latest) (서버 상태 관리), Context API (전역 상태 관리)
-*   **Storage**: [AsyncStorage](https://react-native-async-storage.github.io/async-storage/)
-*   **UI/UX**: Styled Components, Expo Vector Icons, Lottie React Native
-*   **Map**: [@mj-studio/react-native-naver-map](https://github.com/mj-studio/react-native-naver-map)
-*   **Game & Physics**: [Matter.js](https://brm.io/matter-js/), react-native-draggable-grid
-*   **Utilities**: badwords-ko (비속어 필터), react-native-calendars
+- **Framework**: [React Native](https://reactnative.dev/), [Expo](https://expo.dev/)
+- **Navigation**: [React Navigation](https://reactnavigation.org/) (Native Stack, Bottom Tabs)
+- **State & Data Management**: [React Query](https://tanstack.com/query/latest) (서버 상태 관리), Context API (전역 상태 관리)
+- **Storage**: [AsyncStorage](https://react-native-async-storage.github.io/async-storage/)
+- **UI/UX**: Styled Components, Expo Vector Icons, Lottie React Native
+- **Map**: [@mj-studio/react-native-naver-map](https://github.com/mj-studio/react-native-naver-map)
+- **Game & Physics**: [Matter.js](https://brm.io/matter-js/), react-native-draggable-grid
+- **Utilities**: badwords-ko (비속어 필터), react-native-calendars
 
 ## 🚀 설치 및 시작하기
 
@@ -37,13 +37,14 @@ React Native와 Expo를 사용하여 개발된 대학 정보 통합 관리 애�
 
 ### 필수 요구 사항
 
-*   [Node.js](https://nodejs.org/) (LTS 버전 권장)
-*   [npm](https://www.npmjs.com/) 또는 [yarn](https://yarnpkg.com/)
-*   [Expo Go](https://expo.dev/client) 앱 (모바일 기기에서 테스트 시)
+- [Node.js](https://nodejs.org/) (LTS 버전 권장)
+- [npm](https://www.npmjs.com/) 또는 [yarn](https://yarnpkg.com/)
+- [Expo Go](https://expo.dev/client) 앱 (모바일 기기에서 테스트 시)
 
 ### 설치
 
 1.  저장소를 클론합니다.
+
     ```bash
     git clone [repository-url]
     cd UNIV-AllInfo_FrontEnd
@@ -66,9 +67,9 @@ npm start
 npx expo start
 ```
 
-*   **Android**: `a`를 눌러 Android 에뮬레이터에서 실행하거나, `npm run android` 명령어를 사용하세요.
-*   **iOS**: `i`를 눌러 iOS 시뮬레이터에서 실행하거나, `npm run ios` 명령어를 사용하세요. (macOS 필요)
-*   **Web**: `w`를 눌러 브라우저에서 실행하거나, `npm run web` 명령어를 사용하세요.
+- **Android**: `a`를 눌러 Android 에뮬레이터에서 실행하거나, `npm run android` 명령어를 사용하세요.
+- **iOS**: `i`를 눌러 iOS 시뮬레이터에서 실행하거나, `npm run ios` 명령어를 사용하세요. (macOS 필요)
+- **Web**: `w`를 눌러 브라우저에서 실행하거나, `npm run web` 명령어를 사용하세요.
 
 ## 📂 프로젝트 구조
 
