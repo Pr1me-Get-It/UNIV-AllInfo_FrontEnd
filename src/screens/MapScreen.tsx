@@ -9,7 +9,6 @@ import {
   Animated,
 } from 'react-native';
 import AppText from '../components/AppText';
-import { NaverMapView, NaverMapMarkerOverlay } from '@mj-studio/react-native-naver-map';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { useMapLogic, INITIAL_REGION, SUGGESTED_KEYWORDS, PIN_TYPES } from '../hooks/screens/useMapLogic';
@@ -72,43 +71,6 @@ export default function MapScreen() {
           </View>
         ) : (
           <>
-            <NaverMapView
-              style={styles.mapContainer}
-              initialCamera={INITIAL_REGION}
-              mapType="Basic"
-              layerGroups={{
-                BUILDING: true,
-                TRANSIT: true,
-                TRAFFIC: false,
-                BICYCLE: false,
-                MOUNTAIN: false,
-                CADASTRAL: false,
-              }}
-              onInitialized={() => {
-                if (__DEV__) console.log('[NaverMap] onInitialized - Map loaded securely.');
-              }}
-              onCameraChanged={(args) => {
-                // console.log('[NaverMap] onCameraChanged:', args);
-              }}
-              onTapMap={(args) => {
-                if (__DEV__) console.log('[NaverMap] onTapMap:', args);
-              }}
-            >
-              {filteredPins.map((pin) => (
-                <NaverMapMarkerOverlay
-                  key={pin.id}
-                  latitude={pin.latitude}
-                  longitude={pin.longitude}
-                  caption={{ text: pin.name }}
-                  onTap={() => {
-                    // console.log('NaverMap: Marker Tapped', pin.name);
-                    handleMarkerClick(pin);
-                  }}
-                  width={20}
-                  height={28}
-                />
-              ))}
-            </NaverMapView>
 
             <TouchableOpacity
               style={[styles.sidebarToggle, isSidebarOpen ? styles.sidebarToggleOpen : null]}
