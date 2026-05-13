@@ -14,10 +14,10 @@ const feedbackClient = axios.create({
  * 인증 토큰 없이 익명으로 전송됩니다.
  */
 export const sendFeedback = async (feedback: string): Promise<void> => {
-  const payload = { feedback };
-  console.log('[Feedback] 전송 시도 → POST /feedback, payload:', JSON.stringify(payload));
+  const payload = { content: feedback };
+  console.log('[Feedback] 전송 시도 → POST /feedbacks, payload:', JSON.stringify(payload));
 
-  const response = await feedbackClient.post('/feedback', payload);
+  const response = await feedbackClient.post('/feedbacks', payload);
 
   console.log('[Feedback] 전송 성공 ✅ 응답:', response.data);
 };
