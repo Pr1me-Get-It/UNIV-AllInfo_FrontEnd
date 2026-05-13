@@ -104,7 +104,11 @@ export default function HomeScreen({ navigation }: Props) {
               onSubmitEditing={handleSearchSubmit}
             />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearchText(''); setSearchResults([]); }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchText('');
+                  setSearchResults([]);
+                }}>
                 <Ionicons name="close-circle" size={20} color="#ccc" />
               </TouchableOpacity>
             )}
@@ -113,13 +117,17 @@ export default function HomeScreen({ navigation }: Props) {
           {/* 검색 결과 제안 목록 */}
           {searchResults.length > 0 && (
             <View style={styles.suggestionsContainer}>
-              {searchResults.map((item) => (
+              {searchResults.map(item => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.suggestionItem}
                   onPress={() => handleSearchResultPress(item)}>
                   <View style={styles.suggestionIconWrapper}>
-                    <Ionicons name={(item.icon as any) || 'link-outline'} size={18} color={COLORS.primary} />
+                    <Ionicons
+                      name={(item.icon as any) || 'link-outline'}
+                      size={18}
+                      color={COLORS.primary}
+                    />
                   </View>
                   <AppText style={styles.suggestionText}>{item.title}</AppText>
                   <Ionicons name="chevron-forward" size={16} color="#ccc" />
@@ -161,7 +169,11 @@ export default function HomeScreen({ navigation }: Props) {
         </ScrollView>
 
         {/* 링크 그리드 (바로가기 서비스) 및 홈 화면 설정 버튼 */}
-        <View style={[styles.sectionHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+        <View
+          style={[
+            styles.sectionHeader,
+            { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+          ]}>
           <AppText style={styles.sectionTitle}>바로가기 서비스</AppText>
           <TouchableOpacity
             style={styles.inlineSettingButton}
@@ -264,7 +276,6 @@ export default function HomeScreen({ navigation }: Props) {
 
         {/* 캠퍼스 이동 (버스/셔틀) 위젯 */}
         <BusWidget />
-
       </ScrollView>
 
       {/* 닉네임 설정 모달 */}
@@ -312,14 +323,12 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { width: '85%' }]}>
             <AppText style={styles.modalTitle}>피드백 보내기 📮</AppText>
-            <AppText style={styles.modalDesc}>
-              버그 제보, 기능 건의 등 자유롭게 남겨주세요.
-            </AppText>
+            <AppText style={styles.modalDesc}>버그 제보, 기능 건의 등 자유롭게 남겨주세요.</AppText>
 
             <TextInput
               style={[styles.feedbackInput, { height: 120, textAlignVertical: 'top' }]}
               multiline
-              placeholder="여기에 내용을 입력하세요..."
+              placeholder="여기에 내용을 입력하세요... (500자 이내)"
               value={feedbackInput}
               onChangeText={setFeedbackInput}
               maxLength={500}
@@ -614,4 +623,3 @@ const styles = StyleSheet.create({
   modalCancelText: { color: '#333', fontWeight: '600' },
   modalConfirmText: { color: '#fff', fontWeight: '600' },
 });
-

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Animated, Linking, Alert } from 'react-native';
+import { Animated, Linking, Alert, Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +8,11 @@ import { isValidNickname } from '../../utils/filter';
 import academicSchedule from '../../constants/academic_schedule.json';
 import { sendFeedback } from '../../api/feedbackService';
 
+// 피드백 보내기 제한 상수 설정
+const FEEDBACK_LIMIT_KEY = 'feedback_timestamps';
+const MAX_LIMIT = 3; // 10분동안 최대 3번
+const TIME_WINDOW = 10 * 60 * 1000; // 10분
+
 export function useHomeLogic(navigation: any) {
   const { nickname, userInfo, isAuthenticated, updateNickname } = useAuth();
   const [customLinks, setCustomLinks] = useState<ExternalLink[]>(AVAILABLE_LINKS.slice(0, 4));
@@ -15,7 +20,7 @@ export function useHomeLogic(navigation: any) {
   // 닉네임 모달 상태
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
-  
+
   // 검색 상태
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -39,18 +44,72 @@ export function useHomeLogic(navigation: any) {
   const searchIndex = useMemo(() => {
     const internalFeatures = [
       { id: 'map', title: '학교 지도', type: 'internal', screen: 'Map', icon: 'map' },
-      { id: 'applegame', title: '두쫀쿠게임', type: 'internal', screen: 'AppleGame', icon: 'nutrition' },
-      { id: 'flappybird', title: '플래피 버드', type: 'internal', screen: 'FlappyBird', icon: 'rocket' },
-      { id: 'keyword', title: '키워드 알림 설정', type: 'internal', screen: 'Keyword', icon: 'notifications-outline' },
-      { id: 'bookmark', title: '즐겨찾기(북마크)', type: 'internal', screen: 'Bookmark', icon: 'bookmark-outline' },
+      {
+        id: 'applegame',
+        title: '두쫀쿠게임',
+        type: 'internal',
+        screen: 'AppleGame',
+        icon: 'nutrition',
+      },
+      {
+        id: 'flappybird',
+        title: '플래피 버드',
+        type: 'internal',
+        screen: 'FlappyBird',
+        icon: 'rocket',
+      },
+      {
+        id: 'keyword',
+        title: '키워드 알림 설정',
+        type: 'internal',
+        screen: 'Keyword',
+        icon: 'notifications-outline',
+      },
+      {
+        id: 'bookmark',
+        title: '즐겨찾기(북마크)',
+        type: 'internal',
+        screen: 'Bookmark',
+        icon: 'bookmark-outline',
+      },
     ];
 
     const profileSettings = [
-      { id: 'push_setting', title: '푸시 알림 설정', type: 'internal', screen: 'Profile', icon: 'notifications' },
-      { id: 'sound_setting', title: '알림 소리 설정', type: 'internal', screen: 'Profile', icon: 'volume-high' },
-      { id: 'feedback', title: '피드백 보내기', type: 'internal', screen: 'Profile', icon: 'mail-unread' },
-      { id: 'license', title: '오픈소스 라이선스', type: 'internal', screen: 'Profile', icon: 'document-text' },
-      { id: 'nickname_setting', title: '닉네임 변경', type: 'action', action: 'nickname', icon: 'person-outline' },
+      {
+        id: 'push_setting',
+        title: '푸시 알림 설정',
+        type: 'internal',
+        screen: 'Profile',
+        icon: 'notifications',
+      },
+      {
+        id: 'sound_setting',
+        title: '알림 소리 설정',
+        type: 'internal',
+        screen: 'Profile',
+        icon: 'volume-high',
+      },
+      {
+        id: 'feedback',
+        title: '피드백 보내기',
+        type: 'internal',
+        screen: 'Profile',
+        icon: 'mail-unread',
+      },
+      {
+        id: 'license',
+        title: '오픈소스 라이선스',
+        type: 'internal',
+        screen: 'Profile',
+        icon: 'document-text',
+      },
+      {
+        id: 'nickname_setting',
+        title: '닉네임 변경',
+        type: 'action',
+        action: 'nickname',
+        icon: 'person-outline',
+      },
       { id: 'logout', title: '로그아웃', type: 'internal', screen: 'Profile', icon: 'log-out' },
     ];
 
@@ -78,21 +137,24 @@ export function useHomeLogic(navigation: any) {
       return;
     }
 
-    const filtered = searchIndex.filter(item =>
-      item.title.toLowerCase().includes(query)
-    ).slice(0, 8);
+    const filtered = searchIndex
+      .filter(item => item.title.toLowerCase().includes(query))
+      .slice(0, 8);
 
     setSearchResults(filtered);
   }, [searchText, searchIndex]);
 
   // 커스텀 알림 함수
-  const showAlert = useCallback((title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertOnConfirm(() => onConfirm);
-    setAlertButtons(buttons);
-    setAlertVisible(true);
-  }, []);
+  const showAlert = useCallback(
+    (title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
+      setAlertTitle(title);
+      setAlertMessage(message);
+      setAlertOnConfirm(() => onConfirm);
+      setAlertButtons(buttons);
+      setAlertVisible(true);
+    },
+    [],
+  );
 
   const closeAlert = useCallback(() => {
     setAlertVisible(false);
@@ -113,29 +175,32 @@ export function useHomeLogic(navigation: any) {
   }, [isAuthenticated, nickname, userInfo, navigation, showAlert]);
 
   // 검색 결과 클릭 핸들러
-  const handleSearchResultPress = useCallback((item: any) => {
-    setSearchText('');
-    setSearchResults([]);
+  const handleSearchResultPress = useCallback(
+    (item: any) => {
+      setSearchText('');
+      setSearchResults([]);
 
-    if (item.type === 'external') {
-      handleOpenLink(item.url);
-    } else if (item.type === 'internal') {
-      if (item.screen === 'Map') {
-        navigation.navigate('MainTab', { screen: 'Map' } as any);
-      } else {
-        navigation.navigate(item.screen as any);
+      if (item.type === 'external') {
+        handleOpenLink(item.url);
+      } else if (item.type === 'internal') {
+        if (item.screen === 'Map') {
+          navigation.navigate('MainTab', { screen: 'Map' } as any);
+        } else {
+          navigation.navigate(item.screen as any);
+        }
+      } else if (item.type === 'academic') {
+        navigation.navigate('MainTab', {
+          screen: 'Calendar',
+          params: { initialDate: item.date },
+        } as any);
+      } else if (item.type === 'action') {
+        if (item.action === 'nickname') {
+          handleNicknamePress();
+        }
       }
-    } else if (item.type === 'academic') {
-      navigation.navigate('MainTab', {
-        screen: 'Calendar',
-        params: { initialDate: item.date }
-      } as any);
-    } else if (item.type === 'action') {
-      if (item.action === 'nickname') {
-        handleNicknamePress();
-      }
-    }
-  }, [navigation, handleNicknamePress]);
+    },
+    [navigation, handleNicknamePress],
+  );
 
   const handleNicknameSave = async () => {
     const input = nicknameInput.trim();
@@ -158,12 +223,25 @@ export function useHomeLogic(navigation: any) {
   };
 
   const handleFeedbackSubmit = async () => {
+    const { allowed, remainingTime } = await checkFeedbackLimit();
+
+    if (!allowed) {
+      Alert.alert(
+        '알림',
+        `\n짧은 시간에 너무 많은 피드백을 보내실 수 없습니다.\n잠시후 다시 시도해주세요.\n\n남은 시간: ${remainingTime}분`,
+      );
+      return;
+    }
+
     if (!feedbackInput.trim()) {
-      showAlert('알림', '내용을 입력해주세요.');
+      // 커스텀 alert 사용 시 터치 이벤트를 못 잡는 경우가 있음
+      // 네이티브 alert로 사용
+      Alert.alert('알림', '내용을 입력해주세요.');
       return;
     }
 
     setIsSendingFeedback(true);
+    Keyboard.dismiss();
     try {
       await sendFeedback(feedbackInput);
       setIsFeedbackModalVisible(false);
@@ -171,7 +249,8 @@ export function useHomeLogic(navigation: any) {
       showAlert('감사합니다', '소중한 의견이 전달되었습니다. 🙇‍♂️');
     } catch (error: any) {
       console.error('[Feedback] 전송 실패 ❌', error?.response?.data ?? error?.message ?? error);
-      showAlert('전송 실패', '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      // 네이티브 alert로 사용
+      Alert.alert('전송 실패', '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setIsSendingFeedback(false);
     }
@@ -225,7 +304,7 @@ export function useHomeLogic(navigation: any) {
     if (trimmedQuery) {
       navigation.navigate('MainTab', {
         screen: 'Notice',
-        params: { initialQuery: trimmedQuery }
+        params: { initialQuery: trimmedQuery },
       } as any);
       setSearchText('');
     }
@@ -262,3 +341,26 @@ export function useHomeLogic(navigation: any) {
     handleSearchSubmit,
   };
 }
+
+const checkFeedbackLimit = async (): Promise<{
+  allowed: boolean;
+  remainingTime: number;
+}> => {
+  const now = Date.now();
+
+  const storedData = await AsyncStorage.getItem(FEEDBACK_LIMIT_KEY);
+  let timestamps: number[] = storedData ? JSON.parse(storedData) : [];
+  timestamps = timestamps.filter(timestamp => now - timestamp <= TIME_WINDOW);
+
+  if (timestamps.length >= MAX_LIMIT) {
+    return {
+      allowed: false,
+      remainingTime: Math.ceil((TIME_WINDOW - (now - timestamps[0])) / 1000 / 60),
+    };
+  }
+
+  timestamps.push(now);
+  await AsyncStorage.setItem(FEEDBACK_LIMIT_KEY, JSON.stringify(timestamps));
+
+  return { allowed: true, remainingTime: 0 };
+};
