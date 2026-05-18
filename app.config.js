@@ -2,7 +2,7 @@ const IS_DEV = process.env.APP_VARIANT === 'development';
 
 export default {
   expo: {
-    jsEngine: "hermes",
+    jsEngine: 'hermes',
     scheme: 'univ-allinfo',
     name: IS_DEV ? 'UNIV-AllInfo (Dev)' : 'UNIV-AllInfo', // 개발버전은 이름에 (Dev) 표시
     slug: 'univ-allinfo',
@@ -19,6 +19,13 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: IS_DEV ? 'com.univallinfo.app.dev' : 'com.univallinfo.app',
+      infoPlist: {
+        CFBundleURLTypes: [
+          {
+            CFBundleURLSchemes: [process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME],
+          },
+        ],
+      },
     },
     android: {
       package: IS_DEV ? 'com.univallinfo.app.dev' : 'com.univallinfo.app',
@@ -26,14 +33,19 @@ export default {
       googleServicesFile: './google-services.json',
       adaptiveIcon: {
         foregroundImage: './src/assets/adaptive-icon.png',
-        backgroundColor: '#ffffff'
-      }
+        backgroundColor: '#ffffff',
+      },
     },
     web: {},
     plugins: [
       'expo-web-browser',
       'expo-secure-store',
-      '@react-native-google-signin/google-signin',
+      [
+        '@react-native-google-signin/google-signin',
+        {
+          iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME,
+        },
+      ],
       [
         'expo-build-properties',
         {
