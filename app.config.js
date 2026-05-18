@@ -22,9 +22,7 @@ export default {
       infoPlist: {
         CFBundleURLTypes: [
           {
-            CFBundleURLSchemes: [
-              'com.googleusercontent.apps.313585172406-g4qglcpds0rpobc15cgnmppefgvg1c6f',
-            ],
+            CFBundleURLSchemes: [process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME],
           },
         ],
       },
@@ -45,7 +43,7 @@ export default {
       [
         '@react-native-google-signin/google-signin',
         {
-          iosUrlScheme: 'com.googleusercontent.apps.313585172406-g4qglcpds0rpobc15cgnmppefgvg1c6f',
+          iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME,
         },
       ],
       [
