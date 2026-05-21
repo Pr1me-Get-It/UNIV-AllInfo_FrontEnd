@@ -117,9 +117,17 @@ export const fetchMultipleStationArrivals = async (
         })
     );
 
-    return results
+    const fulfilledResults = results
         .filter((r): r is PromiseFulfilledResult<BusArrivalResult> => r.status === 'fulfilled')
         .map((r) => r.value);
+
+    // 요청한 정류장이 있는데 성공한 결과가 0개라면 에러를 발생시킵니다.
+    if (stationIds.length > 0 && fulfilledResults.length === 0) {
+        const rejectedReason = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+        throw rejectedReason ? rejectedReason.reason : new Error('모든 정류장의 도착 정보를 불러오지 못했습니다.');
+    }
+
+    return fulfilledResults;
 };
 
 /** 도착 시간(초)을 사람이 읽기 좋은 문자열로 변환 */

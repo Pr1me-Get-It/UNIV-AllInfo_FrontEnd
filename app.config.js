@@ -23,7 +23,9 @@ export default {
       infoPlist: {
         CFBundleURLTypes: [
           {
-            CFBundleURLSchemes: [process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME],
+            CFBundleURLSchemes: [
+              process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME || 'com.googleusercontent.apps.dummy',
+            ],
           },
         ],
       },
@@ -44,7 +46,8 @@ export default {
       [
         '@react-native-google-signin/google-signin',
         {
-          iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME,
+          iosUrlScheme:
+            process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME || 'com.googleusercontent.apps.dummy',
         },
       ],
       'expo-apple-authentication',
