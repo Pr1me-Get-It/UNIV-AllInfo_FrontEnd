@@ -19,8 +19,12 @@ export const useBusWidgetLogic = () => {
             try {
                 const fav = await AsyncStorage.getItem('FAVORITE_BUS_STATION');
                 if (fav) {
-                    setFavoriteStationId(fav);
-                    setSelectedStationId(fav);
+                    if (DEFAULT_STATION_IDS.includes(fav)) {
+                        setFavoriteStationId(fav);
+                        setSelectedStationId(fav);
+                    } else {
+                        await AsyncStorage.removeItem('FAVORITE_BUS_STATION');
+                    }
                 }
             } catch (e) {}
         };
