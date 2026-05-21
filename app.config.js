@@ -19,6 +19,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: IS_DEV ? 'com.univallinfo.app.dev' : 'com.univallinfo.app',
+      useAppleSignIn: true,
       infoPlist: {
         CFBundleURLTypes: [
           {
@@ -46,6 +47,7 @@ export default {
           iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME,
         },
       ],
+      'expo-apple-authentication',
       [
         'expo-build-properties',
         {

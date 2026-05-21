@@ -8,6 +8,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { gameService } from '../api/gameScore';
 import { authService } from '../api/authService';
 import {
@@ -46,6 +47,7 @@ interface AuthContextType {
     score: number,
     shouldSaveToServer?: boolean,
   ) => Promise<void>; // 점수 업데이트
+  loginWithApple: () => Promise<void>;
   loginWithGoogle: () => Promise<void>; // 구글 로그인 로직 내장
   logout: () => Promise<void>; // 통합 로그아웃
   withdraw: () => Promise<void>; // 회원 탈퇴
@@ -299,6 +301,74 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initializeAuth();
   }, []);
 
+  const loginWithApple = async () => {
+    setIsLoading(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const { identityToken, authorizationCode, fullName, email } = credential;
+      if (!identityToken) {
+        Alert.alert('오류', '애플 인증 토큰을 받지 못했습니다.');
+        return;
+      }
+
+      let response;
+      try {
+        response = await authService.loginWithApple(identityToken, authorizationCode);
+      } catch (e: any) {
+        console.error('Failed to send idToken to backend:', e);
+        Alert.alert('로그인 실패', '애플 로그인 중 문제가 발생했습니다.');
+        setIsLoading(false);
+        return;
+      }
+
+      await saveToken(response.data.accessToken);
+      await saveRefreshToken(response.data.refreshToken);
+
+      const backendEmail = response.data.user?.email || email;
+      const backendNickname = response.data.user?.profile?.nickname || response.data.nickname;
+
+      let userName = '';
+      if (fullName?.givenName || fullName?.familyName) {
+        userName = `${fullName.familyName || ''}${fullName.givenName || ''}`;
+      } else {
+        userName = backendNickname || '사용자';
+      }
+
+      const newInfo = { name: userName, email: backendEmail, picture: null };
+
+      setUserEmail(backendEmail);
+      setUserInfo(newInfo);
+
+      if (backendNickname) {
+        const safeEmail = backendEmail.replace(/\./g, '_');
+        await saveData(STORAGE_KEYS.NICKNAME(safeEmail), backendNickname);
+      }
+
+      await saveData(STORAGE_KEYS.USER_INFO, {
+        userEmail: backendEmail,
+        userInfo: newInfo,
+        ...(backendNickname ? { nickname: backendNickname } : {}),
+      });
+
+      await syncUserToBackend(backendEmail);
+    } catch (e) {
+      if (e.code === 'ERR_REQUEST_CANCELED') {
+        console.log('유저가 로그인 창을 닫음');
+      } else {
+        Alert.alert('로그인 실패', '애플 로그인 중 문제가 발생했습니다.');
+        console.error(e);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 실제 구글 로그인 실행 함수
   const loginWithGoogle = async () => {
     setIsLoading(true);
@@ -495,6 +565,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         gameBestScores,
         updateGameBestScore,
+        loginWithApple,
         loginWithGoogle,
         logout,
         withdraw,
