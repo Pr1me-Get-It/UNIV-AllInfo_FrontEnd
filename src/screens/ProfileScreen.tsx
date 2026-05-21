@@ -13,6 +13,7 @@ import {
 import { Image } from 'expo-image';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +23,7 @@ import { COLORS } from '../constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { moderateScale } from '../utils/responsive';
 import { useProfileLogic } from '../hooks/screens/useProfileLogic';
+import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
 
 const PRIMARY = 'rgb(219, 31, 38)';
 
@@ -53,7 +55,6 @@ export default function ProfileScreen() {
     alertOnConfirm,
     alertButtons,
     closeAlert,
-    showAlert,
     isFeedbackModalVisible,
     setIsFeedbackModalVisible,
     feedbackInput,
@@ -66,6 +67,8 @@ export default function ProfileScreen() {
     handleLogout,
     handleNicknameSave,
     handleWithdraw,
+    isAppleAuthAvailable,
+    handleAppleLogin,
     handleGoogleLogin,
     handlePushToggle,
   } = useProfileLogic();
@@ -145,9 +148,10 @@ export default function ProfileScreen() {
                 showsVerticalScrollIndicator={false}>
                 <AppText style={{ fontSize: 13, color: '#4b5563', lineHeight: 22 }}>
                   본 애플리케이션은 다음과 같은 핵심 오픈소스 기술 스택을 활용하고 있습니다:{'\n\n'}
-                  • React Native (0.81.5){'\n'}• Expo (SDK 54){'\n'}• React Navigation (v7){'\n'}• React
-                  Query (@tanstack/react-query v5){'\n'}• React Native Reanimated (v4){'\n'}•
-                  Matter.js (물리 엔진){'\n'}• React Native Calendars{'\n'}• badwords-ko (비속어 필터){'\n'}• React Native Draggable Grid
+                  • React Native (0.81.5){'\n'}• Expo (SDK 54){'\n'}• React Navigation (v7){'\n'}•
+                  React Query (@tanstack/react-query v5){'\n'}• React Native Reanimated (v4){'\n'}•
+                  Matter.js (물리 엔진){'\n'}• React Native Calendars{'\n'}• badwords-ko (비속어
+                  필터){'\n'}• React Native Draggable Grid
                   {'\n'}• Axios{'\n'}• Expo Image / Linear Gradient / Notifications{'\n'}
                   {'\n'}각 프로젝트의 라이선스 원문은 해당 공식 저장소에서 확인 가능합니다.
                 </AppText>
@@ -227,7 +231,9 @@ export default function ProfileScreen() {
                   <AppText style={styles.welcomeText}>로그인됨</AppText>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <AppText style={styles.userNameText}>
-                      {isForcedNickname ? '닉네임 설정 중...' : (nickname || userInfo?.name || '사용자') + ' 님'}
+                      {isForcedNickname
+                        ? '닉네임 설정 중...'
+                        : (nickname || userInfo?.name || '사용자') + ' 님'}
                     </AppText>
                   </View>
                   <AppText style={styles.emailText}>{userEmail}</AppText>
@@ -255,18 +261,43 @@ export default function ProfileScreen() {
               </AppText>
               <View style={styles.loginButtonsContainer}>
                 {/* Google */}
-                <TouchableOpacity
-                  style={[styles.snsIconBtn, { backgroundColor: '#4285F4' }]}
-                  onPress={handleGoogleLogin}>
-                  <Ionicons name="logo-google" size={24} color="#fff" />
-                </TouchableOpacity>
-
-                {/* Apple (Placeholder) */}
-                <TouchableOpacity
-                  style={[styles.snsIconBtn, { backgroundColor: '#000' }]}
-                  onPress={() => showAlert('알림', 'Apple 로그인은 준비 중입니다.')}>
-                  <Ionicons name="logo-apple" size={24} color="#fff" />
-                </TouchableOpacity>
+                <GoogleSigninButton
+                  size={GoogleSigninButton.Size.Wide}
+                  style={{ width: 200, height: 44 }}
+                  onPress={handleGoogleLogin}
+                />
+              </View>
+              <View style={styles.loginButtonsContainer}>
+                {/* Apple sign-in */}
+                {isAppleAuthAvailable ? (
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={5}
+                    style={{ width: 200, height: 44 }}
+                    onPress={handleAppleLogin}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 200,
+                      height: 44,
+                      backgroundColor: '#F3F4F6',
+                      borderRadius: 5,
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                    }}>
+                    {/* 스타일 정리해줘요 */}
+                    <Ionicons name="logo-apple" size={18} color="#9CA3AF" />
+                    <AppText
+                      style={{ marginLeft: 6, fontSize: 13, color: '#9CA3AF', fontWeight: '600' }}>
+                      지원하지 않는 기기입니다
+                    </AppText>
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -312,7 +343,9 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.menuRow} onPress={() => setIsLicenseModalVisible(true)}>
             <View>
               <AppText style={styles.menuLabel}>오픈소스 라이선스</AppText>
-              <AppText style={styles.menuDescription}>앱에 사용된 오픈소스 기술 스택입니다.</AppText>
+              <AppText style={styles.menuDescription}>
+                앱에 사용된 오픈소스 기술 스택입니다.
+              </AppText>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>

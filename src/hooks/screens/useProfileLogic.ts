@@ -7,6 +7,7 @@ import { saveData, getData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { isValidNickname } from '../../utils/filter';
 import { sendFeedback } from '../../api/feedbackService';
+import * as appleAuthentication from 'expo-apple-authentication';
 
 export function useProfileLogic() {
   const {
@@ -14,12 +15,24 @@ export function useProfileLogic() {
     userInfo,
     nickname,
     isAuthenticated,
+    loginWithApple,
     loginWithGoogle,
     logout,
     withdraw,
     updateNickname,
     isLoading,
   } = useAuth();
+
+  // apple 로그인 관련 상태
+  const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
+
+  useEffect(() => {
+    const checkAppleAuthAvailable = async () => {
+      const available = await appleAuthentication.isAvailableAsync();
+      setIsAppleAuthAvailable(available);
+    };
+    checkAppleAuthAvailable();
+  }, []);
 
   // 닉네임 관련 상태
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
@@ -35,7 +48,7 @@ export function useProfileLogic() {
       } else {
         setIsForcedNickname(false);
       }
-    }, [isLoading, isAuthenticated, nickname, userInfo])
+    }, [isLoading, isAuthenticated, nickname, userInfo]),
   );
 
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -50,13 +63,16 @@ export function useProfileLogic() {
   const [alertOnConfirm, setAlertOnConfirm] = useState<(() => void) | undefined>(undefined);
   const [alertButtons, setAlertButtons] = useState<any[] | undefined>(undefined);
 
-  const showAlert = useCallback((title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertOnConfirm(() => onConfirm);
-    setAlertButtons(buttons);
-    setAlertVisible(true);
-  }, []);
+  const showAlert = useCallback(
+    (title: string, message: string, onConfirm?: () => void, buttons?: any[]) => {
+      setAlertTitle(title);
+      setAlertMessage(message);
+      setAlertOnConfirm(() => onConfirm);
+      setAlertButtons(buttons);
+      setAlertVisible(true);
+    },
+    [],
+  );
 
   const closeAlert = useCallback(() => {
     setAlertVisible(false);
@@ -133,6 +149,14 @@ export function useProfileLogic() {
     });
   };
 
+  const handleAppleLogin = async () => {
+    try {
+      await loginWithApple();
+    } catch (e) {
+      showAlert('로그인 오류', '애플 로그인에 실패했습니다.\n잠시 후 다시 시도해주세요.');
+    }
+  };
+
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
@@ -162,9 +186,14 @@ export function useProfileLogic() {
         if (token) {
           try {
             // await registerUser(userEmail!, token); // TODO: 백엔드 푸시 토큰 저장 API 연동 필요
-            if (__DEV__) console.log('🔔 [PushDebug] 푸시 토큰 발급 완료 (API 연동 준비중):', token);
+            if (__DEV__)
+              console.log('🔔 [PushDebug] 푸시 토큰 발급 완료 (API 연동 준비중):', token);
           } catch (apiError: any) {
-            if (__DEV__) console.warn('🔔 [PushDebug] 푸시 토큰 저장 실패 (무시):', apiError?.response?.status || apiError?.message);
+            if (__DEV__)
+              console.warn(
+                '🔔 [PushDebug] 푸시 토큰 저장 실패 (무시):',
+                apiError?.response?.status || apiError?.message,
+              );
           }
           showAlert('알림', '푸시 알림 설정이 완료되었습니다.');
         } else {
@@ -224,6 +253,8 @@ export function useProfileLogic() {
     handleLogout,
     handleNicknameSave,
     handleWithdraw,
+    isAppleAuthAvailable,
+    handleAppleLogin,
     handleGoogleLogin,
     handlePushToggle,
   };
