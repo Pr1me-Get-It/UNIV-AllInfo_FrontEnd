@@ -29,11 +29,13 @@ export const authService = {
    * 구글과 마찬가지? 예정?
    * POST /auth/apple
    */
-  loginWithApple: async (idToken: string, authorizationCode: string) => {
-    return await axios.post(`${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/apple`, {
+  loginWithApple: async (idToken: string, authorizationCode?: string | null) => {
+    const payload = {
       idToken,
-      authorizationCode,
-    });
+      ...(authorizationCode != null ? { authorizationCode } : {}),
+    };
+
+    return await axios.post(`${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/apple`, payload);
   },
 
   /**
