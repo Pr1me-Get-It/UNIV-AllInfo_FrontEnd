@@ -267,7 +267,7 @@ export default function ProfileScreen() {
                 />
               </View>
               <View style={styles.loginButtonsContainer}>
-                {/* Apple (Placeholder) */}
+                {/* Apple sign-in */}
                 <AppleAuthentication.AppleAuthenticationButton
                   buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
                   buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
