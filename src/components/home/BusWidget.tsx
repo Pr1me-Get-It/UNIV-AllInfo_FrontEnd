@@ -1,73 +1,28 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { View, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Modal } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppText from '../AppText';
 import { COLORS } from '../../constants/colors';
 import { moderateScale } from '../../utils/responsive';
 import { Ionicons } from '@expo/vector-icons';
-import {
-    fetchMultipleStationArrivals,
-    formatArrivalTime,
-    DEFAULT_STATION_IDS,
-    BusArrivalResult,
-    BusArrivalItem,
-} from '../../api/busService';
+import { formatArrivalTime, BusArrivalItem } from '../../api/busService';
+import { useBusWidgetLogic } from '../../hooks/components/useBusWidgetLogic';
 
 export default function BusWidget() {
-    const [arrivals, setArrivals] = useState<BusArrivalResult[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-    const [selectedStationId, setSelectedStationId] = useState<string>(DEFAULT_STATION_IDS[0]);
-    const [isModalVisible, setIsModalVisible] = useState(false);
-    const [favoriteStationId, setFavoriteStationId] = useState<string | null>(null);
-
-    useEffect(() => {
-        const loadFav = async () => {
-            try {
-                const fav = await AsyncStorage.getItem('FAVORITE_BUS_STATION');
-                if (fav) {
-                    setFavoriteStationId(fav);
-                    setSelectedStationId(fav);
-                }
-            } catch (e) {}
-        };
-        loadFav();
-    }, []);
-
-    const toggleFavorite = async (stationId: string) => {
-        try {
-            if (favoriteStationId === stationId) {
-                await AsyncStorage.removeItem('FAVORITE_BUS_STATION');
-                setFavoriteStationId(null);
-            } else {
-                await AsyncStorage.setItem('FAVORITE_BUS_STATION', stationId);
-                setFavoriteStationId(stationId);
-            }
-        } catch (e) {}
-    };
-
-    const loadArrivals = useCallback(async () => {
-        try {
-            setError(null);
-            const data = await fetchMultipleStationArrivals(DEFAULT_STATION_IDS);
-            setArrivals(data);
-            setLastUpdated(new Date());
-            console.log('[BusWidget] 도착 정보 갱신 완료:', data.length, '개 정류장');
-        } catch (err) {
-            console.error('[BusWidget] 도착 정보 조회 실패:', err);
-            setError('버스 정보를 불러오지 못했습니다.');
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    // 마운트 시 + 5분마다 자동 갱신 (일일 트래픽 1000회 제한 고려)
-    useEffect(() => {
-        loadArrivals();
-        const interval = setInterval(loadArrivals, 5 * 60_000);
-        return () => clearInterval(interval);
-    }, [loadArrivals]);
+    const {
+        arrivals,
+        isLoading,
+        error,
+        updatedTime,
+        selectedStationId,
+        setSelectedStationId,
+        isModalVisible,
+        setIsModalVisible,
+        favoriteStationId,
+        toggleFavorite,
+        loadArrivals,
+        selectedStationData,
+        displayArrivals,
+    } = useBusWidgetLogic();
 
     const renderBusItem = (item: BusArrivalItem, index: number) => {
         const arrivalText = formatArrivalTime(item.arrtime);
@@ -98,20 +53,11 @@ export default function BusWidget() {
         );
     };
 
-    const selectedStationData = arrivals.find((s) => s.stationId === selectedStationId);
-    const displayArrivals: BusArrivalItem[] = selectedStationData
-        ? [...selectedStationData.arrivals].slice(0, 5) // 해당 정류장 버스 최대 5개 표시
-        : [];
-
-    const updatedTime = lastUpdated
-        ? `${lastUpdated.getHours()}:${String(lastUpdated.getMinutes()).padStart(2, '0')} 기준`
-        : '';
-
     return (
         <View style={styles.container}>
             <View style={styles.sectionHeader}>
                 <AppText style={styles.sectionTitle}>시내 버스</AppText>
-                <TouchableOpacity style={styles.refreshButton} onPress={loadArrivals} disabled={isLoading}>
+                <TouchableOpacity style={styles.refreshButton} onPress={() => loadArrivals()} disabled={isLoading}>
                     <Ionicons
                         name="refresh"
                         size={16}
@@ -149,7 +95,7 @@ export default function BusWidget() {
                     <View style={styles.centerBox}>
                         <Ionicons name="alert-circle-outline" size={24} color="#EF4444" />
                         <AppText style={styles.errorText}>{error}</AppText>
-                        <TouchableOpacity style={styles.retryButton} onPress={loadArrivals}>
+                        <TouchableOpacity style={styles.retryButton} onPress={() => loadArrivals()}>
                             <AppText style={styles.retryText}>다시 시도</AppText>
                         </TouchableOpacity>
                     </View>
@@ -398,3 +344,4 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 });
+
