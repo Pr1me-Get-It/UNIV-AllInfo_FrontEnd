@@ -19,7 +19,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: IS_DEV ? 'com.univallinfo.app.dev' : 'com.univallinfo.app',
-      useAppleSignIn: true,
+      usesAppleSignIn: true,
       infoPlist: {
         CFBundleURLTypes: [
           {
