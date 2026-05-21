@@ -67,6 +67,7 @@ export default function ProfileScreen() {
     handleLogout,
     handleNicknameSave,
     handleWithdraw,
+    isAppleAuthAvailable,
     handleAppleLogin,
     handleGoogleLogin,
     handlePushToggle,
@@ -261,20 +262,42 @@ export default function ProfileScreen() {
               <View style={styles.loginButtonsContainer}>
                 {/* Google */}
                 <GoogleSigninButton
-                  size={GoogleSigninButton.Size.Wide} // 더 넓은 버튼
-                  style={{ width: 200, height: 44 }} // 애플 버튼과 동일한 높이로 맞춤
-                  onPress={handleGoogleLogin} // 눌렀을 때 실행될 함수
+                  size={GoogleSigninButton.Size.Wide}
+                  style={{ width: 200, height: 44 }}
+                  onPress={handleGoogleLogin}
                 />
               </View>
               <View style={styles.loginButtonsContainer}>
                 {/* Apple sign-in */}
-                <AppleAuthentication.AppleAuthenticationButton
-                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                  cornerRadius={5}
-                  style={{ width: 200, height: 44 }} // 애플 규격에 맞춘 최소 사이즈
-                  onPress={handleAppleLogin}
-                />
+                {isAppleAuthAvailable ? (
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={5}
+                    style={{ width: 200, height: 44 }}
+                    onPress={handleAppleLogin}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 200,
+                      height: 44,
+                      backgroundColor: '#F3F4F6',
+                      borderRadius: 5,
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                    }}>
+                    {/* 스타일 정리해줘요 */}
+                    <Ionicons name="logo-apple" size={18} color="#9CA3AF" />
+                    <AppText
+                      style={{ marginLeft: 6, fontSize: 13, color: '#9CA3AF', fontWeight: '600' }}>
+                      지원하지 않는 기기입니다
+                    </AppText>
+                  </View>
+                )}
               </View>
             </View>
           )}

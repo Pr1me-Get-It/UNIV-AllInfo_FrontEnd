@@ -7,6 +7,7 @@ import { saveData, getData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { isValidNickname } from '../../utils/filter';
 import { sendFeedback } from '../../api/feedbackService';
+import * as appleAuthentication from 'expo-apple-authentication';
 
 export function useProfileLogic() {
   const {
@@ -21,6 +22,17 @@ export function useProfileLogic() {
     updateNickname,
     isLoading,
   } = useAuth();
+
+  // apple 로그인 관련 상태
+  const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
+
+  useEffect(() => {
+    const checkAppleAuthAvailable = async () => {
+      const available = await appleAuthentication.isAvailableAsync();
+      setIsAppleAuthAvailable(available);
+    };
+    checkAppleAuthAvailable();
+  }, []);
 
   // 닉네임 관련 상태
   const [isNicknameModalVisible, setIsNicknameModalVisible] = useState(false);
@@ -241,6 +253,7 @@ export function useProfileLogic() {
     handleLogout,
     handleNicknameSave,
     handleWithdraw,
+    isAppleAuthAvailable,
     handleAppleLogin,
     handleGoogleLogin,
     handlePushToggle,
