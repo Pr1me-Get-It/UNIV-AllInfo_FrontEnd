@@ -81,7 +81,7 @@ export const useRankingLogic = () => {
             const game = gameList.find(g => g.id === gameId);
             if (!game) return;
 
-            const response = await gameService.getGlobalRankings(game.type, { limit: 50 });
+            const response = await gameService.getGlobalRankings(game.type, 50);
 
             if (response.data && Array.isArray(response.data)) {
                 const uniqueScoresMap = new Map<string, GameScore>();

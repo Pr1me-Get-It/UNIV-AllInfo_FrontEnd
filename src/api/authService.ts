@@ -1,4 +1,10 @@
 /* src/api/authService.ts */
+//인증(Authentication) API 통신 담당 레이어: 
+//소셜 로그인(구글, 애플), 
+//세션 유지(토큰 재발급), 
+//회원 탈퇴 등 사용자의 계정 인증 및 
+//토큰 세션 관리를 백엔드 서버(EXPO_PUBLIC_API_BASE_URL)와 동기화하기 위한 통신 로직을 모아둔 모듈
+
 import { api } from './client';
 import axios from 'axios';
 

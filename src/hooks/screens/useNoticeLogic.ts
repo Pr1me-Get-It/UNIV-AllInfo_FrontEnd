@@ -249,7 +249,7 @@ export function useNoticeLogic(navigation: any, route: any) {
         return matchesSourceFilter && !safeStatus[item.id];
       })
       .map((item: any) => item.id);
-      
+
     if (unreadIds.length > 0) {
       markMultipleAsRead(unreadIds, true);
     }
