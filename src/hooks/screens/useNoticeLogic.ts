@@ -269,11 +269,11 @@ export function useNoticeLogic(navigation: any, route: any) {
   }, [allNotices, selectedSources, safeStatus, normalizeSource, markMultipleAsRead]);
 
   const displayedData = useMemo(() => {
-    // 푸시 필터 모드: 알림으로 받은 공지 ID 목록에서 먼저 필터링
+    // 푸시 필터 모드: 알림으로 받은 공지 ID 목록 중 안 읽은 공지만 필터링
     if (isPushFilterMode) {
       return allNotices.filter((item: any) => {
         const itemId = String(item.notice_id || item.id);
-        return pushedNoticeIds.includes(itemId);
+        return pushedNoticeIds.includes(itemId) && !safeStatus[item.id];
       });
     }
     return allNotices.filter((item: any) => {
