@@ -98,13 +98,17 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
 
 /**
  * 테스트용 로컬 알림 발송 함수
+ * @param noticeId - 테스트할 공지사항 ID (실제 존재하는 ID로 교체하세요)
  */
-export async function sendTestNotification() {
+export async function sendTestNotification(noticeId?: string) {
   await Notifications.scheduleNotificationAsync({
     content: {
       title: '🔔 테스트알람',
       body: '빨리해',
-      data: { data: 'test-data' },
+      data: {
+        // 백엔드가 푸시 발송 시 이 형태로 noticeId를 포함해야 합니다
+        noticeId: noticeId || '2333',
+      },
     },
     trigger: null, // 즉시 발송
   });

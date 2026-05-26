@@ -6,7 +6,7 @@ import SOURCE_LABELS from '../../constants/labeltag.json';
 import { saveData, getData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { useAuth } from '../../context/AuthContext';
-import { syncKeywords } from '../../api/userService';
+// import { syncKeywords } from '../../api/userService'; // TODO: 백엔드 키워드 API 확정 후 활성화
 import { fetchNotices } from '../../api/noticeService';
 
 export function useNoticeLogic(navigation: any, route: any) {
@@ -14,6 +14,7 @@ export function useNoticeLogic(navigation: any, route: any) {
   const alarmContext = useContext(AlarmContext);
   const readStatus = alarmContext ? alarmContext.readStatus : {};
   const markMultipleAsRead = alarmContext?.markMultipleAsRead;
+  const pushedNoticeIds = alarmContext?.pushedNoticeIds ?? [];
   const { userEmail } = useAuth();
   const safeStatus = readStatus || {};
 
@@ -33,6 +34,12 @@ export function useNoticeLogic(navigation: any, route: any) {
   const [sortOrder, setSortOrder] = useState('DESC'); // 'DESC', 'ASC'
   const [tempSortOrder, setTempSortOrder] = useState('DESC');
   const [isDateModalVisible, setDateModalVisible] = useState(false);
+  // 푸시 알림으로 받은 공지만 보기 필터 모드
+  const [isPushFilterMode, setIsPushFilterMode] = useState(false);
+
+  const togglePushFilter = useCallback(() => {
+    setIsPushFilterMode(prev => !prev);
+  }, []);
 
   // 1. 앱 시작 시 저장된 필터 데이터 불러오기
   useEffect(() => {
@@ -133,9 +140,15 @@ export function useNoticeLogic(navigation: any, route: any) {
     if (userEmail) {
       try {
         const safeEmail = userEmail.replace(/\./g, '_');
-        // 필터 설정을 키워드와 동기화
-        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), tempSelectedSources);
-        await syncKeywords(userEmail, tempSelectedSources);
+        // 기존 전체 키워드 로드
+        const localKeywords = (await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail))) || [];
+        // 기존 키워드 중 수동 키워드(SOURCE_LABELS에 키로 정의되어 있지 않은 것)만 필터링
+        const manualKeywords = localKeywords.filter(k => !(SOURCE_LABELS as any)[k]);
+        // 신규 필터링 소스(학부/공통 코드)와 기존 수동 키워드 병합 (중복 제거)
+        const newKeywords = Array.from(new Set([...tempSelectedSources, ...manualKeywords]));
+
+        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
+        // await syncKeywords(userEmail, newKeywords); // TODO: 백엔드 키워드 API 확정 후 활성화
         if (__DEV__) console.log('🔗 [필터-키워드 연동] 저장 완료.');
       } catch (e) {
         console.error('키워드 연동 실패:', e);
@@ -176,7 +189,7 @@ export function useNoticeLogic(navigation: any, route: any) {
         }
 
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-        await syncKeywords(userEmail, newKeywords);
+        // await syncKeywords(userEmail, newKeywords); // TODO: 백엔드 키워드 API 확정 후 활성화
         if (__DEV__) console.log(`🔗 [필터-키워드 연동] ${code} ${isAdding ? '추가' : '삭제'}됨.`);
       } catch (e) {
         console.error('키워드 연동 실패:', e);
@@ -207,7 +220,7 @@ export function useNoticeLogic(navigation: any, route: any) {
         }
 
         await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-        await syncKeywords(userEmail, newKeywords);
+        // await syncKeywords(userEmail, newKeywords); // TODO: 백엔드 키워드 API 확정 후 활성화
         if (__DEV__) console.log(`🔗 [필터-키워드 연동] 전체 ${isSelectingAll ? '추가' : '해제'} 완료.`);
       } catch (e) {
         console.error('키워드 전체 연동 실패:', e);
@@ -256,13 +269,20 @@ export function useNoticeLogic(navigation: any, route: any) {
   }, [allNotices, selectedSources, safeStatus, normalizeSource, markMultipleAsRead]);
 
   const displayedData = useMemo(() => {
+    // 푸시 필터 모드: 알림으로 받은 공지 ID 목록에서 먼저 필터링
+    if (isPushFilterMode) {
+      return allNotices.filter((item: any) => {
+        const itemId = String(item.notice_id || item.id);
+        return pushedNoticeIds.includes(itemId);
+      });
+    }
     return allNotices.filter((item: any) => {
       const sourcePrefix = normalizeSource(item.source);
       const matchesSourceFilter = selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
       const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
       return matchesSourceFilter && matchesReadFilter;
     });
-  }, [allNotices, selectedSources, safeStatus, filterMode, normalizeSource]);
+  }, [allNotices, selectedSources, safeStatus, filterMode, normalizeSource, isPushFilterMode, pushedNoticeIds]);
 
   const handleNoticePress = useCallback((item: any) => {
     navigation.navigate('Detail', { item });
@@ -313,5 +333,8 @@ export function useNoticeLogic(navigation: any, route: any) {
     setTempSortOrder,
     openDateModal,
     handleApplyDateFilters,
+    isPushFilterMode,
+    togglePushFilter,
+    pushedNoticeIds,
   };
 }

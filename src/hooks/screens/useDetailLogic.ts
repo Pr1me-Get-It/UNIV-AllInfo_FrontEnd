@@ -68,6 +68,7 @@ export const useDetailLogic = (route: DetailScreenRouteProp, navigation: DetailS
 
   useEffect(() => {
     if (!item || !itemId || !markAsRead) return;
+    if (__DEV__) console.log(`📋 [공지 상세] ID: ${itemId} | 제목: ${item?.title}`);
     markAsRead(itemId, true);
     fetchDeadline();
   }, [item, itemId, markAsRead]);
@@ -82,8 +83,11 @@ export const useDetailLogic = (route: DetailScreenRouteProp, navigation: DetailS
       } else {
         setDeadlineInfo(null);
       }
-    } catch (e) {
-      console.log('마감일 조회 실패 (없을 수 있음):', e);
+    } catch (e: any) {
+      // 404는 마감일 정보가 없는 정상적인 경우이므로 개발 모드에서만 경고 출력
+      if (__DEV__ && e?.response?.status !== 404) {
+        console.warn('마감일 조회 실패:', e);
+      }
       setDeadlineInfo(null);
     } finally {
       setLoadingDeadline(false);

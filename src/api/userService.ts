@@ -59,8 +59,7 @@ export const userService = {
 // 아래는 기존에 있던 API들입니다.
 // 백엔드의 새로운 키워드 관련 명세가 확정되면 새 엔드포인트로 변경하시거나 지우시면 됩니다.
 // ============================================================================
-/*
-interface KeywordResponse {
+export interface KeywordResponse {
   success: boolean;
   keywords: string[];
 }
@@ -84,4 +83,3 @@ export const deleteUserKeyword = async (email: string, keyword: string) => {
 export const withdrawUser = async (email: string) => {
   // -> 새 명세에서는 /auth/withdraw 로 변경됨 (authService로 이동)
 };
-*/
