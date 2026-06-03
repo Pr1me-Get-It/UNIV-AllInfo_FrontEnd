@@ -4,9 +4,9 @@ export default {
   expo: {
     jsEngine: 'hermes',
     scheme: 'univ-allinfo',
-    name: IS_DEV ? 'UNIV-AllInfo (Dev)' : 'UNIV-AllInfo', // 개발버전은 이름에 (Dev) 표시
+    name: IS_DEV ? 'KNU Life (Dev)' : 'KNU Life', // 개발버전은 이름에 (Dev) 표시
     slug: 'univ-allinfo',
-    version: '1.1.2',
+    version: '1.2.0',
     orientation: 'portrait',
     icon: './src/assets/icon.png',
     userInterfaceStyle: 'light',
@@ -32,7 +32,7 @@ export default {
     },
     android: {
       package: IS_DEV ? 'com.univallinfo.app.dev' : 'com.univallinfo.app',
-      versionCode: 7,
+      versionCode: 9,
       googleServicesFile: './google-services.json',
       adaptiveIcon: {
         foregroundImage: './src/assets/adaptive-icon.png',
