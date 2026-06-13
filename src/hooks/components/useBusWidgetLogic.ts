@@ -3,10 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import {
     fetchMultipleStationArrivals,
-    DEFAULT_STATION_IDS,
     BusArrivalResult,
     BusArrivalItem,
 } from '../../api/busService';
+import { DEFAULT_STATION_IDS } from '../../constants/busStations';
 
 export const useBusWidgetLogic = () => {
     const [selectedStationId, setSelectedStationId] = useState<string>(DEFAULT_STATION_IDS[0]);

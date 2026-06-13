@@ -70,6 +70,9 @@ export default function NoticeScreen({ navigation, route }: Props) {
     setTempSortOrder,
     openDateModal,
     handleApplyDateFilters,
+    isPushFilterMode,
+    togglePushFilter,
+    pushedNoticeIds,
   } = useNoticeLogic(navigation, route);
 
   return (
@@ -81,6 +84,25 @@ export default function NoticeScreen({ navigation, route }: Props) {
         </View>
 
         <View style={{ flexDirection: 'row' }}>
+          {/* 푸시 알림 필터 버튼 */}
+          <TouchableOpacity
+            style={[styles.filterIconButton, { marginRight: 5 }]}
+            onPress={togglePushFilter}>
+            <View>
+              <Ionicons
+                name={isPushFilterMode ? 'notifications' : 'notifications-outline'}
+                size={24}
+                color={isPushFilterMode ? COLORS.primary : '#333'}
+              />
+              {pushedNoticeIds.length > 0 && !isPushFilterMode && (
+                <View style={styles.badge}>
+                  <AppText style={styles.badgeText}>
+                    {pushedNoticeIds.length > 99 ? '99+' : pushedNoticeIds.length}
+                  </AppText>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.filterIconButton, { marginRight: 5 }]}
             onPress={handleClearCache}>
@@ -426,6 +448,24 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   headerText: { fontSize: 24, fontWeight: 'bold', marginLeft: 10, color: '#333' },
   filterIconButton: { padding: 5 },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
+    includeFontPadding: false,
+  },
   balanceContainer: {
     backgroundColor: COLORS.primary,
     marginHorizontal: 20,

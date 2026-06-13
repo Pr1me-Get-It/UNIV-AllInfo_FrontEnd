@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { moderateScale } from '../utils/responsive';
 import { useProfileLogic } from '../hooks/screens/useProfileLogic';
 import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
+import { sendTestNotification } from '../utils/notifications';
 
 const PRIMARY = 'rgb(219, 31, 38)';
 
@@ -384,6 +385,26 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* 개발 전용 테스트 섹션 - 프로덕션 빌드에서는 보이지 않음 (테스트 완료 후 주석 처리) */}
+        {/* {__DEV__ && (
+          <View style={[styles.section, { borderWidth: 1.5, borderColor: '#f97316', borderRadius: 12, padding: 12 }]}>
+            <AppText style={[styles.sectionTitle, { color: '#f97316' }]}>🛠 개발자 도구</AppText>
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() => sendTestNotification()}>
+              <View>
+                <AppText style={styles.menuLabel}>🔔 푸시 알림 테스트 발송</AppText>
+                <AppText style={styles.menuDescription}>
+                  공지사항 화면의 벨 버튼 필터 기능 테스트용{`\n`}
+                  (기본 설정된 공지 ID로 알림 발송)
+                </AppText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#f97316" />
+            </TouchableOpacity>
+          </View>
+        )} */}
+
         <CustomAlert
           visible={alertVisible}
           title={alertTitle}
