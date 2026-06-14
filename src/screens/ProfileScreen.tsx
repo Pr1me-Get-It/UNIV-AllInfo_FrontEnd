@@ -258,7 +258,8 @@ export default function ProfileScreen() {
             <View style={styles.loginCard}>
               <AppText style={styles.sectionTitle}>로그인</AppText>
               <AppText style={styles.sectionDescription}>
-                학교 공지를 개인화해서 받고 캘린더를 연동하려면 로그인하세요.
+                학교 공지를 개인화해서 받고 캘린더를 동기화하려면 로그인하세요.{'\n'}
+                구글로그인과 애플로그인은 서로 연동되지 않습니다.
               </AppText>
               <View style={styles.loginButtonsContainer}>
                 {/* Google */}

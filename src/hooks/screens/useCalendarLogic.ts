@@ -25,23 +25,23 @@ export function useCalendarLogic(navigation: any, route: any) {
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(TODAY_STR);
 
-  const { userEmail, isAuthenticated } = useAuth();
+  const { userId, isAuthenticated } = useAuth();
 
   const {
     data: googleEvents = [],
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['calendarEvents', userEmail],
+    queryKey: ['calendarEvents', userId],
     queryFn: fetchGoogleEvents,
-    enabled: !!userEmail && isAuthenticated,
+    enabled: !!userId && isAuthenticated,
     staleTime: 1000 * 60 * 10,
   });
 
   useFocusEffect(
     useCallback(() => {
-      if (userEmail && isAuthenticated) refetch();
-    }, [userEmail, isAuthenticated, refetch]),
+      if (userId && isAuthenticated) refetch();
+    }, [userId, isAuthenticated, refetch]),
   );
 
   const events = useMemo(() => {
@@ -54,10 +54,10 @@ export function useCalendarLogic(navigation: any, route: any) {
     const dates = [];
     const [sYr, sMo, sDa] = startDate.split('T')[0].split('-').map(Number);
     const [eYr, eMo, eDa] = endDate.split('T')[0].split('-').map(Number);
-    
+
     let curr = new Date(sYr, sMo - 1, sDa);
     const end = new Date(eYr, eMo - 1, eDa);
-    
+
     while (curr <= end) {
       const y = curr.getFullYear();
       const m = String(curr.getMonth() + 1).padStart(2, '0');
@@ -137,16 +137,15 @@ export function useCalendarLogic(navigation: any, route: any) {
 
   useEffect(() => {
     const loadFilter = async () => {
-      if (userEmail && isAuthenticated) {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        const savedFilter = (await getData(STORAGE_KEYS.FILTER_MODE(safeEmail))) as string;
+      if (userId && isAuthenticated) {
+        const savedFilter = (await getData(STORAGE_KEYS.FILTER_MODE(userId))) as string;
         setFilterMode(savedFilter || 'all');
       } else {
         setFilterMode('all');
       }
     };
     loadFilter();
-  }, [userEmail, isAuthenticated]);
+  }, [userId, isAuthenticated]);
 
   useFocusEffect(
     useCallback(() => {
@@ -158,15 +157,14 @@ export function useCalendarLogic(navigation: any, route: any) {
 
         navigation.setParams({ initialDate: undefined } as any);
       }
-    }, [route.params, navigation])
+    }, [route.params, navigation]),
   );
 
   const handleFilterSelect = async (m: string) => {
     setFilterMode(m);
     setFilterModalVisible(false);
-    if (userEmail) {
-      const safeEmail = userEmail.replace(/\./g, '_');
-      await saveData(STORAGE_KEYS.FILTER_MODE(safeEmail), m);
+    if (userId) {
+      await saveData(STORAGE_KEYS.FILTER_MODE(userId), m);
     }
   };
 

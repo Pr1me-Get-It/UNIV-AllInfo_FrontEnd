@@ -5,18 +5,17 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
-import { AUTH_CONFIG } from '../../constants/config';
 import { GAMES } from '../../constants/games';
 
 export const useRankingLogic = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { userEmail, gameBestScores, updateGameBestScore } = useAuth();
+    const { userId, gameBestScores, updateGameBestScore } = useAuth();
     const [selectedGameId, setSelectedGameId] = useState<number>(GAMES.FLAPPY_BIRD.id);
     const [scores, setScores] = useState<GameScore[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [myBestScore, setMyBestScore] = useState<number>(0);
 
-    const isAdmin = userEmail === AUTH_CONFIG.DEV_EMAIL;
+    const isAdmin = false;
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
@@ -40,7 +39,7 @@ export const useRankingLogic = () => {
     }, [selectedGameId, gameBestScores]);
 
     const loadMyBestScore = async (gameId: number) => {
-        if (!userEmail) return;
+        if (!userId) return;
         try {
             const gameList = Object.values(GAMES);
             const game = gameList.find(g => g.id === gameId);

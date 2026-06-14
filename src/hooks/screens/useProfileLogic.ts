@@ -11,6 +11,7 @@ import * as appleAuthentication from 'expo-apple-authentication';
 
 export function useProfileLogic() {
   const {
+    userId,
     userEmail,
     userInfo,
     nickname,
@@ -105,18 +106,15 @@ export function useProfileLogic() {
 
   useEffect(() => {
     const loadPushSetting = async () => {
-      if (userEmail) {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        const savedSetting = await getData(STORAGE_KEYS.PUSH_SETTING(safeEmail));
-        if (savedSetting !== null) {
-          setPushEnabled(savedSetting === 'true');
-        }
+      if (userId) {
+        const savedSetting = await getData(STORAGE_KEYS.PUSH_SETTING(userId));
+        if (savedSetting !== null) setPushEnabled(savedSetting === 'true');
       } else {
         setPushEnabled(false);
       }
     };
     loadPushSetting();
-  }, [userEmail]);
+  }, [userId]);
 
   const handleNicknameSave = async () => {
     const input = nicknameInput.trim();
@@ -130,7 +128,7 @@ export function useProfileLogic() {
       return;
     }
 
-    if (userEmail) {
+    if (userId) {
       await updateNickname(input);
       setIsNicknameModalVisible(false);
       setNicknameInput('');
@@ -174,43 +172,23 @@ export function useProfileLogic() {
 
     setPushEnabled(value);
 
-    if (userEmail) {
-      const safeEmail = userEmail.replace(/\./g, '_');
-      await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), String(value));
-    }
+    if (userId) await saveData(STORAGE_KEYS.PUSH_SETTING(userId), String(value));
 
     if (value) {
       try {
         const token = await registerForPushNotificationsAsync();
-
         if (token) {
-          try {
-            // await registerUser(userEmail!, token); // TODO: 백엔드 푸시 토큰 저장 API 연동 필요
-            if (__DEV__)
-              console.log('🔔 [PushDebug] 푸시 토큰 발급 완료 (API 연동 준비중):', token);
-          } catch (apiError: any) {
-            if (__DEV__)
-              console.warn(
-                '🔔 [PushDebug] 푸시 토큰 저장 실패 (무시):',
-                apiError?.response?.status || apiError?.message,
-              );
-          }
+          if (__DEV__) console.log('🔔 [PushDebug] 푸시 토큰 발급 완료 (API 연동 준비중):', token);
           showAlert('알림', '푸시 알림 설정이 완료되었습니다.');
         } else {
           showAlert('오류', '푸시 토큰을 가져올 수 없습니다.');
           setPushEnabled(false);
-          if (userEmail) {
-            const safeEmail = userEmail.replace(/\./g, '_');
-            await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), 'false');
-          }
+          if (userId) await saveData(STORAGE_KEYS.PUSH_SETTING(userId), 'false');
         }
       } catch (e) {
         console.error('🚀 [PushDebug] 에러 발생:', e);
         setPushEnabled(false);
-        if (userEmail) {
-          const safeEmail = userEmail.replace(/\./g, '_');
-          await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), 'false');
-        }
+        if (userId) await saveData(STORAGE_KEYS.PUSH_SETTING(userId), 'false');
         showAlert('오류', '푸시 알림 설정 중 문제가 발생했습니다.');
       }
     }

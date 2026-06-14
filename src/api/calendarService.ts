@@ -1,5 +1,6 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { getToken } from '../utils/storage';
+import { getData } from '../utils/storage';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 export interface CalendarEvent {
   id: string;
@@ -7,22 +8,29 @@ export interface CalendarEvent {
   start: { date?: string; dateTime?: string };
   end: { date?: string; dateTime?: string };
   description?: string;
-  type?: number; // 0: undergraduate, 1: graduate (custom field)
-  displayText?: string[]; // Custom field for sliced text
+  type?: number;
+  displayText?: string[];
 }
 
 export const fetchGoogleEvents = async (): Promise<CalendarEvent[]> => {
   try {
-    const storedToken = await getToken();
-    if (!storedToken) return [];
+    // 구글 accessToken은 백엔드 JWT와 별도 키로 관리
+    let accessToken = await getData<string>(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN);
 
-    let accessToken = storedToken;
+    // 저장된 토큰이 없거나 만료됐을 경우 GoogleSignin에서 fresh 토큰 취득
     try {
       const tokens = await GoogleSignin.getTokens();
-      if (tokens.accessToken) accessToken = tokens.accessToken;
+      if (tokens.accessToken) {
+        accessToken = tokens.accessToken;
+        await import('../utils/storage').then(({ saveData }) =>
+          saveData(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN, tokens.accessToken),
+        );
+      }
     } catch (e) {
-      // Ignore if silent sign-in fails or no tokens
+      // 구글 세션 없음 (애플 로그인 유저 등) — 저장된 토큰으로 시도
     }
+
+    if (!accessToken) return [];
 
     const now = new Date();
     const currentYear = now.getFullYear();

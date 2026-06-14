@@ -10,6 +10,11 @@ interface CustomRequestConfig extends InternalAxiosRequestConfig {
 }
 
 let refreshPromise: Promise<string> | null = null;
+let onUnauthorized: (() => void) | null = null;
+
+export const setUnauthorizedCallback = (cb: (() => void) | null) => {
+  onUnauthorized = cb;
+};
 
 export const api: AxiosInstance = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_BASE_URL,
@@ -75,7 +80,7 @@ api.interceptors.response.use(
         if (__DEV__) console.error('❌ 토큰 갱신 실패:', refreshError);
         await removeToken();
         await removeRefreshToken();
-        Alert.alert('알림', '세션이 만료되었습니다. 다시 로그인해 주세요.');
+        onUnauthorized?.();
       }
     }
 

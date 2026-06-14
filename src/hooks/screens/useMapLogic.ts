@@ -27,28 +27,29 @@ export const PIN_TYPES = [
 ];
 
 export const useMapLogic = () => {
-  const { userEmail } = useAuth();
-  
+  const { userId } = useAuth();
+
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
   const [searchText, setSearchText] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [visibleTypes, setVisibleTypes] = useState<string[]>(['facility', 'administrative', 'other', 'door']);
+  const [visibleTypes, setVisibleTypes] = useState<string[]>([
+    'facility',
+    'administrative',
+    'other',
+    'door',
+  ]);
 
   const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
 
   useEffect(() => {
     const loadFilters = async () => {
-      if (userEmail) {
-        const safeEmail = userEmail.replace(/[.@]/g, '_');
-        const key = STORAGE_KEYS.MAP_FILTER(safeEmail);
-        const savedFilters = await getData(key);
-        if (savedFilters) {
-          setVisibleTypes(savedFilters as string[]);
-        }
+      if (userId) {
+        const savedFilters = await getData(STORAGE_KEYS.MAP_FILTER(userId));
+        if (savedFilters) setVisibleTypes(savedFilters as string[]);
       }
     };
     loadFilters();
-  }, [userEmail]);
+  }, [userId]);
 
   useEffect(() => {
     if (selectedPin) {
@@ -73,20 +74,16 @@ export const useMapLogic = () => {
   const togglePinType = async (type: string) => {
     let newTypes: string[];
     if (visibleTypes.includes(type)) {
-      newTypes = visibleTypes.filter((t) => t !== type);
+      newTypes = visibleTypes.filter(t => t !== type);
     } else {
       newTypes = [...visibleTypes, type];
     }
     setVisibleTypes(newTypes);
 
-    if (userEmail) {
-      const safeEmail = userEmail.replace(/[.@]/g, '_');
-      const key = STORAGE_KEYS.MAP_FILTER(safeEmail);
-      await saveData(key, newTypes);
-    }
+    if (userId) await saveData(STORAGE_KEYS.MAP_FILTER(userId), newTypes);
   };
 
-  const filteredPins = MAP_PINS.filter((pin) => visibleTypes.includes(pin.type));
+  const filteredPins = MAP_PINS.filter(pin => visibleTypes.includes(pin.type));
 
   const handleMarkerClick = (pin: MapPin) => {
     setSelectedPin(pin);

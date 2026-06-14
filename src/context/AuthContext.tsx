@@ -20,12 +20,13 @@ import {
   getData,
   saveData,
   removeData,
+  getRefreshToken,
 } from '../utils/storage';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { GAMES } from '../constants/games'; // Added games for iteration
 import { registerForPushNotificationsAsync } from '../utils/notifications';
-import { AUTH_CONFIG } from '../constants/config';
 import { Alert } from 'react-native';
+import { setUnauthorizedCallback } from '../api/client';
 
 // 1. 사용자 정보 타입 정의
 interface UserInfo {
@@ -36,9 +37,10 @@ interface UserInfo {
 
 // 2. Context 데이터 타입 정의
 interface AuthContextType {
+  userId: string | null;
   userEmail: string | null;
-  userInfo: UserInfo | null; // UI 출력을 위한 유저 정보
-  nickname: string | null; // 전역 닉네임
+  userInfo: UserInfo | null;
+  nickname: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   gameBestScores: { [key: number]: number }; // 게임별 최고 점수 (로컬 관리)
@@ -57,20 +59,18 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
-  const [gameBestScores, setGameBestScores] = useState<{ [key: number]: number }>({}); // Added state
+  const [gameBestScores, setGameBestScores] = useState<{ [key: number]: number }>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // 게임 점수 로드 함수
-  const loadGameBestScores = async (email: string) => {
+  const loadGameBestScores = async (uid: string) => {
     try {
-      const safeEmail = email.replace(/\./g, '_');
-
-      // 1. 기존 로컬 점수 로드 (백엔드 오류 시 폴백용)
       const savedScores =
-        (await getData<{ [key: number]: number }>(STORAGE_KEYS.GAME_SCORES(safeEmail))) || {};
+        (await getData<{ [key: number]: number }>(STORAGE_KEYS.GAME_SCORES(uid))) || {};
 
       // 2. 백엔드에서 모든 게임의 최신 점수 로드
       const newScores: { [key: number]: number } = {};
@@ -79,7 +79,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await Promise.all(
         gameList.map(async game => {
           try {
-            const { gameService } = await import('../api/gameScore');
             const response = await gameService.getMyRanking(game.type);
             if (response.data && typeof response.data.bestScore === 'number') {
               newScores[game.id] = response.data.bestScore;
@@ -100,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // 3. 동기화된 점수를 상태 및 로컬 스토리지에 업데이트
       setGameBestScores(newScores);
-      await saveData(STORAGE_KEYS.GAME_SCORES(safeEmail), newScores);
+      await saveData(STORAGE_KEYS.GAME_SCORES(uid), newScores);
       if (__DEV__) console.log('📡 [Auth] 게임 점수 서버 동기화 완료:', newScores);
     } catch (e) {
       console.error('Failed to load/sync game scores:', e);
@@ -110,20 +109,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // 게임 점수 업데이트 함수
   const updateGameBestScore = useCallback(
     async (gameId: number, score: number, shouldSaveToServer: boolean = true) => {
-      if (!userEmail) return;
+      if (!userId) return;
 
       const currentBest = gameBestScores[gameId] || 0;
 
-      // 점수가 더 높을 때만 업데이트 (혹은 강제 동기화일 경우)
-      // shouldSaveToServer가 false이면 로컬 동기화 목적이므로 점수가 같다면 업데이트 불필요하지만
-      // 여기서는 score > currentBest 조건이 있으므로 '더 높은 점수'를 발견했을 때만 동작함.
       if (score > currentBest) {
         const newScores = { ...gameBestScores, [gameId]: score };
         setGameBestScores(newScores);
 
-        const safeEmail = userEmail.replace(/\./g, '_');
-        // 로컬 저장
-        await saveData(STORAGE_KEYS.GAME_SCORES(safeEmail), newScores);
+        await saveData(STORAGE_KEYS.GAME_SCORES(userId), newScores);
 
         // 서버 저장 (플래그가 true일 때만)
         if (shouldSaveToServer) {
@@ -141,69 +135,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     },
-    [userEmail, nickname, gameBestScores],
+    [userId, nickname, gameBestScores],
   );
 
-  // 백엔드 동기화 로직 (유지)
   const syncUserToBackend = async (email: string) => {
-    // ... (Existing logic for push token, registerUser)
-    let expoPushToken: string | null = null;
+    // A. userId, provider 취득 및 캐시 갱신
+    let uid: string;
     try {
-      expoPushToken = await registerForPushNotificationsAsync();
+      const { userService } = await import('../api/userService');
+      const infoRes = await userService.getMyInfo();
+      uid = infoRes.data.id;
+      const provider = infoRes.data.provider as 'GOOGLE' | 'APPLE';
+      setUserId(uid);
+
+      // USER_INFO 캐시에 userId, provider 반영
+      const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
+      if (cachedUser) {
+        await saveData(STORAGE_KEYS.USER_INFO, { ...cachedUser, userId: uid, provider });
+      }
+    } catch (e) {
+      if (__DEV__) console.error('❌ [Auth] userId 취득 실패:', e);
+      return;
+    }
+
+    // B. 푸시 토큰
+    try {
+      await registerForPushNotificationsAsync();
+      if (__DEV__) console.log('🔔 푸시 토큰 서버 저장 API 준비중');
     } catch (e) {
       if (__DEV__) console.warn('푸시 토큰 발급 실패:', e);
     }
 
+    // C. 닉네임 불러오기
     try {
-      // await registerUser(email, expoPushToken);
-      if (__DEV__) console.log('🔔 푸시 토큰 서버 저장 API 준비중');
-    } catch (e: any) {
-      if (e.response && e.response.status === 409) {
-      } else {
-        return;
-      }
-    }
-
-    // C. 키워드 동기화
-    try {
-      const safeEmail = email.replace(/\./g, '_');
-      const localKeywords = (await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail))) || [];
-      // const response = await syncKeywords(email, localKeywords);
-      if (__DEV__) console.log('🔔 키워드 동기화 API 준비중');
-    } catch (e) {
-      if (__DEV__) console.error('❌ [Auth] 키워드 동기화 에러:', e);
-    }
-
-    // D. 닉네임 불러오기
-    try {
-      const safeEmail = email.replace(/\./g, '_');
-      if (__DEV__)
-        console.log(`🔍 [AuthDebug] 닉네임 로드 시도: Key=${STORAGE_KEYS.NICKNAME(safeEmail)}`);
-
       let fetchedNickname: string | null = null;
       try {
         const { userService } = await import('../api/userService');
         const profileRes = await userService.getMyProfile();
-        if (profileRes.data && profileRes.data.nickname) {
+        if (profileRes.data?.nickname) {
           fetchedNickname = profileRes.data.nickname;
-          if (__DEV__)
-            console.log(`🔍 [AuthDebug] 백엔드에서 닉네임 동기화 완료: ${fetchedNickname}`);
         }
       } catch (err: any) {
-        if (__DEV__)
-          console.warn(
-            '서버에서 닉네임 가져오기 실패 (초기 가입이거나 네트워크 오류 등):',
-            err.message,
-          );
+        if (__DEV__) console.warn('서버에서 닉네임 가져오기 실패:', err.message);
       }
 
-      const savedNickname = (await getData(STORAGE_KEYS.NICKNAME(safeEmail))) as string | null;
+      const savedNickname = (await getData(STORAGE_KEYS.NICKNAME(uid))) as string | null;
       const finalNickname = fetchedNickname || savedNickname;
 
       if (finalNickname) {
         setNickname(finalNickname);
-        await saveData(STORAGE_KEYS.NICKNAME(safeEmail), finalNickname);
-        // USER_INFO 캐시에도 닉네임 반영 (다음 앱 재시작 시 즉시 복원)
+        await saveData(STORAGE_KEYS.NICKNAME(uid), finalNickname);
         try {
           const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
           if (cachedUser) {
@@ -211,18 +192,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch (_) {}
       } else {
-        // 기존 닉네임이 없을 경우, 무조건 '호반우+4자리숫자' 랜덤 발급
-        const randomNum = Math.floor(1000 + Math.random() * 9000); // 1000 ~ 9999
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
         const generatedNickname = `호반우${randomNum}`;
-        if (__DEV__)
-          console.log(
-            `🔍 [AuthDebug] 생성된 닉네임이 없어 '${generatedNickname}'(으)로 초기화합니다.`,
-          );
-
         setNickname(generatedNickname);
-        await saveData(STORAGE_KEYS.NICKNAME(safeEmail), generatedNickname);
-
-        // USER_INFO 캐시에도 닉네임 반영
+        await saveData(STORAGE_KEYS.NICKNAME(uid), generatedNickname);
         try {
           const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
           if (cachedUser) {
@@ -234,8 +207,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (__DEV__) console.warn('닉네임 로드 실패:', e);
     }
 
-    // E. 게임 점수 로드 (추가)
-    await loadGameBestScores(email);
+    // D. 게임 점수 로드
+    await loadGameBestScores(uid);
   };
 
   // ... (rest of the file)
@@ -251,55 +224,77 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         scopes: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'],
       });
 
-      const token = await getToken();
+      let token = await getToken();
       if (!token) {
-        setIsLoading(false);
-        return;
+        // 액세스토큰 없으면 리프레쉬토큰으로 재발급 시도
+        const refreshToken = await getRefreshToken();
+        if (!refreshToken) {
+          setIsLoading(false);
+          return;
+        }
+        try {
+          const { authService } = await import('../api/authService');
+          const res = await authService.refreshToken(refreshToken);
+          const newAccessToken = res.data.accessToken;
+          const newRefreshToken = res.data.refreshToken;
+          if (!newAccessToken) throw new Error('No access token in refresh response');
+          await saveToken(newAccessToken);
+          if (newRefreshToken) await saveRefreshToken(newRefreshToken);
+          token = newAccessToken;
+        } catch (e) {
+          if (__DEV__) console.error('❌ [Init] 리프레쉬 토큰으로 재발급 실패:', e);
+          await removeToken();
+          await removeRefreshToken();
+          setIsLoading(false);
+          return;
+        }
       }
 
-      try {
-        // 로컬에서 유저 정보 복구 시도 (앱 껐다 켰을 때 즉시 로그인 유지)
-        const cachedUser = await getData<{
-          userEmail: string;
-          userInfo: UserInfo;
-          nickname?: string;
-        }>(STORAGE_KEYS.USER_INFO);
-        if (cachedUser?.userEmail) {
-          setUserEmail(cachedUser.userEmail);
-          setUserInfo(cachedUser.userInfo);
-          if (cachedUser.nickname) {
-            setNickname(cachedUser.nickname);
+      // 1. 캐시로 즉시 화면 복원 (userId, provider 포함)
+      const cachedUser = await getData<{
+        userId: string;
+        userEmail: string;
+        userInfo: UserInfo;
+        provider: 'GOOGLE' | 'APPLE';
+        nickname?: string;
+      }>(STORAGE_KEYS.USER_INFO);
+
+      if (cachedUser?.userEmail) {
+        setUserEmail(cachedUser.userEmail);
+        setUserInfo(cachedUser.userInfo);
+        if (cachedUser.userId) setUserId(cachedUser.userId);
+        if (cachedUser.nickname) setNickname(cachedUser.nickname);
+      }
+
+      // 2. 구글 유저만 signInSilently로 구글 토큰 갱신
+      if (cachedUser?.provider === 'GOOGLE') {
+        try {
+          const silentResponse = await GoogleSignin.signInSilently();
+          if (silentResponse.data?.user) {
+            const { user } = silentResponse.data;
+            const tokens = await GoogleSignin.getTokens();
+            if (tokens.accessToken) {
+              await saveData(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN, tokens.accessToken);
+            }
           }
+        } catch (e) {
+          if (__DEV__) console.warn('⚠️ [Init] 구글 silent sign-in 실패 (무시):', e);
         }
+      }
 
-        const silentResponse = await GoogleSignin.signInSilently();
-        if (silentResponse.data?.user) {
-          const { user } = silentResponse.data;
-          const newInfo = { name: user.name || '', email: user.email, picture: user.photo };
-          setUserEmail(user.email);
-          setUserInfo(newInfo);
-          await saveData(STORAGE_KEYS.USER_INFO, { userEmail: user.email, userInfo: newInfo });
-
-          // 구글 accessToken은 백엔드 JWT와 별도 키에 보관 (덮어쓰기 방지)
-          const tokens = await GoogleSignin.getTokens();
-          if (tokens.accessToken) {
-            await saveData(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN, tokens.accessToken);
-          }
-          await syncUserToBackend(user.email);
-        } else if (cachedUser?.userEmail) {
-          // signInSilently 실패 시 캐시 유저로만 동기화
+      // 3. 백엔드 동기화 (구글/애플 공통)
+      if (cachedUser?.userEmail) {
+        try {
           await syncUserToBackend(cachedUser.userEmail);
+        } catch (e) {
+          if (__DEV__) console.error('❌ [Init] syncUserToBackend 실패:', e);
+          // 동기화 실패해도 캐시 기반으로 로그인 유지
         }
-      } catch (e) {
-        if (__DEV__) console.error('❌ [Auth] 세션 복구 실패 (상세):', e);
-        // signInSilently가 실패해도 토큰/캐시가 있으면 로그인 유지
-        const cachedUser = await getData(STORAGE_KEYS.USER_INFO);
-        if (!cachedUser) {
-          await logout();
-        }
-      } finally {
-        setIsLoading(false);
+      } else {
+        await logout();
       }
+
+      setIsLoading(false);
     };
 
     initializeAuth();
@@ -334,7 +329,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await saveToken(response.data.accessToken);
       await saveRefreshToken(response.data.refreshToken);
 
-      const backendEmail = response.data.user?.email || email;
+      const backendEmail = response.data.user?.email || email || '';
       const backendNickname = response.data.user?.profile?.nickname || response.data.nickname;
 
       let userName = '';
@@ -349,17 +344,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUserEmail(backendEmail);
       setUserInfo(newInfo);
 
-      if (backendNickname) {
-        const safeEmail = backendEmail.replace(/\./g, '_');
-        await saveData(STORAGE_KEYS.NICKNAME(safeEmail), backendNickname);
-      }
-
       await saveData(STORAGE_KEYS.USER_INFO, {
         userEmail: backendEmail,
         userInfo: newInfo,
-        ...(backendNickname ? { nickname: backendNickname } : {}),
+        provider: 'APPLE',
       });
-
       await syncUserToBackend(backendEmail);
     } catch (e) {
       if (e.code === 'ERR_REQUEST_CANCELED') {
@@ -414,27 +403,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
 
-        if (backendToken) {
-          await saveToken(backendToken);
-          if (backendRefreshToken) await saveRefreshToken(backendRefreshToken);
-        } else if (accessToken) {
-          await saveToken(accessToken);
+        if (!backendToken) {
+          Alert.alert('로그인 오류', '백엔드 인증에 실패했습니다.');
+          setIsLoading(false);
+          return;
         }
+
+        await saveToken(backendToken);
+        if (backendRefreshToken) await saveRefreshToken(backendRefreshToken);
+        if (accessToken) await saveData(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN, accessToken);
 
         const newInfo = { name: user.name || '', email: user.email, picture: user.photo };
         setUserEmail(user.email);
         setUserInfo(newInfo);
 
-        // 백엔드 응답에서 닉네임을 찾은 경우 로컬 스토리지에 캐싱
-        if (backendNickname) {
-          const safeEmail = user.email.replace(/\./g, '_');
-          await saveData(STORAGE_KEYS.NICKNAME(safeEmail), backendNickname);
-        }
-
         await saveData(STORAGE_KEYS.USER_INFO, {
           userEmail: user.email,
           userInfo: newInfo,
-          ...(backendNickname ? { nickname: backendNickname } : {}),
+          provider: 'GOOGLE',
         });
 
         await syncUserToBackend(user.email);
@@ -458,12 +444,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (__DEV__) console.log('📡 [AuthContext] logout 함수 시작'); // 추가
     setIsLoading(true);
     try {
-      if (userEmail) {
-        if (__DEV__) console.log('📡 [AuthContext] 구글 세션 해제 시도 중...'); // 추가
+      const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
+      if (cachedUser?.provider === 'GOOGLE') {
+        if (__DEV__) console.log('📡 [AuthContext] 구글 세션 해제 시도 중...');
         try {
           await GoogleSignin.revokeAccess();
           await GoogleSignin.signOut();
-          if (__DEV__) console.log('📡 [AuthContext] 구글 세션 해제 완료'); // 추가
+          if (__DEV__) console.log('📡 [AuthContext] 구글 세션 해제 완료');
         } catch (e) {
           if (__DEV__) console.warn('구글 세션 해제 중 오류 (무시):', e);
         }
@@ -473,55 +460,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await removeToken();
       await removeRefreshToken();
       await removeData(STORAGE_KEYS.USER_INFO);
+      setUserId(null);
       setUserEmail(null);
       setUserInfo(null);
-      setNickname(null); // 닉네임 상태 초기화
+      setNickname(null);
       setIsLoading(false);
       if (__DEV__) console.log('📡 [AuthContext] logout 완료 (상태 초기화됨)'); // 추가
     }
-  }, [userEmail]);
+  }, [userId]);
 
   // 회원 탈퇴 함수
   const withdraw = useCallback(async () => {
     if (__DEV__) console.log('📡 [AuthContext] withdraw 함수 시작');
     setIsLoading(true);
     try {
-      if (userEmail) {
+      if (userId) {
         // 1. 백엔드에 회원 탈퇴 요청
         await authService.withdrawUser();
         if (__DEV__) console.log('📡 [AuthContext] 백엔드 회원 탈퇴 성공');
 
-        // 2. 구글 연동 해제 (선택)
-        try {
-          await GoogleSignin.revokeAccess();
-          await GoogleSignin.signOut();
-        } catch (e) {
-          console.warn('구글 세션 해제(revoke) 중 오류 (무시):', e);
+        // 2. 구글 연동 해제 (구글 유저만)
+        const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
+        if (cachedUser?.provider === 'GOOGLE') {
+          try {
+            await GoogleSignin.revokeAccess();
+            await GoogleSignin.signOut();
+          } catch (e) {
+            console.warn('구글 세션 해제(revoke) 중 오류 (무시):', e);
+          }
         }
       }
 
       // 3. 로컬 데이터 클리어 및 초기화
       if (__DEV__) console.log('📡 [AuthContext] 로컬 데이터 삭제 및 유저 리셋');
 
-      if (userEmail) {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        await removeData(STORAGE_KEYS.NICKNAME(safeEmail));
-        await removeData(STORAGE_KEYS.KEYWORDS(safeEmail));
-        await removeData(STORAGE_KEYS.BOOKMARK(safeEmail));
-        await removeData(STORAGE_KEYS.READ(safeEmail));
-        await removeData(STORAGE_KEYS.PUSH_SETTING(safeEmail));
-        await removeData(STORAGE_KEYS.MAP_FILTER(safeEmail));
-        await removeData(STORAGE_KEYS.FILTER_MODE(safeEmail));
-        await removeData(STORAGE_KEYS.GAME_SCORES(safeEmail));
+      if (userId) {
+        await removeData(STORAGE_KEYS.NICKNAME(userId));
+        await removeData(STORAGE_KEYS.KEYWORDS(userId));
+        await removeData(STORAGE_KEYS.ACADEMIC_SOURCES(userId));
+        await removeData(STORAGE_KEYS.BOOKMARK(userId));
+        await removeData(STORAGE_KEYS.READ(userId));
+        await removeData(STORAGE_KEYS.PUSH_SETTING(userId));
+        await removeData(STORAGE_KEYS.MAP_FILTER(userId));
+        await removeData(STORAGE_KEYS.FILTER_MODE(userId));
+        await removeData(STORAGE_KEYS.GAME_SCORES(userId));
+        await removeData(STORAGE_KEYS.PUSHED_NOTICES(userId));
       }
 
       await removeToken();
       await removeRefreshToken();
       await removeData(STORAGE_KEYS.USER_INFO);
+      setUserId(null);
       setUserEmail(null);
       setUserInfo(null);
-      setNickname(null); // 닉네임 상태 초기화
-      setGameBestScores({}); // 메모리의 게임 점수 초기화
+      setNickname(null);
+      setGameBestScores({});
       if (__DEV__) console.log('✅ [AuthContext] 회원 탈퇴 프로세스 완료');
     } catch (error) {
       console.error('❌ [AuthContext] 회원 탈퇴 에러:', error);
@@ -529,25 +522,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [userEmail]);
+  }, [userId]);
+
+  // 토큰 갱신 실패 시 자동 로그아웃 콜백 등록
+  useEffect(() => {
+    setUnauthorizedCallback(() => {
+      Alert.alert('알림', '세션이 만료되었습니다. 다시 로그인해 주세요.', [
+        { text: '확인', onPress: () => logout() },
+      ]);
+    });
+    return () => setUnauthorizedCallback(null);
+  }, [logout]);
 
   // 닉네임 업데이트 함수
   const updateNickname = useCallback(
     async (name: string) => {
-      if (!userEmail) {
-        if (__DEV__) console.error('❌ [AuthDebug] 닉네임 업데이트 실패: userEmail is null');
-        return;
-      }
-      const safeEmail = userEmail.replace(/\./g, '_');
-      if (__DEV__)
-        console.log(
-          `💾 [AuthDebug] 닉네임 저장 시도: ${name} (Key=${STORAGE_KEYS.NICKNAME(safeEmail)})`,
-        );
+      if (!userId) return;
       try {
-        await saveData(STORAGE_KEYS.NICKNAME(safeEmail), name);
-        if (__DEV__) console.log(`✅ [AuthDebug] 닉네임 저장 완료`);
+        await saveData(STORAGE_KEYS.NICKNAME(userId), name);
         setNickname(name);
-        // USER_INFO 캐시에도 닉네임 반영 (앱 재시작 시 즉시 복원)
         const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
         if (cachedUser) {
           await saveData(STORAGE_KEYS.USER_INFO, { ...cachedUser, nickname: name });
@@ -556,16 +549,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (__DEV__) console.error('❌ [AuthDebug] 닉네임 저장 중 에러:', e);
       }
     },
-    [userEmail],
+    [userId],
   );
 
   return (
     <AuthContext.Provider
       value={{
+        userId,
         userEmail,
         userInfo,
         nickname,
-        isAuthenticated: !!userEmail,
+        isAuthenticated: !!userId,
         isLoading,
         gameBestScores,
         updateGameBestScore,
