@@ -2,6 +2,7 @@
 export const STORAGE_KEYS = {
   TOKEN: 'user_access_token',
   REFRESH_TOKEN: 'user_refresh_token',
+  GOOGLE_ACCESS_TOKEN: 'google_access_token',
   USER_INFO: 'user_info',
   LIKED_NOTICES: 'user_liked_notices',
   // 동적 키 생성을 위한 헬퍼 함수

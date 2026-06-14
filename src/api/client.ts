@@ -5,11 +5,11 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { getToken, removeToken, saveToken, getRefreshToken, saveRefreshToken, removeRefreshToken } from '../utils/storage';
 import { API_CONFIG } from '../constants/config';
 
-// 1. 커스텀 요청 설정을 위한 인터페이스 확장
-// 기존 AxiosRequestConfig에는 없는 _retry 속성을 추가합니다.
 interface CustomRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
+
+let refreshPromise: Promise<string> | null = null;
 
 export const api: AxiosInstance = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_BASE_URL,
@@ -41,38 +41,37 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        if (__DEV__) console.log('🔄 토큰 만료됨. 서버에 토큰 갱신을 요청합니다...');
+        if (!refreshPromise) {
+          if (__DEV__) console.log('🔄 토큰 만료됨. 서버에 토큰 갱신을 요청합니다...');
 
-        // (1) 저장소에 저장해둔 refreshToken을 가져옵니다.
-        const currentRefreshToken = await getRefreshToken(); 
-        
-        if (!currentRefreshToken) {
-          throw new Error('No refresh token available');
+          const currentRefreshToken = await getRefreshToken();
+          if (!currentRefreshToken) throw new Error('No refresh token available');
+
+          refreshPromise = axios
+            .post(
+              `${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/refresh`,
+              { refreshToken: currentRefreshToken },
+              { headers: { Authorization: `Bearer ${currentRefreshToken}` } },
+            )
+            .then(async res => {
+              const newAccessToken = res.data.accessToken;
+              const newRefreshToken = res.data.refreshToken;
+              if (!newAccessToken) throw new Error('No access token in refresh response');
+              await saveToken(newAccessToken);
+              if (newRefreshToken) await saveRefreshToken(newRefreshToken);
+              return newAccessToken;
+            })
+            .finally(() => {
+              refreshPromise = null;
+            });
         }
 
-        // (2) /auth/refresh 호출로 새 토큰 발급
-        const refreshResponse = await axios.post(
-          `${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/refresh`,
-          { refreshToken: currentRefreshToken },
-          { headers: { Authorization: `Bearer ${currentRefreshToken}` } }
-        );
-        const newAccessToken = refreshResponse.data.accessToken;
-        const newRefreshToken = refreshResponse.data.refreshToken;
-
-        if (newAccessToken) {
-          // (3) 새 토큰 저장 및 헤더 업데이트
-          await saveToken(newAccessToken);
-          if (newRefreshToken) await saveRefreshToken(newRefreshToken);
-
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          }
-
-          // (4) 실패했던 원래 요청을 새 토큰으로 재시도
-          return api(originalRequest);
+        const newAccessToken = await refreshPromise;
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         }
+        return api(originalRequest);
       } catch (refreshError) {
-        // 갱신 실패 시 로그아웃 처리
         if (__DEV__) console.error('❌ 토큰 갱신 실패:', refreshError);
         await removeToken();
         await removeRefreshToken();

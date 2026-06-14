@@ -267,11 +267,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (cachedUser?.userEmail) {
           setUserEmail(cachedUser.userEmail);
           setUserInfo(cachedUser.userInfo);
-          // 캐시된 닉네임도 즉시 복원 (ProfileScreen 모달 방지)
           if (cachedUser.nickname) {
             setNickname(cachedUser.nickname);
           }
-          syncUserToBackend(cachedUser.userEmail);
         }
 
         const silentResponse = await GoogleSignin.signInSilently();
@@ -282,9 +280,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserInfo(newInfo);
           await saveData(STORAGE_KEYS.USER_INFO, { userEmail: user.email, userInfo: newInfo });
 
+          // 구글 accessToken은 백엔드 JWT와 별도 키에 보관 (덮어쓰기 방지)
           const tokens = await GoogleSignin.getTokens();
-          if (tokens.accessToken) await saveToken(tokens.accessToken);
+          if (tokens.accessToken) {
+            await saveData(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN, tokens.accessToken);
+          }
           await syncUserToBackend(user.email);
+        } else if (cachedUser?.userEmail) {
+          // signInSilently 실패 시 캐시 유저로만 동기화
+          await syncUserToBackend(cachedUser.userEmail);
         }
       } catch (e) {
         if (__DEV__) console.error('❌ [Auth] 세션 복구 실패 (상세):', e);
