@@ -1,9 +1,11 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { useAuth } from '../../context/AuthContext';
 import { getData, saveData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import SOURCE_LABELS from '../../constants/labeltag.json';
+import { notificationService } from '../../api/notificationService';
 
 export const POPULAR_KEYWORDS = [
   { label: '장학', value: '장학' },
@@ -24,6 +26,8 @@ export const useKeywordLogic = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { userId, isAuthenticated } = useAuth();
 
+  const [pushStatus, setPushStatus] = useState<'enabled' | 'app_disabled' | 'system_disabled'>('enabled');
+
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
@@ -40,14 +44,27 @@ export const useKeywordLogic = () => {
     if (!userId) return;
     setLoading(true);
     try {
+      // 백엔드에서 최신 구독 목록 가져와 로컬과 동기화
+      const [keywordsRes, sourcesRes] = await Promise.all([
+        notificationService.getKeywords(),
+        notificationService.getSources(),
+      ]);
+      const serverKeywords = keywordsRes.data ?? [];
+      const serverSources = sourcesRes.data ?? [];
+
+      await saveData(STORAGE_KEYS.KEYWORDS(userId), serverKeywords);
+      await saveData(STORAGE_KEYS.ACADEMIC_SOURCES(userId), serverSources);
+      setKeywords(serverKeywords);
+      setAcademicSources(serverSources);
+    } catch (error) {
+      // 네트워크 실패 시 로컬 캐시로 폴백
+      console.error('백엔드 동기화 실패, 로컬 캐시 사용:', error);
       const [savedKeywords, savedAcademic] = await Promise.all([
         getData<string[]>(STORAGE_KEYS.KEYWORDS(userId)),
         getData<string[]>(STORAGE_KEYS.ACADEMIC_SOURCES(userId)),
       ]);
       setKeywords(savedKeywords ?? []);
       setAcademicSources(savedAcademic ?? []);
-    } catch (error) {
-      console.error('데이터 로딩 실패', error);
     } finally {
       setLoading(false);
     }
@@ -61,6 +78,22 @@ export const useKeywordLogic = () => {
         setKeywords([]);
         setAcademicSources([]);
       }
+
+      // 푸시 알림 상태 체크 (화면 포커스마다)
+      const checkPushStatus = async () => {
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') {
+          setPushStatus('system_disabled');
+          return;
+        }
+        if (userId) {
+          const appSetting = await getData<string>(STORAGE_KEYS.PUSH_SETTING(userId));
+          setPushStatus(appSetting === 'false' ? 'app_disabled' : 'enabled');
+        } else {
+          setPushStatus('enabled');
+        }
+      };
+      checkPushStatus();
     }, [isAuthenticated, userId, fetchData]),
   );
 
@@ -88,6 +121,7 @@ export const useKeywordLogic = () => {
       await saveData(STORAGE_KEYS.KEYWORDS(userId), updated);
       setKeywords(updated);
       setInputText('');
+      await notificationService.addKeywords([keyword]);
     } catch (error) {
       console.error('키워드 저장 실패', error);
       showAlert('오류', '키워드 저장 중 오류가 발생했습니다.');
@@ -101,6 +135,7 @@ export const useKeywordLogic = () => {
       const updated = keywords.filter(k => k !== keyword);
       await saveData(STORAGE_KEYS.KEYWORDS(userId), updated);
       setKeywords(updated);
+      await notificationService.deleteKeywords([keyword]);
     } catch (error) {
       console.error('키워드 삭제 실패', error);
       showAlert('오류', '키워드 삭제 중 오류가 발생했습니다.');
@@ -119,6 +154,7 @@ export const useKeywordLogic = () => {
       const updated = [...academicSources, code];
       await saveData(STORAGE_KEYS.ACADEMIC_SOURCES(userId), updated);
       setAcademicSources(updated);
+      await notificationService.addSources([code]);
     } catch (error) {
       console.error('학사 소스 저장 실패', error);
       showAlert('오류', '저장 중 오류가 발생했습니다.');
@@ -132,6 +168,7 @@ export const useKeywordLogic = () => {
       const updated = academicSources.filter(c => c !== code);
       await saveData(STORAGE_KEYS.ACADEMIC_SOURCES(userId), updated);
       setAcademicSources(updated);
+      await notificationService.deleteSources([code]);
     } catch (error) {
       console.error('학사 소스 삭제 실패', error);
       showAlert('오류', '삭제 중 오류가 발생했습니다.');
@@ -146,6 +183,7 @@ export const useKeywordLogic = () => {
 
   return {
     isAuthenticated,
+    pushStatus,
     loading,
     refreshing,
     keywords,

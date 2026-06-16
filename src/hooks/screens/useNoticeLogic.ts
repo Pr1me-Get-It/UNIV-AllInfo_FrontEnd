@@ -69,6 +69,14 @@ export function useNoticeLogic(navigation: any, route: any) {
     }
   }, [route.params?.initialQuery, navigation]);
 
+  // 1-2. 푸시 알림 클릭으로 진입 시 푸시 필터 모드 자동 활성화
+  useEffect(() => {
+    if (route.params?.openPushFilter) {
+      setIsPushFilterMode(true);
+      navigation.setParams({ openPushFilter: undefined });
+    }
+  }, [route.params?.openPushFilter, navigation]);
+
   const debouncedSetQuery = useRef(
     debounce((text: string) => {
       setQuery(text);

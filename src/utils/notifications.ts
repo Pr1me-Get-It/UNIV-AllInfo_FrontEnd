@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform, Alert } from 'react-native';
+import { navigate } from '../navigation/navigationRef';
 
 // 알림 핸들러 설정 (앱이 포그라운드 상태일 때 알림 표시 여부)
 Notifications.setNotificationHandler({
@@ -21,6 +22,7 @@ Notifications.addNotificationReceivedListener(notification => {
 
 Notifications.addNotificationResponseReceivedListener(response => {
   if (__DEV__) console.log('🔔 [NotificationDebug] 알림 클릭(반응):', JSON.stringify(response, null, 2));
+  navigate('MainTab', { screen: 'Notice', params: { openPushFilter: true } });
 });
 
 /**

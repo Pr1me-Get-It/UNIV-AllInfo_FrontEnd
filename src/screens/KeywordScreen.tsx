@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,7 @@ interface Props {
 export default function KeywordScreen({ navigation }: Props) {
   const {
     isAuthenticated,
+    pushStatus,
     loading,
     refreshing,
     keywords,
@@ -110,6 +112,31 @@ export default function KeywordScreen({ navigation }: Props) {
             관심있는 키워드를 등록하면 알림을 보내드려요.
           </AppText>
         </View>
+
+        {pushStatus !== 'enabled' && (
+          <View style={styles.pushBanner}>
+            <Ionicons name="notifications-off-outline" size={16} color="#92400E" />
+            <AppText style={styles.pushBannerText}>
+              {pushStatus === 'system_disabled'
+                ? '기기 알림이 꺼져 있어 알림을 받을 수 없어요.'
+                : '앱 알림이 꺼져 있어요.'}
+            </AppText>
+            <TouchableOpacity
+              style={styles.pushBannerButton}
+              activeOpacity={0.8}
+              onPress={() => {
+                if (pushStatus === 'system_disabled') {
+                  Linking.openSettings();
+                } else {
+                  navigation.navigate('Profile' as any);
+                }
+              }}>
+              <AppText style={styles.pushBannerButtonText}>
+                {pushStatus === 'system_disabled' ? '설정 열기' : '알림 켜기'}
+              </AppText>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.tabContainer}>
           <TouchableOpacity
@@ -201,6 +228,28 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 8 },
   description: { fontSize: 14, color: '#666', lineHeight: 20 },
+
+  pushBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+    marginHorizontal: 20,
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  pushBannerText: { flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17 },
+  pushBannerButton: {
+    backgroundColor: '#F59E0B',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  pushBannerButtonText: { fontSize: 12, color: '#fff', fontWeight: '700' },
 
   listContent: { padding: 20, flexGrow: 1 },
 

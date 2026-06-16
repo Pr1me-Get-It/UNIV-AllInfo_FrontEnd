@@ -7,6 +7,7 @@ import { saveData, getData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { isValidNickname } from '../../utils/filter';
 import { sendFeedback } from '../../api/feedbackService';
+import { notificationService } from '../../api/notificationService';
 import * as appleAuthentication from 'expo-apple-authentication';
 
 export function useProfileLogic() {
@@ -178,7 +179,7 @@ export function useProfileLogic() {
       try {
         const token = await registerForPushNotificationsAsync();
         if (token) {
-          if (__DEV__) console.log('🔔 [PushDebug] 푸시 토큰 발급 완료 (API 연동 준비중):', token);
+          await notificationService.setExpoTokenActive(token, true);
           showAlert('알림', '푸시 알림 설정이 완료되었습니다.');
         } else {
           showAlert('오류', '푸시 토큰을 가져올 수 없습니다.');
@@ -190,6 +191,13 @@ export function useProfileLogic() {
         setPushEnabled(false);
         if (userId) await saveData(STORAGE_KEYS.PUSH_SETTING(userId), 'false');
         showAlert('오류', '푸시 알림 설정 중 문제가 발생했습니다.');
+      }
+    } else {
+      try {
+        const token = await registerForPushNotificationsAsync();
+        if (token) await notificationService.setExpoTokenActive(token, false);
+      } catch (e) {
+        if (__DEV__) console.warn('푸시 토큰 비활성화 실패 (무시):', e);
       }
     }
   };

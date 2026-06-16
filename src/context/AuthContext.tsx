@@ -160,10 +160,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // B. 푸시 토큰
     try {
-      await registerForPushNotificationsAsync();
-      if (__DEV__) console.log('🔔 푸시 토큰 서버 저장 API 준비중');
+      const expoPushToken = await registerForPushNotificationsAsync();
+      if (expoPushToken) {
+        const { notificationService } = await import('../api/notificationService');
+        await notificationService.saveExpoToken(expoPushToken);
+        if (__DEV__) console.log('🔔 푸시 토큰 서버 저장 완료:', expoPushToken);
+      }
     } catch (e) {
-      if (__DEV__) console.warn('푸시 토큰 발급 실패:', e);
+      if (__DEV__) console.warn('푸시 토큰 발급/저장 실패:', e);
     }
 
     // C. 닉네임 불러오기

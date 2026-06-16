@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 // applyGlobalFont(); // React 19에서 defaultProps 지원 중단으로 인해 제거됨
 
 import RootNavigator from './src/navigation/RootNavigator';
+import { navigationRef } from './src/navigation/navigationRef';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlarmProvider } from './src/data/Alarm';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -55,7 +56,7 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
           <AlarmProvider>
-            <NavigationContainer>
+            <NavigationContainer ref={navigationRef}>
               <RootNavigator />
             </NavigationContainer>
           </AlarmProvider>

@@ -106,16 +106,19 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
     const subscription = Notifications.addNotificationReceivedListener(notification => {
       if (__DEV__) console.log('🔔 [AlarmContext] 포그라운드 알림 수신:', notification);
 
-      const noticeId =
-        notification.request.content.data?.noticeId || notification.request.content.data?.notice_id;
+      // 백엔드는 noticeIds(배열)로 전송
+      const raw = notification.request.content.data?.noticeIds
+        ?? notification.request.content.data?.noticeId
+        ?? notification.request.content.data?.notice_id;
+      const ids: string[] = Array.isArray(raw)
+        ? raw.map(String)
+        : raw ? [String(raw)] : [];
 
-      if (noticeId) {
-        const id = String(noticeId);
+      if (ids.length > 0) {
         const key = resolveKey(userId);
         setPushedNoticeIds(prev => {
-          if (prev.includes(id)) return prev;
-          const next = [...prev, id];
-          saveData(STORAGE_KEYS.PUSHED_NOTICES(key), next);
+          const next = [...prev, ...ids.filter(id => !prev.includes(id))];
+          if (next.length !== prev.length) saveData(STORAGE_KEYS.PUSHED_NOTICES(key), next);
           return next;
         });
       }
