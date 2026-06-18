@@ -54,8 +54,6 @@ export function useProfileLogic() {
   );
 
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [nightPushOnly, setNightPushOnly] = useState(false);
   const [marketingEnabled, setMarketingEnabled] = useState(false);
 
   // 커스텀 알림 상태
@@ -91,9 +89,22 @@ export function useProfileLogic() {
   const [isLicenseModalVisible, setIsLicenseModalVisible] = useState(false);
 
   const handleFeedbackSubmit = async () => {
-    showAlert('준비중', '백엔드 개편으로 인해 준비중인 기능입니다.');
-    setIsFeedbackModalVisible(false);
-    setFeedbackInput('');
+    const input = feedbackInput.trim();
+    if (!input) {
+      showAlert('오류', '피드백 내용을 입력해주세요.');
+      return;
+    }
+    setIsSendingFeedback(true);
+    try {
+      await sendFeedback(input);
+      setIsFeedbackModalVisible(false);
+      setFeedbackInput('');
+      showAlert('감사합니다', '피드백이 전송되었습니다 :)');
+    } catch (e) {
+      showAlert('오류', '전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsSendingFeedback(false);
+    }
   };
 
   const appVersion = Constants.expoConfig?.version || '1.0.0';
@@ -214,10 +225,6 @@ export function useProfileLogic() {
     isForcedNickname,
     setIsForcedNickname,
     pushEnabled,
-    soundEnabled,
-    setSoundEnabled,
-    nightPushOnly,
-    setNightPushOnly,
     marketingEnabled,
     setMarketingEnabled,
     alertVisible,

@@ -117,13 +117,14 @@ export const useKeywordLogic = () => {
     }
 
     try {
+      const res = await notificationService.addKeywords([keyword]);
+      console.log('[ADD] 키워드 추가 응답:', res.status, res.data);
       const updated = [...keywords, keyword];
       await saveData(STORAGE_KEYS.KEYWORDS(userId), updated);
       setKeywords(updated);
       setInputText('');
-      await notificationService.addKeywords([keyword]);
-    } catch (error) {
-      console.error('키워드 저장 실패', error);
+    } catch (error: any) {
+      console.error('[ADD] 키워드 저장 실패 - status:', error?.response?.status, 'data:', error?.response?.data);
       showAlert('오류', '키워드 저장 중 오류가 발생했습니다.');
     }
   };
@@ -132,12 +133,14 @@ export const useKeywordLogic = () => {
     if (!userId) return;
 
     try {
+      console.log('[DELETE] 키워드 삭제 요청:', keyword);
+      const res = await notificationService.deleteKeywords([keyword]);
+      console.log('[DELETE] 키워드 삭제 응답:', res.status, res.data);
       const updated = keywords.filter(k => k !== keyword);
       await saveData(STORAGE_KEYS.KEYWORDS(userId), updated);
       setKeywords(updated);
-      await notificationService.deleteKeywords([keyword]);
-    } catch (error) {
-      console.error('키워드 삭제 실패', error);
+    } catch (error: any) {
+      console.error('[DELETE] 키워드 삭제 실패 - status:', error?.response?.status, 'data:', error?.response?.data);
       showAlert('오류', '키워드 삭제 중 오류가 발생했습니다.');
     }
   };
@@ -151,10 +154,10 @@ export const useKeywordLogic = () => {
     }
 
     try {
+      await notificationService.addSources([code]);
       const updated = [...academicSources, code];
       await saveData(STORAGE_KEYS.ACADEMIC_SOURCES(userId), updated);
       setAcademicSources(updated);
-      await notificationService.addSources([code]);
     } catch (error) {
       console.error('학사 소스 저장 실패', error);
       showAlert('오류', '저장 중 오류가 발생했습니다.');
@@ -165,10 +168,10 @@ export const useKeywordLogic = () => {
     if (!userId) return;
 
     try {
+      await notificationService.deleteSources([code]);
       const updated = academicSources.filter(c => c !== code);
       await saveData(STORAGE_KEYS.ACADEMIC_SOURCES(userId), updated);
       setAcademicSources(updated);
-      await notificationService.deleteSources([code]);
     } catch (error) {
       console.error('학사 소스 삭제 실패', error);
       showAlert('오류', '삭제 중 오류가 발생했습니다.');

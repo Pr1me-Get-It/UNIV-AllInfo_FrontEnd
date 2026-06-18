@@ -32,11 +32,14 @@ interface AlarmContextType {
   readStatus: Record<string, boolean>;
   bookmarkStatus: Record<string, AlarmItem>;
   mockEvents: MockEvent[];
-  pushedNoticeIds: string[]; // 푸시 알림으로 수신된 공지 ID 목록
+  pushedNoticeIds: string[];
   markAsRead: (id: string | number, isRead?: boolean) => void;
   markMultipleAsRead: (ids: (string | number)[], isRead?: boolean) => void;
   toggleBookmark: (item: AlarmItem) => void;
   addMockEvent: (newEvent: MockEvent) => void;
+  clearPushedNotices: () => void;
+  removePushedNotice: (id: string) => void;
+  addPushedNotice: (id: string) => void;
 }
 
 const TODAY_STR = new Date().toISOString().split('T')[0];
@@ -127,26 +130,15 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
     return () => subscription.remove();
   }, [userId]);
 
-  // 읽음 처리 로직: 읽으면 pushedNoticeIds에서도 제거
   const markAsRead = useCallback(
     (id: string | number, isRead: boolean = true) => {
       const key = resolveKey(userId);
       const strId = String(id);
-
       setReadStatus((prev: Record<string, boolean>) => {
         const newStatus = { ...prev, [strId]: isRead };
         saveData(STORAGE_KEYS.READ(key), newStatus);
         return newStatus;
       });
-
-      if (isRead) {
-        setPushedNoticeIds(prev => {
-          if (!prev.includes(strId)) return prev;
-          const next = prev.filter(i => i !== strId);
-          saveData(STORAGE_KEYS.PUSHED_NOTICES(key), next);
-          return next;
-        });
-      }
     },
     [userId],
   );
@@ -155,28 +147,41 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
     (ids: (string | number)[], isRead: boolean = true) => {
       const key = resolveKey(userId);
       if (ids.length === 0) return;
-
       const strIds = ids.map(i => String(i));
-
       setReadStatus((prev: Record<string, boolean>) => {
         const newStatus = { ...prev };
-        strIds.forEach(id => {
-          newStatus[id] = isRead;
-        });
+        strIds.forEach(id => { newStatus[id] = isRead; });
         saveData(STORAGE_KEYS.READ(key), newStatus);
         return newStatus;
       });
-
-      if (isRead) {
-        setPushedNoticeIds(prev => {
-          const next = prev.filter(i => !strIds.includes(i));
-          if (next.length !== prev.length) saveData(STORAGE_KEYS.PUSHED_NOTICES(key), next);
-          return next;
-        });
-      }
     },
     [userId],
   );
+
+  const clearPushedNotices = useCallback(() => {
+    const key = resolveKey(userId);
+    setPushedNoticeIds([]);
+    saveData(STORAGE_KEYS.PUSHED_NOTICES(key), []);
+  }, [userId]);
+
+  const addPushedNotice = useCallback((id: string) => {
+    const key = resolveKey(userId);
+    setPushedNoticeIds(prev => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      saveData(STORAGE_KEYS.PUSHED_NOTICES(key), next);
+      return next;
+    });
+  }, [userId]);
+
+  const removePushedNotice = useCallback((id: string) => {
+    const key = resolveKey(userId);
+    setPushedNoticeIds(prev => {
+      const next = prev.filter(i => i !== id);
+      saveData(STORAGE_KEYS.PUSHED_NOTICES(key), next);
+      return next;
+    });
+  }, [userId]);
 
   const toggleBookmark = useCallback(
     (item: AlarmItem) => {
@@ -211,6 +216,9 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
         markMultipleAsRead,
         toggleBookmark,
         addMockEvent,
+        clearPushedNotices,
+        removePushedNotice,
+        addPushedNotice,
       }}>
       {children}
     </AlarmContext.Provider>

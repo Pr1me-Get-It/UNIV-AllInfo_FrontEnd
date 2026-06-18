@@ -27,7 +27,7 @@ export default function DetailScreen({ route, navigation }: Props) {
     item,
     displaySource,
     isBookmarked,
-    likeCount,
+    viewCount,
     deadlineInfo,
     loadingDeadline,
     alertVisible,
@@ -36,7 +36,7 @@ export default function DetailScreen({ route, navigation }: Props) {
     alertOnConfirm,
     alertButtons,
     closeAlert,
-    handleLikeToggle,
+    handleBookmarkToggle,
     handleMarkUnread,
     openLink,
     addToCalendar,
@@ -64,8 +64,8 @@ export default function DetailScreen({ route, navigation }: Props) {
           <AppText style={styles.dateText}>{item.date || '날짜 미상'}</AppText>
           <View style={styles.metaDivider} />
           <View style={styles.likeBadge}>
-            <Ionicons name="heart" size={12} color="#fff" />
-            <AppText style={styles.likeText}>{likeCount}</AppText>
+            <Ionicons name="eye-outline" size={12} color="#fff" />
+            <AppText style={styles.likeText}>{viewCount.toLocaleString()}</AppText>
           </View>
         </View>
       </View>
@@ -116,7 +116,7 @@ export default function DetailScreen({ route, navigation }: Props) {
           {/* Bookmark Button */}
           <TouchableOpacity
             style={[styles.bookmarkBtn, isBookmarked && styles.bookmarkBtnActive]}
-            onPress={handleLikeToggle}
+            onPress={handleBookmarkToggle}
             activeOpacity={0.8}>
             <Ionicons
               name={isBookmarked ? 'bookmark' : 'bookmark-outline'}

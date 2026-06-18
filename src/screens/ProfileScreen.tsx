@@ -44,10 +44,6 @@ export default function ProfileScreen() {
     isForcedNickname,
     setIsForcedNickname,
     pushEnabled,
-    soundEnabled,
-    setSoundEnabled,
-    nightPushOnly,
-    setNightPushOnly,
     marketingEnabled,
     setMarketingEnabled,
     alertVisible,
@@ -314,18 +310,13 @@ export default function ProfileScreen() {
             value={pushEnabled}
             onValueChange={handlePushToggle}
           />
-          <SettingRow
-            label="알림 소리"
-            description="알림이 도착했을 때 소리를 재생합니다."
-            value={soundEnabled}
-            onValueChange={setSoundEnabled}
-          />
-          <SettingRow
-            label="야간에는 중요한 공지만"
-            description="밤 11시 ~ 아침 7시에는 마감 임박/긴급 공지만 보내요."
-            value={nightPushOnly}
-            onValueChange={setNightPushOnly}
-          />
+          <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Keyword')}>
+            <View>
+              <AppText style={styles.menuLabel}>키워드 알림 관리</AppText>
+              <AppText style={styles.menuDescription}>관심 키워드 및 학사 알림 구독을 설정해요.</AppText>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
         </View>
 
         {/* 공지 · 홍보 섹션 */}

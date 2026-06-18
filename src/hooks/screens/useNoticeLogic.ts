@@ -1,18 +1,21 @@
 import { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Alert } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import debounce from 'lodash.debounce';
 import { AlarmContext } from '../../data/Alarm';
+import { useAuth } from '../../context/AuthContext';
 import SOURCE_LABELS from '../../constants/labeltag.json';
 import { getData, saveData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
-// import { syncKeywords } from '../../api/userService'; // TODO: 백엔드 키워드 API 확정 후 활성화
 import { fetchNotices } from '../../api/noticeService';
 
 export function useNoticeLogic(navigation: any, route: any) {
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
   const alarmContext = useContext(AlarmContext);
   const readStatus = alarmContext ? alarmContext.readStatus : {};
   const markMultipleAsRead = alarmContext?.markMultipleAsRead;
+  const clearPushedNotices = alarmContext?.clearPushedNotices;
   const pushedNoticeIds = alarmContext?.pushedNoticeIds ?? [];
   const safeStatus = readStatus || {};
 
@@ -35,9 +38,19 @@ export function useNoticeLogic(navigation: any, route: any) {
   // 푸시 알림으로 받은 공지만 보기 필터 모드
   const [isPushFilterMode, setIsPushFilterMode] = useState(false);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsPushFilterMode(false);
+    }
+  }, [isAuthenticated]);
+
   const togglePushFilter = useCallback(() => {
+    if (!isAuthenticated) {
+      Alert.alert('로그인 필요', '푸시 알림 기록은 로그인 후 이용할 수 있어요.');
+      return;
+    }
     setIsPushFilterMode(prev => !prev);
-  }, []);
+  }, [isAuthenticated]);
 
   // 1. 앱 시작 시 저장된 필터 데이터 불러오기
   useEffect(() => {
@@ -73,7 +86,7 @@ export function useNoticeLogic(navigation: any, route: any) {
   useEffect(() => {
     if (route.params?.openPushFilter) {
       setIsPushFilterMode(true);
-      navigation.setParams({ openPushFilter: undefined });
+      navigation.setParams({ openPushFilter: undefined, pushedIds: undefined });
     }
   }, [route.params?.openPushFilter, navigation]);
 
@@ -218,11 +231,11 @@ export function useNoticeLogic(navigation: any, route: any) {
   }, [allNotices, selectedSources, safeStatus, normalizeSource, markMultipleAsRead]);
 
   const displayedData = useMemo(() => {
-    // 푸시 필터 모드: 알림으로 받은 공지 ID 목록 중 안 읽은 공지만 필터링
     if (isPushFilterMode) {
       return allNotices.filter((item: any) => {
         const itemId = String(item.notice_id || item.id);
-        return pushedNoticeIds.includes(itemId) && !safeStatus[item.id];
+        const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
+        return pushedNoticeIds.includes(itemId) && matchesReadFilter;
       });
     }
     return allNotices.filter((item: any) => {
@@ -297,5 +310,6 @@ export function useNoticeLogic(navigation: any, route: any) {
     isPushFilterMode,
     togglePushFilter,
     pushedNoticeIds,
+    clearPushedNotices,
   };
 }

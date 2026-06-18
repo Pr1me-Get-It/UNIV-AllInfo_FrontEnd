@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform, Alert } from 'react-native';
-import { navigate } from '../navigation/navigationRef';
+import { navigate, navigationRef } from '../navigation/navigationRef';
 
 // 알림 핸들러 설정 (앱이 포그라운드 상태일 때 알림 표시 여부)
 Notifications.setNotificationHandler({
@@ -15,14 +15,28 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// [Debug] 알림 리스너 추가 (앱 실행 시 즉시 등록)
-Notifications.addNotificationReceivedListener(notification => {
-  if (__DEV__) console.log('🔔 [NotificationDebug] Foreground 알림 수신:', JSON.stringify(notification, null, 2));
-});
+let lastHandledId: string | null = null;
+
+function extractNoticeIds(data: any): string[] {
+  const raw = data?.noticeIds ?? data?.noticeId ?? data?.notice_id;
+  return Array.isArray(raw) ? raw.map(String) : raw ? [String(raw)] : [];
+}
+
+export function handleNotificationResponse(response: Notifications.NotificationResponse) {
+  const identifier = response.notification.request.identifier;
+  if (identifier === lastHandledId) return;
+
+  // nav가 아직 준비 안 됐으면 lastHandledId를 세팅하지 않고 리턴 → onReady에서 재처리
+  if (!navigationRef.isReady()) return;
+
+  lastHandledId = identifier;
+  const ids = extractNoticeIds(response.notification.request.content.data);
+  navigate('MainTab', { screen: 'Notice', params: { openPushFilter: true, pushedIds: ids } });
+}
 
 Notifications.addNotificationResponseReceivedListener(response => {
   if (__DEV__) console.log('🔔 [NotificationDebug] 알림 클릭(반응):', JSON.stringify(response, null, 2));
-  navigate('MainTab', { screen: 'Notice', params: { openPushFilter: true } });
+  handleNotificationResponse(response);
 });
 
 /**

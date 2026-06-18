@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   View,
   FlatList,
@@ -13,7 +13,8 @@ import AppText from '../components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import SOURCE_LABELS from '../constants/labeltag.json';
 import { COLORS } from '../constants/colors';
-import NoticeItem from '../components/NoticeItem';
+import SwipeableNoticeItem from '../components/SwipeableNoticeItem';
+import { AlarmContext } from '../data/Alarm';
 import { COMMON_TAGS } from '../constants/noticeCategories';
 import { moderateScale } from '../utils/responsive';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,6 +29,11 @@ interface Props {
 }
 
 export default function NoticeScreen({ navigation, route }: Props) {
+  const alarmContext = useContext(AlarmContext);
+  const bookmarkStatus = alarmContext?.bookmarkStatus ?? {};
+  const toggleBookmark = alarmContext?.toggleBookmark;
+  const removePushedNotice = alarmContext?.removePushedNotice;
+
   const {
     inputText,
     setInputText,
@@ -73,7 +79,10 @@ export default function NoticeScreen({ navigation, route }: Props) {
     isPushFilterMode,
     togglePushFilter,
     pushedNoticeIds,
+    clearPushedNotices,
   } = useNoticeLogic(navigation, route);
+
+  const unreadPushedCount = pushedNoticeIds.filter(id => !safeStatus[id]).length;
 
   return (
     <View style={styles.container}>
@@ -84,7 +93,14 @@ export default function NoticeScreen({ navigation, route }: Props) {
         </View>
 
         <View style={{ flexDirection: 'row' }}>
-          {/* 푸시 알림 필터 버튼 */}
+          {isPushFilterMode && (
+            <TouchableOpacity
+              style={[styles.filterIconButton, { marginRight: 5 }]}
+              onPress={clearPushedNotices}>
+              <Ionicons name="trash-outline" size={22} color="#e53935" />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[styles.filterIconButton, { marginRight: 5 }]}
             onPress={togglePushFilter}>
@@ -94,10 +110,10 @@ export default function NoticeScreen({ navigation, route }: Props) {
                 size={24}
                 color={isPushFilterMode ? COLORS.primary : '#333'}
               />
-              {pushedNoticeIds.length > 0 && !isPushFilterMode && (
+              {unreadPushedCount > 0 && !isPushFilterMode && (
                 <View style={styles.badge}>
                   <AppText style={styles.badgeText}>
-                    {pushedNoticeIds.length > 99 ? '99+' : pushedNoticeIds.length}
+                    {unreadPushedCount > 99 ? '99+' : unreadPushedCount}
                   </AppText>
                 </View>
               )}
@@ -423,11 +439,16 @@ export default function NoticeScreen({ navigation, route }: Props) {
               </AppText>
             ) : null
           }
-          renderItem={({ item }) => (
-            <NoticeItem
+          renderItem={({ item, index }) => (
+            <SwipeableNoticeItem
               item={item}
               isRead={safeStatus[item.id] === true}
+              isBookmarked={!!bookmarkStatus[String(item.id)]}
+              showDelete={isPushFilterMode}
+              showHint={index === 0}
               onPress={handleNoticePress}
+              onDelete={id => removePushedNotice?.(id)}
+              onBookmark={i => toggleBookmark?.(i)}
             />
           )}
         />
