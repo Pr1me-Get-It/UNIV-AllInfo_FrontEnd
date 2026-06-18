@@ -4,6 +4,7 @@ import { AlarmContext } from '../../data/Alarm';
 import { api } from '../../api/client';
 import { getToken } from '../../utils/storage';
 import { useAuth } from '../../context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import SOURCE_LABELS from '../../constants/labeltag.json';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -40,8 +41,9 @@ export const useDetailLogic = (route: DetailScreenRouteProp, navigation: DetailS
   const sourcePrefix = item?.source ? item.source.split('/')[0] : '';
   const displaySource = SOURCE_LABELS[sourcePrefix as keyof typeof SOURCE_LABELS] || item?.source || '출처 없음';
 
+  const queryClient = useQueryClient();
   const isBookmarked = bookmarkStatus && itemId ? !!bookmarkStatus[itemId] : false;
-  const [likeCount, setLikeCount] = useState(item?.like || 0);
+  const [viewCount, setViewCount] = useState<number>(item?.views ?? 0);
 
   const [deadlineInfo, setDeadlineInfo] = useState<any>(null);
   const [loadingDeadline, setLoadingDeadline] = useState(false);
@@ -71,6 +73,20 @@ export const useDetailLogic = (route: DetailScreenRouteProp, navigation: DetailS
     if (__DEV__) console.log(`📋 [공지 상세] ID: ${itemId} | 제목: ${item?.title}`);
     markAsRead(itemId, true);
     fetchDeadline();
+    // 조회수 증가 (GET /notices/:id 호출) + 목록 캐시도 업데이트
+    api.get(`/notices/${itemId}`).then(res => {
+      const newViews = res.data?.views;
+      if (newViews != null) {
+        setViewCount(newViews);
+        // react-query 캐시의 해당 공지 views 업데이트
+        queryClient.setQueriesData({ queryKey: ['notices'] }, (old: any) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((n: any) =>
+            String(n.notice_id || n.id) === String(itemId) ? { ...n, views: newViews } : n,
+          );
+        });
+      }
+    }).catch(() => {});
   }, [item, itemId, markAsRead]);
 
   const fetchDeadline = async () => {
@@ -94,7 +110,7 @@ export const useDetailLogic = (route: DetailScreenRouteProp, navigation: DetailS
     }
   };
 
-  const handleLikeToggle = async () => {
+  const handleBookmarkToggle = () => {
     if (!isAuthenticated) {
       showAlert(
         '로그인 필요',
@@ -102,23 +118,12 @@ export const useDetailLogic = (route: DetailScreenRouteProp, navigation: DetailS
         undefined,
         [
           { text: '닫기', style: 'cancel' },
-          {
-            text: '로그인 하러가기',
-            onPress: () => navigation.navigate('Profile'),
-          },
-        ]
+          { text: '로그인 하러가기', onPress: () => navigation.navigate('Profile') },
+        ],
       );
       return;
     }
-
-    if (toggleBookmark) {
-      toggleBookmark(item);
-      if (isBookmarked) {
-        setLikeCount((prev: number) => Math.max(0, prev - 1));
-      } else {
-        setLikeCount((prev: number) => prev + 1);
-      }
-    }
+    toggleBookmark?.(item);
   };
 
   const handleMarkUnread = () => {
@@ -210,7 +215,7 @@ export const useDetailLogic = (route: DetailScreenRouteProp, navigation: DetailS
     item,
     displaySource,
     isBookmarked,
-    likeCount,
+    viewCount,
     deadlineInfo,
     loadingDeadline,
     alertVisible,
@@ -219,7 +224,7 @@ export const useDetailLogic = (route: DetailScreenRouteProp, navigation: DetailS
     alertOnConfirm,
     alertButtons,
     closeAlert,
-    handleLikeToggle,
+    handleBookmarkToggle,
     handleMarkUnread,
     openLink,
     addToCalendar,

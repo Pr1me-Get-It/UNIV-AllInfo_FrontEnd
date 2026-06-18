@@ -1,21 +1,22 @@
 import { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import debounce from 'lodash.debounce';
 import { AlarmContext } from '../../data/Alarm';
-import SOURCE_LABELS from '../../constants/labeltag.json';
-import { saveData, getData } from '../../utils/storage';
-import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { useAuth } from '../../context/AuthContext';
-// import { syncKeywords } from '../../api/userService'; // TODO: 백엔드 키워드 API 확정 후 활성화
+import SOURCE_LABELS from '../../constants/labeltag.json';
+import { getData, saveData } from '../../utils/storage';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { fetchNotices } from '../../api/noticeService';
 
 export function useNoticeLogic(navigation: any, route: any) {
-  const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
   const alarmContext = useContext(AlarmContext);
   const readStatus = alarmContext ? alarmContext.readStatus : {};
   const markMultipleAsRead = alarmContext?.markMultipleAsRead;
+  const clearPushedNotices = alarmContext?.clearPushedNotices;
+  const addPushedNotice = alarmContext?.addPushedNotice;
   const pushedNoticeIds = alarmContext?.pushedNoticeIds ?? [];
-  const { userEmail } = useAuth();
   const safeStatus = readStatus || {};
 
   const [query, setQuery] = useState('');
@@ -37,9 +38,19 @@ export function useNoticeLogic(navigation: any, route: any) {
   // 푸시 알림으로 받은 공지만 보기 필터 모드
   const [isPushFilterMode, setIsPushFilterMode] = useState(false);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsPushFilterMode(false);
+    }
+  }, [isAuthenticated]);
+
   const togglePushFilter = useCallback(() => {
+    if (!isAuthenticated) {
+      Alert.alert('로그인 필요', '푸시 알림 기록은 로그인 후 이용할 수 있어요.');
+      return;
+    }
     setIsPushFilterMode(prev => !prev);
-  }, []);
+  }, [isAuthenticated]);
 
   // 1. 앱 시작 시 저장된 필터 데이터 불러오기
   useEffect(() => {
@@ -71,10 +82,20 @@ export function useNoticeLogic(navigation: any, route: any) {
     }
   }, [route.params?.initialQuery, navigation]);
 
+  // 1-2. 푸시 알림 클릭으로 진입 시 푸시 필터 모드 자동 활성화 + ID 저장
+  useEffect(() => {
+    if (route.params?.openPushFilter && isAuthenticated) {
+      const ids: string[] = route.params?.pushedIds ?? [];
+      ids.forEach(id => addPushedNotice?.(id));
+      setIsPushFilterMode(true);
+      navigation.setParams({ openPushFilter: undefined, pushedIds: undefined });
+    }
+  }, [route.params?.openPushFilter, route.params?.pushedIds, isAuthenticated, addPushedNotice, navigation]);
+
   const debouncedSetQuery = useRef(
     debounce((text: string) => {
       setQuery(text);
-    }, 500)
+    }, 500),
   ).current;
 
   useEffect(() => {
@@ -124,7 +145,7 @@ export function useNoticeLogic(navigation: any, route: any) {
 
   const toggleTempSource = (code: string) => {
     setTempSelectedSources(prev =>
-      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
     );
   };
 
@@ -136,24 +157,6 @@ export function useNoticeLogic(navigation: any, route: any) {
   const handleApplyFilters = async () => {
     setSelectedSources(tempSelectedSources);
     await persistFilters(tempSelectedSources);
-
-    if (userEmail) {
-      try {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        // 기존 전체 키워드 로드
-        const localKeywords = (await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail))) || [];
-        // 기존 키워드 중 수동 키워드(SOURCE_LABELS에 키로 정의되어 있지 않은 것)만 필터링
-        const manualKeywords = localKeywords.filter(k => !(SOURCE_LABELS as any)[k]);
-        // 신규 필터링 소스(학부/공통 코드)와 기존 수동 키워드 병합 (중복 제거)
-        const newKeywords = Array.from(new Set([...tempSelectedSources, ...manualKeywords]));
-
-        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-        // await syncKeywords(userEmail, newKeywords); // TODO: 백엔드 키워드 API 확정 후 활성화
-        if (__DEV__) console.log('🔗 [필터-키워드 연동] 저장 완료.');
-      } catch (e) {
-        console.error('키워드 연동 실패:', e);
-      }
-    }
     handleCloseModal();
   };
 
@@ -169,63 +172,19 @@ export function useNoticeLogic(navigation: any, route: any) {
     setDateModalVisible(false);
   }, [tempDateRange, tempSortOrder]);
 
-  const toggleSource = async (code: string) => {
-    const isAdding = !selectedSources.includes(code);
-    const updated = isAdding ? [...selectedSources, code] : selectedSources.filter(c => c !== code);
-
+  const toggleSource = (code: string) => {
+    const updated = selectedSources.includes(code)
+      ? selectedSources.filter(c => c !== code)
+      : [...selectedSources, code];
     setSelectedSources(updated);
     persistFilters(updated);
-
-    if (userEmail) {
-      try {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        const localKeywords = (await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail))) || [];
-        let newKeywords = [...localKeywords];
-
-        if (isAdding) {
-          if (!newKeywords.includes(code)) newKeywords.push(code);
-        } else {
-          newKeywords = newKeywords.filter(k => k !== code);
-        }
-
-        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-        // await syncKeywords(userEmail, newKeywords); // TODO: 백엔드 키워드 API 확정 후 활성화
-        if (__DEV__) console.log(`🔗 [필터-키워드 연동] ${code} ${isAdding ? '추가' : '삭제'}됨.`);
-      } catch (e) {
-        console.error('키워드 연동 실패:', e);
-      }
-    }
   };
 
-  const toggleAll = async () => {
+  const toggleAll = () => {
     const allCodes = Object.keys(SOURCE_LABELS);
-    const isSelectingAll = selectedSources.length !== allCodes.length;
-    const updated = isSelectingAll ? allCodes : [];
-
+    const updated = selectedSources.length !== allCodes.length ? allCodes : [];
     setSelectedSources(updated);
     persistFilters(updated);
-
-    if (userEmail) {
-      try {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        const localKeywords = (await getData<string[]>(STORAGE_KEYS.KEYWORDS(safeEmail))) || [];
-        let newKeywords = [...localKeywords];
-
-        if (isSelectingAll) {
-          allCodes.forEach(code => {
-            if (!newKeywords.includes(code)) newKeywords.push(code);
-          });
-        } else {
-          newKeywords = newKeywords.filter(k => !allCodes.includes(k));
-        }
-
-        await saveData(STORAGE_KEYS.KEYWORDS(safeEmail), newKeywords);
-        // await syncKeywords(userEmail, newKeywords); // TODO: 백엔드 키워드 API 확정 후 활성화
-        if (__DEV__) console.log(`🔗 [필터-키워드 연동] 전체 ${isSelectingAll ? '추가' : '해제'} 완료.`);
-      } catch (e) {
-        console.error('키워드 전체 연동 실패:', e);
-      }
-    }
   };
 
   const onRefresh = useCallback(() => {
@@ -234,12 +193,15 @@ export function useNoticeLogic(navigation: any, route: any) {
 
   const normalizeSource = useCallback((source: string) => {
     if (!source) return null;
-    const key = source.split(/[\/|_]/)[0].toUpperCase().trim();
+    const key = source
+      .split(/[\/|_]/)[0]
+      .toUpperCase()
+      .trim();
 
     if ((SOURCE_LABELS as any)[key]) return key;
 
-    const foundCode = Object.keys(SOURCE_LABELS).find(
-      code => source.startsWith((SOURCE_LABELS as any)[code]),
+    const foundCode = Object.keys(SOURCE_LABELS).find(code =>
+      source.startsWith((SOURCE_LABELS as any)[code]),
     );
 
     return foundCode || null;
@@ -248,7 +210,8 @@ export function useNoticeLogic(navigation: any, route: any) {
   const unreadCount = useMemo(() => {
     return allNotices.filter((item: any) => {
       const sourcePrefix = normalizeSource(item.source);
-      const matchesSourceFilter = selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
+      const matchesSourceFilter =
+        selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
       return matchesSourceFilter && !safeStatus[item.id];
     }).length;
   }, [allNotices, selectedSources, safeStatus, normalizeSource]);
@@ -258,7 +221,8 @@ export function useNoticeLogic(navigation: any, route: any) {
     const unreadIds = allNotices
       .filter((item: any) => {
         const sourcePrefix = normalizeSource(item.source);
-        const matchesSourceFilter = selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
+        const matchesSourceFilter =
+          selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
         return matchesSourceFilter && !safeStatus[item.id];
       })
       .map((item: any) => item.id);
@@ -269,24 +233,36 @@ export function useNoticeLogic(navigation: any, route: any) {
   }, [allNotices, selectedSources, safeStatus, normalizeSource, markMultipleAsRead]);
 
   const displayedData = useMemo(() => {
-    // 푸시 필터 모드: 알림으로 받은 공지 ID 목록 중 안 읽은 공지만 필터링
     if (isPushFilterMode) {
       return allNotices.filter((item: any) => {
         const itemId = String(item.notice_id || item.id);
-        return pushedNoticeIds.includes(itemId) && !safeStatus[item.id];
+        const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
+        return pushedNoticeIds.includes(itemId) && matchesReadFilter;
       });
     }
     return allNotices.filter((item: any) => {
       const sourcePrefix = normalizeSource(item.source);
-      const matchesSourceFilter = selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
+      const matchesSourceFilter =
+        selectedSources.length > 0 && selectedSources.includes(sourcePrefix || '');
       const matchesReadFilter = filterMode === 'all' || !safeStatus[item.id];
       return matchesSourceFilter && matchesReadFilter;
     });
-  }, [allNotices, selectedSources, safeStatus, filterMode, normalizeSource, isPushFilterMode, pushedNoticeIds]);
+  }, [
+    allNotices,
+    selectedSources,
+    safeStatus,
+    filterMode,
+    normalizeSource,
+    isPushFilterMode,
+    pushedNoticeIds,
+  ]);
 
-  const handleNoticePress = useCallback((item: any) => {
-    navigation.navigate('Detail', { item });
-  }, [navigation]);
+  const handleNoticePress = useCallback(
+    (item: any) => {
+      navigation.navigate('Detail', { item });
+    },
+    [navigation],
+  );
 
   return {
     query,
@@ -336,5 +312,6 @@ export function useNoticeLogic(navigation: any, route: any) {
     isPushFilterMode,
     togglePushFilter,
     pushedNoticeIds,
+    clearPushedNotices,
   };
 }

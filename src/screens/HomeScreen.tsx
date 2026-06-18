@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -33,6 +33,46 @@ const CARD_SPACING = 15;
 const CARD_WIDTH = (width - 40 - CARD_SPACING) / 2;
 
 export default function HomeScreen({ navigation }: Props) {
+  const arrowOpacity = useRef(new Animated.Value(1)).current;
+  const arrowTranslate = useRef(new Animated.Value(0)).current;
+  const hintOpacity = useRef(new Animated.Value(0)).current;
+  const arrowVisible = useRef(true);
+  const bounceAnim = useRef<Animated.CompositeAnimation | null>(null);
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    bounceAnim.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(arrowTranslate, { toValue: 6, duration: 600, useNativeDriver: true }),
+        Animated.timing(arrowTranslate, { toValue: 0, duration: 600, useNativeDriver: true }),
+      ]),
+    );
+    bounceAnim.current.start();
+
+    // 4초 후 텍스트 힌트 페이드인
+    hintTimer.current = setTimeout(() => {
+      if (!arrowVisible.current) return;
+      Animated.timing(hintOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    }, 4000);
+
+    return () => {
+      bounceAnim.current?.stop();
+      if (hintTimer.current) clearTimeout(hintTimer.current);
+    };
+  }, []);
+
+  const hideArrow = () => {
+    if (!arrowVisible.current) return;
+    arrowVisible.current = false;
+    bounceAnim.current?.stop();
+    if (hintTimer.current) clearTimeout(hintTimer.current);
+    Animated.timing(arrowOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const {
     nickname,
     customLinks,
@@ -89,7 +129,11 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        onScroll={hideArrow}
+        scrollEventThrottle={16}>
         {/* 검색바 섹션 */}
         <View style={styles.searchSection}>
           <View style={styles.searchContainer}>
@@ -278,6 +322,17 @@ export default function HomeScreen({ navigation }: Props) {
         <BusWidget />
       </ScrollView>
 
+      {/* 스크롤 유도 화살표 */}
+      <Animated.View
+        style={[styles.scrollHint, { opacity: arrowOpacity, transform: [{ translateY: arrowTranslate }] }]}
+        pointerEvents="none">
+        <Animated.View style={{ opacity: hintOpacity, marginBottom: 4 }}>
+          <AppText style={styles.scrollHintText}>스크롤 해보세요</AppText>
+        </Animated.View>
+        <Ionicons name="chevron-down" size={16} color="rgba(0,0,0,0.15)" />
+        <Ionicons name="chevron-down" size={16} color="rgba(0,0,0,0.35)" style={{ marginTop: -8 }} />
+      </Animated.View>
+
       {/* 닉네임 설정 모달 */}
       <Modal
         visible={isNicknameModalVisible}
@@ -420,6 +475,19 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 100, // 하단 탭 바에 가리지 않도록 넉넉하게 여백 추가
+  },
+  scrollHint: {
+    position: 'absolute',
+    bottom: '28%',
+    alignSelf: 'center',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  scrollHintText: {
+    fontSize: 12,
+    color: 'rgba(0,0,0,0.3)',
+    letterSpacing: 0.3,
   },
   searchSection: {
     backgroundColor: '#FFFFFF',

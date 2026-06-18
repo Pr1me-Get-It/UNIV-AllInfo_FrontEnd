@@ -7,10 +7,12 @@ import { saveData, getData } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { isValidNickname } from '../../utils/filter';
 import { sendFeedback } from '../../api/feedbackService';
+import { notificationService } from '../../api/notificationService';
 import * as appleAuthentication from 'expo-apple-authentication';
 
 export function useProfileLogic() {
   const {
+    userId,
     userEmail,
     userInfo,
     nickname,
@@ -52,8 +54,6 @@ export function useProfileLogic() {
   );
 
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [nightPushOnly, setNightPushOnly] = useState(false);
   const [marketingEnabled, setMarketingEnabled] = useState(false);
 
   // 커스텀 알림 상태
@@ -89,9 +89,22 @@ export function useProfileLogic() {
   const [isLicenseModalVisible, setIsLicenseModalVisible] = useState(false);
 
   const handleFeedbackSubmit = async () => {
-    showAlert('준비중', '백엔드 개편으로 인해 준비중인 기능입니다.');
-    setIsFeedbackModalVisible(false);
-    setFeedbackInput('');
+    const input = feedbackInput.trim();
+    if (!input) {
+      showAlert('오류', '피드백 내용을 입력해주세요.');
+      return;
+    }
+    setIsSendingFeedback(true);
+    try {
+      await sendFeedback(input);
+      setIsFeedbackModalVisible(false);
+      setFeedbackInput('');
+      showAlert('감사합니다', '피드백이 전송되었습니다 :)');
+    } catch (e) {
+      showAlert('오류', '전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsSendingFeedback(false);
+    }
   };
 
   const appVersion = Constants.expoConfig?.version || '1.0.0';
@@ -105,18 +118,15 @@ export function useProfileLogic() {
 
   useEffect(() => {
     const loadPushSetting = async () => {
-      if (userEmail) {
-        const safeEmail = userEmail.replace(/\./g, '_');
-        const savedSetting = await getData(STORAGE_KEYS.PUSH_SETTING(safeEmail));
-        if (savedSetting !== null) {
-          setPushEnabled(savedSetting === 'true');
-        }
+      if (userId) {
+        const savedSetting = await getData(STORAGE_KEYS.PUSH_SETTING(userId));
+        if (savedSetting !== null) setPushEnabled(savedSetting === 'true');
       } else {
         setPushEnabled(false);
       }
     };
     loadPushSetting();
-  }, [userEmail]);
+  }, [userId]);
 
   const handleNicknameSave = async () => {
     const input = nicknameInput.trim();
@@ -130,7 +140,7 @@ export function useProfileLogic() {
       return;
     }
 
-    if (userEmail) {
+    if (userId) {
       await updateNickname(input);
       setIsNicknameModalVisible(false);
       setNicknameInput('');
@@ -174,44 +184,31 @@ export function useProfileLogic() {
 
     setPushEnabled(value);
 
-    if (userEmail) {
-      const safeEmail = userEmail.replace(/\./g, '_');
-      await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), String(value));
-    }
+    if (userId) await saveData(STORAGE_KEYS.PUSH_SETTING(userId), String(value));
 
     if (value) {
       try {
         const token = await registerForPushNotificationsAsync();
-
         if (token) {
-          try {
-            // await registerUser(userEmail!, token); // TODO: 백엔드 푸시 토큰 저장 API 연동 필요
-            if (__DEV__)
-              console.log('🔔 [PushDebug] 푸시 토큰 발급 완료 (API 연동 준비중):', token);
-          } catch (apiError: any) {
-            if (__DEV__)
-              console.warn(
-                '🔔 [PushDebug] 푸시 토큰 저장 실패 (무시):',
-                apiError?.response?.status || apiError?.message,
-              );
-          }
+          await notificationService.setExpoTokenActive(token, true);
           showAlert('알림', '푸시 알림 설정이 완료되었습니다.');
         } else {
           showAlert('오류', '푸시 토큰을 가져올 수 없습니다.');
           setPushEnabled(false);
-          if (userEmail) {
-            const safeEmail = userEmail.replace(/\./g, '_');
-            await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), 'false');
-          }
+          if (userId) await saveData(STORAGE_KEYS.PUSH_SETTING(userId), 'false');
         }
       } catch (e) {
         console.error('🚀 [PushDebug] 에러 발생:', e);
         setPushEnabled(false);
-        if (userEmail) {
-          const safeEmail = userEmail.replace(/\./g, '_');
-          await saveData(STORAGE_KEYS.PUSH_SETTING(safeEmail), 'false');
-        }
+        if (userId) await saveData(STORAGE_KEYS.PUSH_SETTING(userId), 'false');
         showAlert('오류', '푸시 알림 설정 중 문제가 발생했습니다.');
+      }
+    } else {
+      try {
+        const token = await registerForPushNotificationsAsync();
+        if (token) await notificationService.setExpoTokenActive(token, false);
+      } catch (e) {
+        if (__DEV__) console.warn('푸시 토큰 비활성화 실패 (무시):', e);
       }
     }
   };
@@ -228,10 +225,6 @@ export function useProfileLogic() {
     isForcedNickname,
     setIsForcedNickname,
     pushEnabled,
-    soundEnabled,
-    setSoundEnabled,
-    nightPushOnly,
-    setNightPushOnly,
     marketingEnabled,
     setMarketingEnabled,
     alertVisible,

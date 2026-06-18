@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Font from 'expo-font';
+import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 // 전역 폰트 적용 시도 (일부 RN 버전에서 작동)
 // applyGlobalFont(); // React 19에서 defaultProps 지원 중단으로 인해 제거됨
 
 import RootNavigator from './src/navigation/RootNavigator';
+import { navigationRef } from './src/navigation/navigationRef';
+import { handleNotificationResponse } from './src/utils/notifications';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlarmProvider } from './src/data/Alarm';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -55,7 +58,17 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
           <AlarmProvider>
-            <NavigationContainer>
+            <NavigationContainer
+              ref={navigationRef}
+              onReady={() => {
+                Notifications.getLastNotificationResponseAsync().then(response => {
+                  if (!response) return;
+                  // 60초 이내 알림만 처리 — 이전 세션의 stale 응답 재처리 방지
+                  const age = Date.now() - response.notification.date * 1000;
+                  if (age > 60000) return;
+                  handleNotificationResponse(response);
+                });
+              }}>
               <RootNavigator />
             </NavigationContainer>
           </AlarmProvider>

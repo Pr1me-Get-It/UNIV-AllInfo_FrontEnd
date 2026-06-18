@@ -1,9 +1,13 @@
 import React, { memo } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import AppText from './AppText';
 import { moderateScale } from '../utils/responsive';
+
+const HOT_THRESHOLD_1 = 100;
+const HOT_THRESHOLD_2 = 1000;
 
 interface NoticeItemProps {
   item: any;
@@ -12,6 +16,9 @@ interface NoticeItemProps {
 }
 
 const NoticeItem = ({ item, isRead, onPress }: NoticeItemProps) => {
+  const views: number = item.views ?? 0;
+  const hotLevel = views >= HOT_THRESHOLD_2 ? 2 : views >= HOT_THRESHOLD_1 ? 1 : 0;
+
   return (
     <TouchableOpacity style={styles.itemRow} onPress={() => onPress(item)}>
       <View style={styles.iconBackground}>
@@ -20,16 +27,34 @@ const NoticeItem = ({ item, isRead, onPress }: NoticeItemProps) => {
 
       <View style={styles.textWrapper}>
         <AppText style={styles.sourceText}>{item.displaySource}</AppText>
-        <AppText style={[styles.itemText, isRead && styles.readText]} numberOfLines={2}>
+        <AppText
+          style={[styles.itemText, isRead && styles.readText]}
+          numberOfLines={2}>
           {item.title}
         </AppText>
         <View style={styles.infoRow}>
           <AppText style={styles.dateText}>{item.date}</AppText>
-          {isRead ? (
-            <AppText style={styles.readLabel}>읽음</AppText>
-          ) : (
-            <AppText style={styles.unreadLabel}>NEW</AppText>
-          )}
+          <View style={styles.rightInfo}>
+            {item.views != null && (
+              <View style={styles.viewCount}>
+                {hotLevel === 1 && <Ionicons name="flame-outline" size={11} color="#FF6D00" />}
+                {hotLevel === 2 && <Ionicons name="flame" size={12} color="#e53935" />}
+                <Ionicons name="eye-outline" size={11} color={hotLevel === 2 ? '#e53935' : hotLevel === 1 ? '#FF6D00' : '#bbb'} />
+                <AppText style={[
+                  styles.viewCountText,
+                  hotLevel === 1 && styles.hotViewText1,
+                  hotLevel === 2 && styles.hotViewText2,
+                ]}>
+                  {views.toLocaleString()}
+                </AppText>
+              </View>
+            )}
+            {isRead ? (
+              <AppText style={styles.readLabel}>읽음</AppText>
+            ) : (
+              <AppText style={styles.unreadLabel}>NEW</AppText>
+            )}
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -71,14 +96,20 @@ const styles = StyleSheet.create({
   },
   readText: { color: '#aaa' },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rightInfo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  viewCount: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  viewCountText: { fontSize: moderateScale(10, 0.3), color: '#bbb', includeFontPadding: false },
+  hotViewText1: { color: '#FF6D00', fontWeight: '600' },
+  hotViewText2: { color: '#e53935', fontWeight: '700' },
   dateText: { fontSize: moderateScale(11, 0.3), color: '#888', includeFontPadding: false },
   unreadLabel: { fontSize: moderateScale(11, 0.3), color: COLORS.primary, fontWeight: 'bold', includeFontPadding: false },
   readLabel: { fontSize: moderateScale(11, 0.3), color: '#bbb', fontWeight: 'normal', includeFontPadding: false },
 });
 
-// ✅ 커스텀 비교 함수: id, 제목, 읽음 상태가 동일하면 리렌더링 생략
+// views도 비교 대상에 추가
 export default memo(NoticeItem, (prev, next) =>
   prev.item.id === next.item.id &&
   prev.item.title === next.item.title &&
-  prev.isRead === next.isRead
+  prev.item.views === next.item.views &&
+  prev.isRead === next.isRead,
 );
