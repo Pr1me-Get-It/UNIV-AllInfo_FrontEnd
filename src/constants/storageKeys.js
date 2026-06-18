@@ -18,4 +18,5 @@ export const STORAGE_KEYS = {
   FILTER_MODE: userId => `cal_filter_${userId}`,
   GAME_SCORES: userId => `game_scores_${userId}`,
   PUSHED_NOTICES: userId => `pushed_notices_${userId}`,
+  CURRENT_USER_ID: 'current_user_id',
 };

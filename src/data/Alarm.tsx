@@ -66,6 +66,9 @@ export const AlarmContext = createContext<AlarmContextType>({
   markMultipleAsRead: () => {},
   toggleBookmark: () => {},
   addMockEvent: () => {},
+  clearPushedNotices: () => {},
+  removePushedNotice: () => {},
+  addPushedNotice: () => {},
 });
 
 const resolveKey = (uid: string | null) => uid ?? 'guest';

@@ -1,9 +1,40 @@
 /* src/utils/notifications.ts */
 import * as Notifications from 'expo-notifications';
+import * as TaskManager from 'expo-task-manager';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { navigate, navigationRef } from '../navigation/navigationRef';
+
+const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
+
+TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }: any) => {
+  if (error) return;
+  const notification: Notifications.Notification = data?.notification;
+  if (!notification) return;
+
+  const raw = notification.request.content.data?.noticeIds
+    ?? notification.request.content.data?.noticeId
+    ?? notification.request.content.data?.notice_id;
+  const ids: string[] = Array.isArray(raw) ? raw.map(String) : raw ? [String(raw)] : [];
+  if (ids.length === 0) return;
+
+  try {
+    const userId = await AsyncStorage.getItem('current_user_id');
+    const key = `pushed_notices_${userId ?? 'guest'}`;
+    const existing = await AsyncStorage.getItem(key);
+    const prev: string[] = existing ? JSON.parse(existing) : [];
+    const next = [...prev, ...ids.filter(id => !prev.includes(id))];
+    if (next.length !== prev.length) {
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+    }
+  } catch (e) {
+    if (__DEV__) console.error('[BG Task] pushed notices 저장 실패:', e);
+  }
+});
+
+Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK).catch(() => {});
 
 // 알림 핸들러 설정 (앱이 포그라운드 상태일 때 알림 표시 여부)
 Notifications.setNotificationHandler({

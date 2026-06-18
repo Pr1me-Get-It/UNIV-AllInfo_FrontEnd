@@ -16,6 +16,7 @@ export function useNoticeLogic(navigation: any, route: any) {
   const readStatus = alarmContext ? alarmContext.readStatus : {};
   const markMultipleAsRead = alarmContext?.markMultipleAsRead;
   const clearPushedNotices = alarmContext?.clearPushedNotices;
+  const addPushedNotice = alarmContext?.addPushedNotice;
   const pushedNoticeIds = alarmContext?.pushedNoticeIds ?? [];
   const safeStatus = readStatus || {};
 
@@ -82,9 +83,11 @@ export function useNoticeLogic(navigation: any, route: any) {
     }
   }, [route.params?.initialQuery, navigation]);
 
-  // 1-2. 푸시 알림 클릭으로 진입 시 푸시 필터 모드 자동 활성화
+  // 1-2. 푸시 알림 클릭으로 진입 시 푸시 필터 모드 자동 활성화 + ID 저장
   useEffect(() => {
     if (route.params?.openPushFilter) {
+      const ids: string[] = route.params?.pushedIds ?? [];
+      ids.forEach(id => addPushedNotice?.(id));
       setIsPushFilterMode(true);
       navigation.setParams({ openPushFilter: undefined, pushedIds: undefined });
     }

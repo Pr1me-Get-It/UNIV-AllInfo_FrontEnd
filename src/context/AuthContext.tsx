@@ -147,6 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       uid = infoRes.data.id;
       const provider = infoRes.data.provider as 'GOOGLE' | 'APPLE';
       setUserId(uid);
+      await saveData(STORAGE_KEYS.CURRENT_USER_ID, uid);
 
       // USER_INFO 캐시에 userId, provider 반영
       const cachedUser = await getData<any>(STORAGE_KEYS.USER_INFO);
