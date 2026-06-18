@@ -2,7 +2,6 @@ import React, { useRef, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants/colors';
 import NoticeItem from './NoticeItem';
 
 interface SwipeableNoticeItemProps {

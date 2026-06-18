@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Alert } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import debounce from 'lodash.debounce';
 import { AlarmContext } from '../../data/Alarm';
 import { useAuth } from '../../context/AuthContext';
@@ -10,7 +10,6 @@ import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { fetchNotices } from '../../api/noticeService';
 
 export function useNoticeLogic(navigation: any, route: any) {
-  const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
   const alarmContext = useContext(AlarmContext);
   const readStatus = alarmContext ? alarmContext.readStatus : {};
@@ -85,13 +84,13 @@ export function useNoticeLogic(navigation: any, route: any) {
 
   // 1-2. 푸시 알림 클릭으로 진입 시 푸시 필터 모드 자동 활성화 + ID 저장
   useEffect(() => {
-    if (route.params?.openPushFilter) {
+    if (route.params?.openPushFilter && isAuthenticated) {
       const ids: string[] = route.params?.pushedIds ?? [];
       ids.forEach(id => addPushedNotice?.(id));
       setIsPushFilterMode(true);
       navigation.setParams({ openPushFilter: undefined, pushedIds: undefined });
     }
-  }, [route.params?.openPushFilter, navigation]);
+  }, [route.params?.openPushFilter, route.params?.pushedIds, isAuthenticated, addPushedNotice, navigation]);
 
   const debouncedSetQuery = useRef(
     debounce((text: string) => {

@@ -118,7 +118,7 @@ export const useKeywordLogic = () => {
 
     try {
       const res = await notificationService.addKeywords([keyword]);
-      console.log('[ADD] 키워드 추가 응답:', res.status, res.data);
+      if (__DEV__) console.log('[ADD] 키워드 추가 응답:', res.status, res.data);
       const updated = [...keywords, keyword];
       await saveData(STORAGE_KEYS.KEYWORDS(userId), updated);
       setKeywords(updated);
@@ -133,9 +133,9 @@ export const useKeywordLogic = () => {
     if (!userId) return;
 
     try {
-      console.log('[DELETE] 키워드 삭제 요청:', keyword);
+      if (__DEV__) console.log('[DELETE] 키워드 삭제 요청:', keyword);
       const res = await notificationService.deleteKeywords([keyword]);
-      console.log('[DELETE] 키워드 삭제 응답:', res.status, res.data);
+      if (__DEV__) console.log('[DELETE] 키워드 삭제 응답:', res.status, res.data);
       const updated = keywords.filter(k => k !== keyword);
       await saveData(STORAGE_KEYS.KEYWORDS(userId), updated);
       setKeywords(updated);

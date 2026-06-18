@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     [userId, nickname, gameBestScores],
   );
 
-  const syncUserToBackend = async (email: string) => {
+  const syncUserToBackend = async (_email: string) => {
     // A. userId, provider 취득 및 캐시 갱신
     let uid: string;
     try {

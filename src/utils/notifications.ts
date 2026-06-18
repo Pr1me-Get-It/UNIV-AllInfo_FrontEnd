@@ -9,8 +9,11 @@ import { navigate, navigationRef } from '../navigation/navigationRef';
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
 
-TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }: any) => {
-  if (error) return;
+if (!TaskManager.isTaskDefined(BACKGROUND_NOTIFICATION_TASK)) TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }: any) => {
+  if (error) {
+    if (__DEV__) console.error('[BG Task] 오류:', error);
+    return;
+  }
   const notification: Notifications.Notification = data?.notification;
   if (!notification) return;
 

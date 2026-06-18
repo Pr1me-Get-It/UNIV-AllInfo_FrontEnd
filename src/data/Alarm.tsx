@@ -77,7 +77,6 @@ export const AlarmProvider = ({ children }: AlarmProviderProps) => {
   // useAuth() 대신 useContext를 직접 사용: useAuth()는 Provider 미구성 시 throw하므로
   // Fast Refresh 또는 즉시 발송 알림 수신 타이밍에 안전하게 처리하기 위함
   const authContext = useContext(AuthContext);
-  const userEmail = authContext?.userEmail ?? null;
   const userId = authContext?.userId ?? null;
   const [readStatus, setReadStatus] = useState<Record<string, boolean>>({});
   const [bookmarkStatus, setBookmarkStatus] = useState<Record<string, AlarmItem>>({});
